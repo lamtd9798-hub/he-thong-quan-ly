@@ -39,6 +39,11 @@
         .tab-content { display: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1; overflow-y: auto;}
         .tab-content.active { display: block; }
 
+        /* TRANG CHỦ */
+        .welcome-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 60vh; text-align: center; }
+        .welcome-title { font-size: 32px; font-weight: bold; color: #04AA6D; margin-top: 25px; text-transform: uppercase; letter-spacing: 1px;}
+        .welcome-subtitle { font-size: 18px; color: #64748b; margin-top: 15px; }
+
         /* HEADER & THANH CÔNG CỤ */
         .report-header { font-size: 22px; font-weight: bold; color: #1e293b; text-transform: uppercase; margin-bottom: 15px; border-bottom: 3px solid #04AA6D; display: inline-block; padding-bottom: 5px; }
         .report-header.centered { display: block; text-align: center; border-bottom: none; }
@@ -74,18 +79,16 @@
         
         .btn-add-row, .btn-add-task, .btn-delete { cursor: pointer; border-radius: 4px; font-size: 12px; color: white; border: none; padding: 5px; font-weight: bold;}
         .btn-add-row { background-color: #2563eb; } .btn-add-task { background-color: #10b981; margin-right: 2px;} .btn-delete { background-color: #ef4444; }
-        .btn-action-main { background-color: #8b5cf6; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%;}
-        .btn-action-main:hover { background-color: #7c3aed; }
         
         .cell-readonly { background-color: #f8fafc; font-weight: bold; color: #b91c1c; text-align: right; }
 
         /* TRẠNG THÁI KHÓA */
         .locked-view .cell-input { pointer-events: none; background-color: transparent !important; border: none;}
-        .locked-view .col-action, .locked-view .btn-action-main { display: none !important; }
+        .locked-view .col-action { display: none !important; }
         .locked-view .cell-input[placeholder]:empty:before { content: ''; }
 
         /* KHI XUẤT PDF */
-        .exporting-pdf .col-action, .exporting-pdf .btn-action-main { display: none !important; }
+        .exporting-pdf .col-action { display: none !important; }
         .exporting-pdf .cell-input[placeholder]:empty:before { content: ''; }
         .exporting-pdf .dept-row td { border: 1px solid #ddd; }
         .exporting-pdf table { border: 1px solid #000; }
@@ -93,14 +96,19 @@
 
         /* CSS CHO BẢNG POPUP (MODAL) TẠO DỰ ÁN */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; justify-content: center; align-items: center; }
-        .modal-content { background: white; width: 500px; padding: 25px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        .modal-header { font-size: 20px; font-weight: bold; color: #1e293b; margin-bottom: 15px; border-bottom: 2px solid #04AA6D; padding-bottom: 10px;}
+        .modal-content { background: white; width: 650px; padding: 25px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;}
+        .modal-header { font-size: 20px; font-weight: bold; color: #1e293b; margin-bottom: 15px; border-bottom: 2px solid #04AA6D; padding-bottom: 10px; text-transform: uppercase;}
         .modal-form-group { margin-bottom: 12px; }
         .modal-form-group label { display: block; font-weight: bold; font-size: 13px; color: #475569; margin-bottom: 4px; }
-        .modal-form-group input, .modal-form-group textarea { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-family: inherit;}
-        .email-list { border: 1px dashed #cbd5e1; padding: 10px; border-radius: 4px; background: #f8fafc;}
-        .email-item { display: flex; gap: 5px; margin-bottom: 5px;}
-        .btn-modal-add { background: #3b82f6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;}
+        .modal-form-group input { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-family: inherit;}
+        
+        /* Khung phân công */
+        .task-assign-container { border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; background: #f8fafc; margin-top: 15px;}
+        .task-assign-container h4 { margin-top: 0; margin-bottom: 10px; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; color: #04AA6D;}
+        .task-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .task-row span { font-weight: bold; font-size: 13px; width: 35%; color: #334155;}
+        .task-row input { width: 62%; padding: 7px; border: 1px solid #cbd5e1; border-radius: 4px; }
+
         .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;}
         .btn-modal-cancel { background: #94a3b8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
         .btn-modal-confirm { background: #04AA6D; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
@@ -108,39 +116,43 @@
 </head>
 <body>
 
-    <!-- BẢNG POPUP (MODAL) TẠO DỰ ÁN & GỬI MAIL -->
-    <div id="projectModal" class="modal-overlay">
+    <!-- BẢNG POPUP (MODAL) GIAO VIỆC DỰ ÁN -->
+    <div id="taskModal" class="modal-overlay">
         <div class="modal-content">
-            <div class="modal-header">TẠO THÔNG BÁO TRIỂN KHAI DỰ ÁN</div>
+            <div class="modal-header">TRIỂN KHAI GIAO VIỆC DỰ ÁN</div>
             
             <div class="modal-form-group">
-                <label>Tên dự án:</label>
-                <input type="text" id="m_projectName" placeholder="Nhập tên dự án...">
+                <label>1. Tên dự án:</label>
+                <input type="text" id="t_projectName" style="background-color: #e2e8f0; font-weight: bold;" readonly>
             </div>
             <div class="modal-form-group">
-                <label>Tên chủ đầu tư:</label>
-                <input type="text" id="m_investor" placeholder="Nhập tên chủ đầu tư...">
+                <label>2. Tên chủ đầu tư:</label>
+                <input type="text" id="t_investor" placeholder="Nhập tên chủ đầu tư...">
             </div>
             <div class="modal-form-group">
-                <label>Ghi chú triển khai:</label>
-                <textarea id="m_note" rows="3" placeholder="Ghi chú các hạng mục cần chú ý..."></textarea>
+                <label>3. Địa chỉ dự án:</label>
+                <input type="text" id="t_address" placeholder="Nhập địa chỉ dự án...">
             </div>
             <div class="modal-form-group">
-                <label>Người phụ trách (PIC):</label>
-                <input type="text" id="m_pic" placeholder="Tên người phụ trách chính...">
+                <label>4. Ghi chú chung:</label>
+                <input type="text" id="t_note" placeholder="Các thông tin cần lưu ý...">
             </div>
             
-            <div class="modal-form-group">
-                <label>Danh sách Email nhận thông báo:</label>
-                <div class="email-list" id="m_emailList">
-                    <div class="email-item"><input type="email" class="email-input-field" placeholder="nguyenvana@gmail.com"></div>
-                </div>
-                <button class="btn-modal-add" onclick="addEmailField()" style="margin-top: 5px;">+ Thêm Email</button>
+            <div class="task-assign-container">
+                <h4>5. PHÂN CÔNG HẠNG MỤC GIAO VIỆC</h4>
+                <div style="font-size: 12px; color: #64748b; margin-bottom: 10px;">(Nhập địa chỉ Email của người phụ trách vào ô tương ứng, để trống nếu chưa có)</div>
+                
+                <div class="task-row"><span>🔥 Hạng mục Chữa cháy:</span> <input type="email" id="t_email_chuachay" placeholder="Nhập email..."></div>
+                <div class="task-row"><span>🚨 Hạng mục Báo cháy:</span> <input type="email" id="t_email_baochay" placeholder="Nhập email..."></div>
+                <div class="task-row"><span>💡 Hạng mục Đèn Exit, sự cố:</span> <input type="email" id="t_email_den" placeholder="Nhập email..."></div>
+                <div class="task-row"><span>💨 Hạng mục Hút khói:</span> <input type="email" id="t_email_hutkhoi" placeholder="Nhập email..."></div>
+                <div class="task-row"><span>❄️ Điều hòa không khí:</span> <input type="email" id="t_email_dieuhoa" placeholder="Nhập email..."></div>
+                <div class="task-row"><span>🚰 Hạng mục Cấp thoát nước:</span> <input type="email" id="t_email_capthoat" placeholder="Nhập email..."></div>
             </div>
 
             <div class="modal-footer">
-                <button class="btn-modal-cancel" onclick="closeModal()">Hủy</button>
-                <button class="btn-modal-confirm" onclick="sendProjectEmail()">Gửi Thông Báo</button>
+                <button class="btn-modal-cancel" onclick="closeTaskModal()">Hủy Bỏ</button>
+                <button class="btn-modal-confirm" onclick="sendTaskEmail()">Xác nhận & Gửi Mail</button>
             </div>
         </div>
     </div>
@@ -264,7 +276,7 @@
                 </div>
             </div>
 
-            <!-- TAB 3: DỰ ÁN ĐẤU THẦU (MỚI) -->
+            <!-- TAB 3: DỰ ÁN ĐẤU THẦU (NÂNG CẤP GIAO VIỆC) -->
             <div id="tab3" class="tab-content">
                 <div class="time-filter-bar" style="justify-content: flex-end;">
                     <div class="action-group">
@@ -277,13 +289,14 @@
                 <div id="export-area3" class="export-area">
                     <div class="report-header centered" id="pdf-title3">DỰ ÁN ĐẤU THẦU</div>
                     <div id="lock-warning3" style="color:red; font-weight:bold; display:none; margin-bottom: 10px; text-align:center;">⚠️ DỮ LIỆU ĐÃ BỊ ADMIN KHÓA. KHÔNG THỂ CHỈNH SỬA!</div>
+                    <div style="text-align: center; font-style: italic; color: #64748b; margin-bottom: 15px;">* Mẹo: Click chuột 2 lần vào "Tên dự án" để mở bảng Phân công Giao việc</div>
                     
                     <table id="biddingTable">
                         <thead>
                             <tr>
                                 <th style="width: 60px;">STT</th>
                                 <th>TÊN DỰ ÁN</th>
-                                <th style="width: 250px;">TRIỂN KHAI DỰ ÁN</th>
+                                <th style="width: 300px;">TIẾN ĐỘ</th>
                                 <th style="width: 80px;" class="col-action">THAO TÁC</th>
                             </tr>
                         </thead>
@@ -402,7 +415,6 @@
         let isTab1Locked = false, isTab2Locked = false, isTab3Locked = false, isTab5Locked = false, isTab6Locked = false;
         let currentWeekKey = 'y2026_m8_w1'; 
         let isTyping = false; 
-        let activeProjectRowForModal = null; // Biến lưu dòng hiện tại đang mở modal
 
         // --- XỬ LÝ ĐĂNG NHẬP ---
         auth.onAuthStateChanged(user => {
@@ -494,7 +506,7 @@
         document.getElementById('personnelTable').addEventListener('focusout', e => { if (e.target.classList.contains('cell-input')) { isTyping = false; saveTab6Data(); } });
 
         /* ========================================================================= */
-        /* KHU VỰC TAB 3: DỰ ÁN ĐẤU THẦU (MỚI XÂY DỰNG)                              */
+        /* KHU VỰC TAB 3: DỰ ÁN ĐẤU THẦU (NÂNG CẤP GIAO VIỆC BẰNG CLICK ĐÚP)         */
         /* ========================================================================= */
         function loadTab3Data() {
             db.ref('DuAnDauThau/data').on('value', (snapshot) => {
@@ -518,8 +530,8 @@
             const tr = document.createElement('tr'); tr.className = 'bidding-row';
             tr.innerHTML = `
                 <td class="stt-cell" style="text-align:center;"></td>
-                <td><div contenteditable="true" class="cell-input prj-name" placeholder="Nhập tên dự án..."></div></td>
-                <td style="text-align:center;"><button class="btn-action-main" onclick="openEmailModal(this)">TẠO DỰ ÁN</button></td>
+                <td><div contenteditable="true" class="cell-input prj-name" style="cursor: pointer;" title="Click đúp chuột để mở Bảng Giao Việc" placeholder="Nhập tên dự án (Click đúp để giao việc)..."></div></td>
+                <td><div contenteditable="true" class="cell-input" placeholder="Nhập thông tin tiến độ..."></div></td>
                 <td class="col-action" style="text-align:center;"><button class="btn-delete" onclick="deleteRow(this, 'tbody-bidding', 'tab3')">Xóa</button></td>
             `;
             tbody.appendChild(tr);
@@ -536,75 +548,90 @@
             }
         });
 
-        // --- CÁC HÀM CHO MODAL (POPUP) ---
-        function openEmailModal(btn) {
-            activeProjectRowForModal = btn.closest('tr');
-            let projectName = activeProjectRowForModal.querySelector('.prj-name').innerText;
+        // Bắt sự kiện CLICK ĐÚP CHUỘT vào ô Tên Dự Án ở Tab 3
+        document.getElementById('biddingTable').addEventListener('dblclick', e => {
+            if (e.target.classList.contains('prj-name')) {
+                openTaskModal(e.target);
+            }
+        });
+
+        // --- CÁC HÀM CHO BẢNG GIAO VIỆC (MODAL) ---
+        function openTaskModal(cellElement) {
+            // Lấy tên dự án từ ô vừa click
+            let projectName = cellElement.innerText.trim();
             
-            // Đổ tên dự án từ bảng vào form
-            document.getElementById('m_projectName').value = projectName;
-            document.getElementById('m_investor').value = '';
-            document.getElementById('m_note').value = '';
-            document.getElementById('m_pic').value = '';
+            // Xóa rỗng các ô cũ
+            document.getElementById('t_projectName').value = projectName;
+            document.getElementById('t_investor').value = '';
+            document.getElementById('t_address').value = '';
+            document.getElementById('t_note').value = '';
             
-            // Xóa danh sách email cũ, tạo lại 1 ô trống
-            document.getElementById('m_emailList').innerHTML = '<div class="email-item"><input type="email" class="email-input-field" placeholder="nguyenvana@gmail.com"></div>';
+            // Reset toàn bộ input email
+            let emailInputs = document.querySelectorAll('.task-assign-container input[type="email"]');
+            emailInputs.forEach(input => input.value = '');
             
-            document.getElementById('projectModal').style.display = 'flex';
+            // Hiển thị bảng
+            document.getElementById('taskModal').style.display = 'flex';
         }
 
-        function closeModal() {
-            document.getElementById('projectModal').style.display = 'none';
+        function closeTaskModal() {
+            document.getElementById('taskModal').style.display = 'none';
         }
 
-        function addEmailField() {
-            const list = document.getElementById('m_emailList');
-            const item = document.createElement('div');
-            item.className = 'email-item';
-            item.innerHTML = '<input type="email" class="email-input-field" placeholder="nhanvien_khac@gmail.com">';
-            list.appendChild(item);
-        }
-
-        function sendProjectEmail() {
-            const pName = document.getElementById('m_projectName').value.trim();
-            const pInvestor = document.getElementById('m_investor').value.trim();
-            const pNote = document.getElementById('m_note').value.trim();
-            const pPic = document.getElementById('m_pic').value.trim();
+        function sendTaskEmail() {
+            const pName = document.getElementById('t_projectName').value.trim();
+            const pInv = document.getElementById('t_investor').value.trim();
+            const pAddr = document.getElementById('t_address').value.trim();
+            const pNote = document.getElementById('t_note').value.trim();
             
-            // Lấy danh sách email
-            let emails = [];
-            document.querySelectorAll('.email-input-field').forEach(input => {
-                if(input.value.trim() !== '') emails.push(input.value.trim());
+            // Đọc dữ liệu từ 6 hạng mục
+            let tasks = [
+                {name: "Chữa cháy", el: document.getElementById('t_email_chuachay')},
+                {name: "Báo cháy", el: document.getElementById('t_email_baochay')},
+                {name: "Đèn Exit, sự cố", el: document.getElementById('t_email_den')},
+                {name: "Hút khói", el: document.getElementById('t_email_hutkhoi')},
+                {name: "Điều hòa không khí", el: document.getElementById('t_email_dieuhoa')},
+                {name: "Cấp thoát nước", el: document.getElementById('t_email_capthoat')}
+            ];
+            
+            let allEmails = [];
+            let taskDetails = "";
+            
+            tasks.forEach(t => {
+                let mailsStr = t.el.value.trim();
+                if(mailsStr) {
+                    // Nếu gõ nhiều email cách nhau bằng dấu phẩy, tách ra để quét
+                    let mailsArr = mailsStr.split(',').map(m => m.trim());
+                    allEmails.push(...mailsArr);
+                    taskDetails += `- Hệ thống ${t.name}: Phụ trách bởi ${mailsStr}\r\n`;
+                }
             });
-
-            if(emails.length === 0) {
-                alert("Vui lòng nhập ít nhất 1 địa chỉ email nhận!");
+            
+            if(allEmails.length === 0) {
+                alert("Vui lòng nhập ít nhất 1 email để phân công công việc!");
                 return;
             }
-
-            // Tạo nội dung Email (Sử dụng \r\n để xuống dòng trong mail)
-            let subject = `[THÔNG BÁO] Triển khai dự án: ${pName}`;
-            let body = `Kính gửi ${pPic ? pPic : 'người phụ trách'},\r\n\r\n`;
-            body += `Bạn được giao triển khai dự án mới với thông tin như sau:\r\n`;
-            body += `- Tên dự án: ${pName}\r\n`;
-            body += `- Tên chủ đầu tư: ${pInvestor}\r\n`;
-            body += `- Ghi chú triển khai: ${pNote}\r\n\r\n`;
-            body += `Vui lòng kiểm tra và bắt đầu thực hiện.\r\n`;
-            body += `Trân trọng!`;
-
-            // Mở trình soạn thảo email mặc định của máy
-            let mailtoLink = `mailto:${emails.join(',')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            
+            // Lọc các email bị trùng lặp (nếu 1 người làm 2 hạng mục thì chỉ gửi 1 mail cho họ)
+            let uniqueEmails = [...new Set(allEmails)]; 
+            
+            // Soạn nội dung Email
+            let subject = `[GIAO VIỆC] Triển khai dự án: ${pName}`;
+            let body = `Kính gửi các anh/chị phụ trách dự án,\r\n\r\n`;
+            body += `Ban quản lý xin giao việc triển khai dự án mới với các thông tin chi tiết như sau:\r\n`;
+            body += `1. Tên dự án: ${pName}\r\n`;
+            body += `2. Chủ đầu tư: ${pInv}\r\n`;
+            body += `3. Địa chỉ thi công: ${pAddr}\r\n`;
+            body += `4. Ghi chú chung: ${pNote}\r\n\r\n`;
+            body += `5. PHÂN CÔNG HẠNG MỤC CỤ THỂ:\r\n`;
+            body += taskDetails + `\r\n`;
+            body += `Đề nghị các cá nhân có tên trong danh sách kiểm tra hạng mục và phối hợp thực hiện đúng tiến độ.\r\n\r\nTrân trọng!`;
+            
+            // Mở ứng dụng Gửi Mail mặc định
+            let mailtoLink = `mailto:${uniqueEmails.join(',')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             window.location.href = mailtoLink;
-
-            // Đổi màu nút TẠO DỰ ÁN thành ĐÃ THÔNG BÁO để nhận biết
-            if(activeProjectRowForModal) {
-                let btn = activeProjectRowForModal.querySelector('.btn-action-main');
-                btn.innerText = "ĐÃ THÔNG BÁO";
-                btn.style.backgroundColor = "#10b981"; // Đổi sang màu xanh lá
-                saveTab3Data(); // Lưu lại thay đổi màu nút
-            }
-
-            closeModal();
+            
+            closeTaskModal();
         }
 
         /* ========================================================================= */
