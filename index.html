@@ -104,24 +104,12 @@
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; justify-content: center; align-items: center; }
         .modal-content { background: white; width: 1100px; max-width: 95%; padding: 25px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 95vh; overflow-y: auto;}
         
-        /* ĐÃ CHỈNH SỬA: Cố định Header và Nút X */
         .modal-header { 
-            position: sticky; 
-            top: -25px; /* Kéo lên sát mép padding của modal-content */
-            margin: -25px -25px 15px -25px; /* Bù đắp lại khoảng padding của khung */
-            padding: 25px 25px 15px 25px; 
-            background: white; 
-            z-index: 100; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-            font-size: 20px; font-weight: bold; color: #1e293b; 
-            border-bottom: 2px solid #04AA6D; 
-            text-transform: uppercase;
+            position: sticky; top: -25px; margin: -25px -25px 15px -25px; padding: 25px 25px 15px 25px; background: white; z-index: 100; 
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 20px; font-weight: bold; color: #1e293b; border-bottom: 2px solid #04AA6D; text-transform: uppercase;
         }
-        .btn-close-modal {
-            background: transparent; border: none; font-size: 28px; font-weight: bold; color: #94a3b8; cursor: pointer; transition: color 0.2s; line-height: 1; margin-top: -5px; padding: 0 10px;
-        }
+        .btn-close-modal { background: transparent; border: none; font-size: 28px; font-weight: bold; color: #94a3b8; cursor: pointer; transition: color 0.2s; line-height: 1; margin-top: -5px; padding: 0 10px;}
         .btn-close-modal:hover { color: #ef4444; }
 
         .modal-form-group { margin-bottom: 12px; }
@@ -285,8 +273,7 @@
 
             <div class="modal-footer">
                 <button class="btn-modal-cancel" onclick="closeTaskModal()">Đóng Cửa Sổ</button>
-                <button class="btn-modal-save" onclick="closeTaskModal()">Lưu Dữ Liệu</button>
-                <button class="btn-modal-confirm" id="btn-modal-send" onclick="sendTaskEmailAndNotify()">Xác nhận & Gửi Mail</button>
+                <button class="btn-modal-confirm" id="btn-modal-send" onclick="sendTaskEmailAndNotify()">Xác nhận & Báo chuông</button>
             </div>
         </div>
     </div>
@@ -886,7 +873,7 @@
                 }
             });
             
-            // Xử lý nút Send Mail
+            // Xử lý nút Báo chuông
             let btnSend = document.getElementById('btn-modal-send');
             if(isTab3Locked) {
                 btnSend.disabled = true;
@@ -897,7 +884,7 @@
                 btnSend.disabled = false;
                 btnSend.style.opacity = '1';
                 btnSend.style.cursor = 'pointer';
-                btnSend.innerText = 'Xác nhận & Gửi Mail';
+                btnSend.innerText = 'Xác nhận & Báo chuông';
             }
 
             // Tải nội dung Chat
@@ -1020,17 +1007,12 @@
             saveTab3Data(); // Lưu lên mạng
         }
 
-        // TỰ ĐỘNG GỬI MAIL VÀ BẮN THÔNG BÁO GIAO VIỆC
+        // CHỈ BẮN THÔNG BÁO VÀO CHUÔNG (KHÔNG MỞ MAIL NỮA)
         function sendTaskEmailAndNotify() {
             if(isTab3Locked) return;
 
             const pName = document.getElementById('t_projectName').value.trim();
-            const pInv = document.getElementById('t_investor').value.trim();
-            const pAddr = document.getElementById('t_address').value.trim();
-            const pNote = document.getElementById('t_note').value.trim();
-            
             let allEmails = [];
-            let taskText = "";
 
             const tasks = [
                 {key: 'chuachay', name: "Chữa cháy"}, {key: 'baochay', name: "Báo cháy"}, {key: 'den', name: "Đèn Exit, sự cố"},
@@ -1041,10 +1023,6 @@
             tasks.forEach(t => {
                 let row = document.querySelector(`tr[data-task="${t.key}"]`);
                 let emailStr = row.querySelector('.m-task-email').value.trim();
-                let startStr = row.querySelector('.m-task-start').value.trim() || "...";
-                let endStr = row.querySelector('.m-task-end').value.trim() || "...";
-                let progStr = row.querySelector('.m-task-prog').value.trim() || "0%";
-                let noteStr = row.querySelector('.m-task-note').value.trim() || "Không";
 
                 if(emailStr) {
                     let mailsArr = emailStr.split(',').map(m => m.trim());
@@ -1064,36 +1042,15 @@
                             db.ref('Notifications/' + safeKey + '/' + notiId).set(notiData);
                         }
                     });
-                    
-                    taskText += `- Hạng mục ${t.name}:\r\n`;
-                    taskText += `  + Phụ trách: ${emailStr}\r\n`;
-                    taskText += `  + Thời gian: Từ ${startStr} đến ${endStr}\r\n`;
-                    taskText += `  + Tiến độ: ${progStr}\r\n`;
-                    taskText += `  + Ghi chú: ${noteStr}\r\n\r\n`;
                 }
             });
 
             if(allEmails.length === 0) {
-                alert("Bạn chưa điền bất kỳ Email Nhận Việc nào! Hãy nhập email để hệ thống có thể bắn thông báo.");
+                alert("Bạn chưa điền bất kỳ Email Nhận Việc nào! Hãy nhập email để hệ thống báo chuông.");
                 return;
             }
 
-            let uniqueEmails = [...new Set(allEmails)]; 
-            
-            let subject = `[TIẾN ĐỘ DỰ ÁN] ${pName}`;
-            let body = `Kính gửi các anh/chị tham gia dự án,\r\n\r\n`;
-            body += `Dưới đây là thông tin và tiến độ cập nhật mới nhất của dự án:\r\n`;
-            body += `1. Tên dự án: ${pName}\r\n`;
-            body += `2. Chủ đầu tư: ${pInv}\r\n`;
-            body += `3. Địa chỉ thi công: ${pAddr}\r\n`;
-            body += `4. Ghi chú chung: ${pNote}\r\n\r\n`;
-            body += `5. PHÂN CÔNG & TIẾN ĐỘ:\r\n`;
-            body += taskText;
-            body += `Kính đề nghị các bộ phận chủ động kiểm tra và báo cáo trên hệ thống.\r\n\r\nTrân trọng!`;
-            
-            let mailtoLink = `mailto:${uniqueEmails.join(',')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-            window.location.href = mailtoLink;
-            
+            alert("Đã phân công thành công! Hệ thống đã gửi thông báo đến các nhân viên liên quan.");
             closeTaskModal();
         }
 
