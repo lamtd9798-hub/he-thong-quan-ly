@@ -185,8 +185,39 @@
                 </div>
             </div>
             
-            <!-- TAB 2, 3, 4 -->
-            <div id="tab2" class="tab-content"><div class="report-header centered">DANH SÁCH DỰ ÁN</div></div>
+            <!-- TAB 2: DANH SÁCH DỰ ÁN -->
+            <div id="tab2" class="tab-content">
+                <div class="time-filter-bar" style="justify-content: flex-end;">
+                    <div class="action-group">
+                        <span id="sync-status2" class="sync-status offline">🔴 Chờ mạng...</span>
+                        <button class="btn-admin-lock" id="btnAdminLock2" onclick="toggleLock('tab2')">BẬT KHÓA DỮ LIỆU</button>
+                        <button class="btn-export" onclick="exportPDF('export-area2', 'Danh_Sach_Du_An')">🖨️ Xuất PDF</button>
+                    </div>
+                </div>
+
+                <div id="export-area2" class="export-area">
+                    <div class="report-header centered" id="pdf-title2">DANH SÁCH DỰ ÁN</div>
+                    <div id="lock-warning2" style="color:red; font-weight:bold; display:none; margin-bottom: 10px; text-align:center;">⚠️ DỮ LIỆU ĐÃ BỊ ADMIN KHÓA. KHÔNG THỂ CHỈNH SỬA!</div>
+                    
+                    <table id="projectListTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">STT</th>
+                                <th>TÊN DỰ ÁN</th>
+                                <th style="width: 160px;">THỜI GIAN NHẬN DỰ ÁN</th>
+                                <th style="width: 160px;">THỜI GIAN NỘP THẦU</th>
+                                <th style="width: 200px;">LINK HỒ SƠ</th>
+                                <th style="width: 200px;">GHI CHÚ</th>
+                                <th style="width: 80px;" class="col-action">THAO TÁC</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-project-list"></tbody>
+                    </table>
+                    <button class="btn-add-row col-action" style="padding: 8px 15px; margin-top: 5px;" onclick="addProjectListRow()">+ THÊM DỰ ÁN</button>
+                </div>
+            </div>
+
+            <!-- TAB 3, 4 -->
             <div id="tab3" class="tab-content"><div class="report-header centered">DỰ ÁN ĐẤU THẦU</div></div>
             <div id="tab4" class="tab-content"><div class="report-header centered">TRIỂN KHAI DỰ ÁN</div></div>
 
@@ -294,6 +325,7 @@
         // --- BIẾN TOÀN CỤC ---
         const ADMIN_EMAIL = "lamtd9798@gmail.com";
         let isTab1Locked = false;
+        let isTab2Locked = false;
         let isTab5Locked = false;
         let isTab6Locked = false;
         let currentWeekKey = 'y2026_m8_w1'; 
@@ -308,10 +340,12 @@
 
                 let displayStyle = (user.email === ADMIN_EMAIL) ? 'flex' : 'none';
                 document.getElementById('btnAdminLock1').style.display = displayStyle;
+                document.getElementById('btnAdminLock2').style.display = displayStyle;
                 document.getElementById('btnAdminLock5').style.display = displayStyle;
                 document.getElementById('btnAdminLock6').style.display = displayStyle;
 
                 loadTab1Data(); 
+                loadTab2Data();
                 loadTab5Data();
                 loadTab6Data();
                 listenToLockStatus(); 
@@ -335,11 +369,13 @@
             let classToRemove = (snap.val() === true) ? 'offline' : '';
             let classToAdd = (snap.val() === true) ? '' : 'offline';
             
-            ['sync-status1', 'sync-status5', 'sync-status6'].forEach(id => {
+            ['sync-status1', 'sync-status2', 'sync-status5', 'sync-status6'].forEach(id => {
                 let el = document.getElementById(id);
-                el.innerHTML = txt;
-                if(classToRemove) el.classList.remove('offline');
-                if(classToAdd) el.classList.add('offline');
+                if(el) {
+                    el.innerHTML = txt;
+                    if(classToRemove) el.classList.remove('offline');
+                    if(classToAdd) el.classList.add('offline');
+                }
             });
         });
 
@@ -410,6 +446,48 @@
                 <td class="col-action"><button class="btn-delete" onclick="deleteRow(this, null, 'tab1')">Xóa</button></td>`;
             btn.closest('tr').after(tr); saveTab1Data(); 
         }
+
+        // ==========================================
+        // KHU VỰC TAB 2: DANH SÁCH DỰ ÁN
+        // ==========================================
+        function loadTab2Data() {
+            db.ref('DanhSachDuAn/data').on('value', (snapshot) => {
+                if (!isTyping) {
+                    let data = snapshot.val() || ""; 
+                    document.getElementById('tbody-project-list').innerHTML = data;
+                    if (isTab2Locked) document.getElementById('export-area2').querySelectorAll('.cell-input').forEach(el => el.contentEditable = false);
+                }
+            });
+        }
+
+        function saveTab2Data() {
+            if(isTab2Locked) return; 
+            db.ref('DanhSachDuAn/data').set(document.getElementById('tbody-project-list').innerHTML);
+        }
+
+        function addProjectListRow() {
+            if(isTab2Locked) return;
+            const tbody = document.getElementById('tbody-project-list');
+            const tr = document.createElement('tr'); tr.className = 'project-list-row';
+            tr.innerHTML = `
+                <td class="stt-cell" style="text-align:center;"></td>
+                <td><div contenteditable="true" class="cell-input" placeholder="Tên dự án..."></div></td>
+                <td><div contenteditable="true" class="cell-input" style="text-align:center;" placeholder="dd/mm/yyyy"></div></td>
+                <td><div contenteditable="true" class="cell-input" style="text-align:center;" placeholder="dd/mm/yyyy"></div></td>
+                <td><div contenteditable="true" class="cell-input" placeholder="Dán link vào đây..."></div></td>
+                <td><div contenteditable="true" class="cell-input" placeholder="Ghi chú..."></div></td>
+                <td class="col-action" style="text-align:center;"><button class="btn-delete" onclick="deleteRow(this, 'tbody-project-list', 'tab2')">Xóa</button></td>
+            `;
+            tbody.appendChild(tr); updateRowNumbers('tbody-project-list'); saveTab2Data();
+        }
+
+        document.getElementById('projectListTable').addEventListener('focusin', e => { if (e.target.classList.contains('cell-input')) isTyping = true; });
+        document.getElementById('projectListTable').addEventListener('focusout', e => { 
+            if (e.target.classList.contains('cell-input')) {
+                isTyping = false;
+                saveTab2Data();
+            }
+        });
 
         // ==========================================
         // KHU VỰC TAB 5: THỐNG KÊ GIÁ TRỊ DỰ ÁN
@@ -536,6 +614,7 @@
         // ==========================================
         function deleteRow(btn, tbodyId, tabContext) {
             if(tabContext === 'tab1' && isTab1Locked) return;
+            if(tabContext === 'tab2' && isTab2Locked) return;
             if(tabContext === 'tab5' && isTab5Locked) return;
             if(tabContext === 'tab6' && isTab6Locked) return;
 
@@ -548,12 +627,17 @@
             if(tbodyId) updateRowNumbers(tbodyId);
             
             if(tabContext === 'tab1') saveTab1Data();
+            if(tabContext === 'tab2') saveTab2Data();
             if(tabContext === 'tab5') { calculateTotals(); saveTab5Data(); }
             if(tabContext === 'tab6') saveTab6Data();
         }
 
         function updateRowNumbers(tbodyId) {
-            let rowClass = (tbodyId === 'tbody-project-value') ? '.proj-row' : (tbodyId === 'tbody-personnel' ? '.personnel-row' : '.emp-row');
+            let rowClass = '.emp-row';
+            if (tbodyId === 'tbody-project-value') rowClass = '.proj-row';
+            else if (tbodyId === 'tbody-personnel') rowClass = '.personnel-row';
+            else if (tbodyId === 'tbody-project-list') rowClass = '.project-list-row';
+
             document.getElementById(tbodyId).querySelectorAll(rowClass).forEach((r, i) => r.querySelector('.stt-cell').innerText = i + 1);
         }
 
@@ -561,6 +645,10 @@
             db.ref('SystemStatus/' + currentWeekKey + '/isLocked').on('value', snap => {
                 isTab1Locked = snap.val() || false;
                 applyLockUI('1', isTab1Locked, 'BÁO CÁO NÀY');
+            });
+            db.ref('SystemStatus/Tab2/isLocked').on('value', snap => {
+                isTab2Locked = snap.val() || false;
+                applyLockUI('2', isTab2Locked, 'DỮ LIỆU');
             });
             db.ref('SystemStatus/Tab5/isLocked').on('value', snap => {
                 isTab5Locked = snap.val() || false;
@@ -594,6 +682,7 @@
 
         function toggleLock(tab) {
             if(tab === 'tab1') db.ref('SystemStatus/' + currentWeekKey + '/isLocked').set(!isTab1Locked);
+            if(tab === 'tab2') db.ref('SystemStatus/Tab2/isLocked').set(!isTab2Locked);
             if(tab === 'tab5') db.ref('SystemStatus/Tab5/isLocked').set(!isTab5Locked);
             if(tab === 'tab6') db.ref('SystemStatus/Tab6/isLocked').set(!isTab6Locked);
         }
