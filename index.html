@@ -185,7 +185,7 @@
                 </div>
             </div>
             
-            <!-- TAB 2: DANH SÁCH DỰ ÁN -->
+            <!-- TAB 2: DANH SÁCH DỰ ÁN (MỚI NÂNG CẤP) -->
             <div id="tab2" class="tab-content">
                 <div class="time-filter-bar" style="justify-content: flex-end;">
                     <div class="action-group">
@@ -204,16 +204,16 @@
                             <tr>
                                 <th style="width: 40px;">STT</th>
                                 <th>TÊN DỰ ÁN</th>
-                                <th style="width: 160px;">THỜI GIAN NHẬN DỰ ÁN</th>
-                                <th style="width: 160px;">THỜI GIAN NỘP THẦU</th>
+                                <th style="width: 160px;">THỜI GIAN NHẬN</th>
+                                <th style="width: 160px;">THỜI GIAN NỘP</th>
                                 <th style="width: 200px;">LINK HỒ SƠ</th>
                                 <th style="width: 200px;">GHI CHÚ</th>
-                                <th style="width: 80px;" class="col-action">THAO TÁC</th>
+                                <th style="width: 100px;" class="col-action">THAO TÁC</th>
                             </tr>
                         </thead>
                         <tbody id="tbody-project-list"></tbody>
                     </table>
-                    <button class="btn-add-row col-action" style="padding: 8px 15px; margin-top: 5px;" onclick="addProjectListRow()">+ THÊM DỰ ÁN</button>
+                    <button class="btn-add-row col-action" style="padding: 8px 15px; margin-top: 5px; background-color: #f59e0b;" onclick="addYearRow('tbody-project-list')">+ THÊM NĂM (ĐẦU MỤC)</button>
                 </div>
             </div>
 
@@ -448,7 +448,7 @@
         }
 
         // ==========================================
-        // KHU VỰC TAB 2: DANH SÁCH DỰ ÁN
+        // KHU VỰC TAB 2: DANH SÁCH DỰ ÁN (NHÓM THEO NĂM)
         // ==========================================
         function loadTab2Data() {
             db.ref('DanhSachDuAn/data').on('value', (snapshot) => {
@@ -465,9 +465,24 @@
             db.ref('DanhSachDuAn/data').set(document.getElementById('tbody-project-list').innerHTML);
         }
 
-        function addProjectListRow() {
+        // Thêm một NĂM MỚI (Đầu mục lớn)
+        function addYearRow(tbodyId) {
             if(isTab2Locked) return;
-            const tbody = document.getElementById('tbody-project-list');
+            const tbody = document.getElementById(tbodyId);
+            const tr = document.createElement('tr'); tr.className = 'year-row dept-row';
+            tr.innerHTML = `
+                <td colspan="6"><div contenteditable="true" class="cell-input" style="font-size: 15px; text-transform: uppercase;" placeholder="NHẬP NĂM HOẶC GIAI ĐOẠN (VD: NĂM 2026)..."></div></td>
+                <td class="col-action" style="text-align:center;">
+                    <button class="btn-add-task" onclick="addProjectUnderYear(this)">+ Dự án</button>
+                    <button class="btn-delete" onclick="deleteRow(this, '${tbodyId}', 'tab2')">Xóa</button>
+                </td>
+            `;
+            tbody.appendChild(tr); saveTab2Data();
+        }
+
+        // Thêm dự án con vào thẳng dưới năm tương ứng
+        function addProjectUnderYear(btn) {
+            if(isTab2Locked) return;
             const tr = document.createElement('tr'); tr.className = 'project-list-row';
             tr.innerHTML = `
                 <td class="stt-cell" style="text-align:center;"></td>
@@ -478,7 +493,20 @@
                 <td><div contenteditable="true" class="cell-input" placeholder="Ghi chú..."></div></td>
                 <td class="col-action" style="text-align:center;"><button class="btn-delete" onclick="deleteRow(this, 'tbody-project-list', 'tab2')">Xóa</button></td>
             `;
-            tbody.appendChild(tr); updateRowNumbers('tbody-project-list'); saveTab2Data();
+            
+            // Tìm đến cuối danh sách dự án của năm đó để chèn vào
+            let nextRow = btn.closest('tr').nextElementSibling;
+            while(nextRow && nextRow.classList.contains('project-list-row')) {
+                nextRow = nextRow.nextElementSibling;
+            }
+            if (nextRow) {
+                btn.closest('tbody').insertBefore(tr, nextRow);
+            } else {
+                btn.closest('tbody').appendChild(tr);
+            }
+            
+            updateRowNumbers('tbody-project-list');
+            saveTab2Data();
         }
 
         document.getElementById('projectListTable').addEventListener('focusin', e => { if (e.target.classList.contains('cell-input')) isTyping = true; });
@@ -619,9 +647,19 @@
             if(tabContext === 'tab6' && isTab6Locked) return;
 
             const row = btn.closest('tr');
+            
+            // Xóa nhân viên thì xóa luôn việc (Tab 1)
             if(row.classList.contains('emp-row')) {
                 while(row.nextElementSibling && row.nextElementSibling.classList.contains('task-row')) row.nextElementSibling.remove();
             }
+            
+            // Xóa Năm thì xóa luôn các dự án trong năm đó (Tab 2)
+            if(row.classList.contains('year-row')) {
+                while(row.nextElementSibling && row.nextElementSibling.classList.contains('project-list-row')) {
+                    row.nextElementSibling.remove();
+                }
+            }
+
             row.remove();
             
             if(tbodyId) updateRowNumbers(tbodyId);
@@ -633,12 +671,25 @@
         }
 
         function updateRowNumbers(tbodyId) {
-            let rowClass = '.emp-row';
-            if (tbodyId === 'tbody-project-value') rowClass = '.proj-row';
-            else if (tbodyId === 'tbody-personnel') rowClass = '.personnel-row';
-            else if (tbodyId === 'tbody-project-list') rowClass = '.project-list-row';
+            // Đối với Tab 2: Danh sách dự án (Đếm lại STT mỗi khi sang năm mới)
+            if (tbodyId === 'tbody-project-list') {
+                let stt = 1;
+                document.getElementById(tbodyId).querySelectorAll('tr').forEach(row => {
+                    if (row.classList.contains('year-row')) {
+                        stt = 1; // Reset lại số 1 khi gặp năm mới
+                    } else if (row.classList.contains('project-list-row')) {
+                        row.querySelector('.stt-cell').innerText = stt++;
+                    }
+                });
+            } 
+            // Các Tab khác (Đếm bình thường)
+            else {
+                let rowClass = '.emp-row';
+                if (tbodyId === 'tbody-project-value') rowClass = '.proj-row';
+                else if (tbodyId === 'tbody-personnel') rowClass = '.personnel-row';
 
-            document.getElementById(tbodyId).querySelectorAll(rowClass).forEach((r, i) => r.querySelector('.stt-cell').innerText = i + 1);
+                document.getElementById(tbodyId).querySelectorAll(rowClass).forEach((r, i) => r.querySelector('.stt-cell').innerText = i + 1);
+            }
         }
 
         function listenToLockStatus() {
