@@ -40,7 +40,7 @@
         .tab-content.active { display: block; }
 
         /* CHUÔNG THÔNG BÁO (NOTIFICATION) */
-        #noti-container { position: absolute; top: 25px; right: 30px; z-index: 1000; }
+        #noti-container { position: absolute; top: 15px; right: 20px; z-index: 1000; }
         #noti-bell { font-size: 26px; cursor: pointer; user-select: none; position: relative; transition: transform 0.2s;}
         #noti-bell:hover { transform: scale(1.1); }
         #noti-badge { display: none; position: absolute; top: -5px; right: -5px; background-color: #ef4444; color: white; border-radius: 50%; padding: 2px 6px; font-size: 11px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); pointer-events: none;}
@@ -57,7 +57,7 @@
         .report-header.centered { display: block; text-align: center; border-bottom: none; }
         .report-header.centered::after { content: ''; display: block; width: 150px; height: 3px; background: #04AA6D; margin: 10px auto 0; }
         
-        .time-filter-bar { display: flex; align-items: center; background: #ffffff; padding: 15px 20px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-wrap: wrap; gap: 15px; padding-right: 80px;}
+        .time-filter-bar { display: flex; align-items: center; background: #ffffff; padding: 15px 20px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-wrap: wrap; gap: 15px; padding-right: 60px;}
         .month-selector { display: flex; align-items: center; gap: 10px; font-weight: bold; color: #334155; border-right: 2px solid #e2e8f0; padding-right: 20px; }
         .month-selector select { padding: 8px 12px; font-size: 15px; border-radius: 6px; border: 1px solid #94a3b8; outline: none; cursor: pointer; font-weight: bold; background-color: #f8fafc; }
         .week-buttons { display: flex; gap: 10px; border-right: 2px solid #e2e8f0; padding-right: 20px;}
@@ -132,10 +132,10 @@
         .chat-input-area input { flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 4px; outline: none; font-family: inherit; font-size: 13px;}
         .chat-input-area button { background: #0ea5e9; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
 
-        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;}
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 35px;}
         .btn-modal-cancel { background: #94a3b8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
         .btn-modal-save { background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
-        .btn-modal-confirm { background: #04AA6D; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
+        .btn-modal-confirm { background: #04AA6D; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: all 0.2s;}
     </style>
 </head>
 <body>
@@ -265,7 +265,7 @@
             <div class="modal-footer">
                 <button class="btn-modal-cancel" onclick="closeTaskModal()">Đóng Cửa Sổ</button>
                 <button class="btn-modal-save" onclick="closeTaskModal()">Lưu Dữ Liệu</button>
-                <button class="btn-modal-confirm" onclick="sendTaskEmailAndNotify()">Xác nhận & Gửi Mail</button>
+                <button class="btn-modal-confirm" id="btn-modal-send" onclick="sendTaskEmailAndNotify()">Xác nhận & Gửi Mail</button>
             </div>
         </div>
     </div>
@@ -421,9 +421,11 @@
                     <table id="biddingTable">
                         <thead>
                             <tr>
-                                <th style="width: 60px;">STT</th>
+                                <th style="width: 40px;">STT</th>
                                 <th>TÊN DỰ ÁN</th>
-                                <th style="width: 300px;">TIẾN ĐỘ TỔNG QUAN</th>
+                                <th style="width: 120px;">BẮT ĐẦU</th>
+                                <th style="width: 120px;">KẾT THÚC</th>
+                                <th style="width: 120px;">TIẾN ĐỘ TỔNG</th>
                                 <th style="width: 80px;" class="col-action">THAO TÁC</th>
                             </tr>
                         </thead>
@@ -561,7 +563,6 @@
                 loadTab1Data(); loadTab2Data(); loadTab3Data(); loadTab5Data(); loadTab6Data();
                 listenToLockStatus(); 
                 
-                // Lắng nghe chuông thông báo cá nhân
                 startListeningNotifications(user.email);
             } else {
                 document.getElementById('login-screen').style.display = 'flex';
@@ -577,7 +578,6 @@
         }
         function logout() { auth.signOut(); }
 
-        // --- TRẠNG THÁI MẠNG ---
         db.ref('.info/connected').on('value', snap => {
             let txt = (snap.val() === true) ? "🟢 Đã kết nối" : "🔴 Mất mạng";
             ['sync-status1', 'sync-status2', 'sync-status3', 'sync-status5', 'sync-status6'].forEach(id => {
@@ -621,7 +621,6 @@
                     div.className = `noti-item ${item.read ? 'read' : 'unread'}`;
                     div.innerHTML = `<div class="noti-time">${item.time}</div><div>${item.msg}</div>`;
                     
-                    // Click vào chuông để tự nhảy sang Tab 3 và mở dự án
                     div.onclick = () => {
                         db.ref('Notifications/' + safeEmail + '/' + k + '/read').set(true);
                         switchTab('tab3');
@@ -648,8 +647,9 @@
         }
 
         /* ========================================================================= */
-        /* CÁC TAB 1, 2, 5, 6 (Logic cũ được giữ nguyên)                             */
+        /* CÁC TAB 1, 2, 5, 6 (Giữ nguyên)                                           */
         /* ========================================================================= */
+        
         // TAB 1
         const blankTemplate1 = { 'tbody-kinhdoanh': `<tr class="dept-row"><td colspan="6">I. PHÒNG KINH DOANH</td><td class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-kinhdoanh')">+ Thêm NV</button></td></tr>`, 'tbody-kythuat': `<tr class="dept-row"><td colspan="6">II. PHÒNG KỸ THUẬT</td><td class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-kythuat')">+ Thêm NV</button></td></tr>`, 'tbody-muahang': `<tr class="dept-row"><td colspan="6">III. PHÒNG MUA HÀNG</td><td class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-muahang')">+ Thêm NV</button></td></tr>`, 'tbody-ketoan': `<tr class="dept-row"><td colspan="6">IV. PHÒNG KẾ TOÁN</td><td class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-ketoan')">+ Thêm NV</button></td></tr>`, 'tbody-nhansu': `<tr class="dept-row"><td colspan="6">V. PHÒNG NHÂN SỰ</td><td class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-nhansu')">+ Thêm NV</button></td></tr>` };
         function loadTab1Data() { db.ref('TienDoDuAn/' + currentWeekKey).on('value', snap => { if (!isTyping) { let d = snap.val() || blankTemplate1; ['tbody-kinhdoanh', 'tbody-kythuat', 'tbody-muahang', 'tbody-ketoan', 'tbody-nhansu'].forEach(id => { document.getElementById(id).innerHTML = d[id] || blankTemplate1[id]; }); if (isTab1Locked) document.getElementById('export-area1').querySelectorAll('.cell-input').forEach(el => el.contentEditable = false); } }); }
@@ -689,15 +689,92 @@
 
 
         /* ========================================================================= */
-        /* KHU VỰC TAB 3: DỰ ÁN ĐẤU THẦU (NÂNG CẤP CHAT & PHÂN QUYỀN MỚI)            */
+        /* KHU VỰC TAB 3: DỰ ÁN ĐẤU THẦU (NÂNG CẤP CHAT & TIẾN ĐỘ)                   */
         /* ========================================================================= */
+        
+        // --- HÀM KIỂM TRA NHẮC NHỞ DEADLINE TRƯỚC 1 NGÀY ---
+        function checkDeadlines() {
+            let today = new Date();
+            today.setHours(0,0,0,0);
+            let timeToday = today.getTime();
+            let needSave = false;
+
+            document.querySelectorAll('#tbody-bidding .bidding-row').forEach(row => {
+                let pName = row.querySelector('.prj-name').innerText.trim();
+                let detailsField = row.querySelector('.hidden-details');
+                if(!detailsField || !detailsField.value) return;
+
+                let details = JSON.parse(detailsField.value);
+                const tasks = [
+                    {key: 'chuachay', name: 'Chữa cháy'}, {key: 'baochay', name: 'Báo cháy'},
+                    {key: 'den', name: 'Đèn Exit, sự cố'}, {key: 'hutkhoi', name: 'Hút khói'},
+                    {key: 'dieuhoa', name: 'Điều hòa K.Khí'}, {key: 'capthoat', name: 'Cấp thoát nước'},
+                    {key: 'vattu', name: 'Vật tư'}, {key: 'thietke', name: 'Thiết kế'}
+                ];
+
+                tasks.forEach(tObj => {
+                    let tInfo = details[tObj.key];
+                    if(!tInfo || !tInfo.email || !tInfo.end) return;
+
+                    let pVal = parseFloat(tInfo.prog.replace('%',''));
+                    if(isNaN(pVal)) pVal = 0;
+
+                    // Chỉ kiểm tra khi chưa xong 100%
+                    if(pVal < 100) {
+                        let parts = tInfo.end.split('/'); // dd/mm/yyyy
+                        if(parts.length === 3) {
+                            let endDt = new Date(parts[2], parts[1]-1, parts[0]);
+                            endDt.setHours(0,0,0,0);
+                            let daysDiff = (endDt.getTime() - timeToday) / (1000 * 3600 * 24);
+
+                            // Nếu còn 1 ngày (hoặc quá hạn) mà chưa nhắc
+                            if(daysDiff <= 1 && !tInfo.reminded1Day) {
+                                let emailsArr = tInfo.email.split(',').map(m => m.trim());
+                                emailsArr.forEach(emp => {
+                                    if(emp !== '') {
+                                        let safeKey = formatEmailKey(emp);
+                                        let notiId = Date.now() + Math.floor(Math.random() * 1000);
+                                        let notiData = {
+                                            msg: `⏰ <b>NHẮC NHỞ KHẨN:</b> Hạng mục <b>${tObj.name}</b> (Dự án: ${pName}) sắp đến hạn (Kết thúc: ${tInfo.end}). Vui lòng cập nhật tiến độ!`,
+                                            read: false,
+                                            time: new Date().toLocaleString('vi-VN'),
+                                            projectName: pName
+                                        };
+                                        db.ref('Notifications/' + safeKey + '/' + notiId).set(notiData);
+                                    }
+                                });
+                                tInfo.reminded1Day = true;
+                                needSave = true;
+                            }
+                        }
+                    }
+                });
+                if(needSave) {
+                    detailsField.value = JSON.stringify(details);
+                }
+            });
+            
+            // Lưu lại đánh dấu đã gửi nhắc nhở để tránh spam liên tục
+            if(needSave) {
+                db.ref('DuAnDauThau/data').set(document.getElementById('tbody-bidding').innerHTML);
+            }
+        }
+
         function loadTab3Data() {
             db.ref('DuAnDauThau/data').on('value', (snapshot) => {
                 if (!isTyping) {
-                    document.getElementById('tbody-bidding').innerHTML = snapshot.val() || "";
-                    if (isTab3Locked) {
-                        // Khóa các ô ngoài (trừ tên dự án để click đúp)
-                        document.querySelectorAll('#export-area3 .cell-input:not(.prj-name)').forEach(el => el.contentEditable = false);
+                    let oldHtml = document.getElementById('tbody-bidding').innerHTML;
+                    let newHtml = snapshot.val() || "";
+                    if (oldHtml !== newHtml) {
+                        document.getElementById('tbody-bidding').innerHTML = newHtml;
+                        
+                        if (isTab3Locked) {
+                            // Khóa các ô ngoài (trừ tên dự án để click đúp)
+                            document.querySelectorAll('#export-area3 .cell-input:not(.prj-name)').forEach(el => el.contentEditable = false);
+                        }
+                        
+                        // Chạy kiểm tra deadline ngầm
+                        checkDeadlines();
                     }
                 }
             });
@@ -705,7 +782,6 @@
 
         function saveTab3Data() {
             if(isTab3Locked && !document.getElementById('taskModal').style.display === 'flex') return;
-            // Vẫn cho phép lưu từ bên trong Modal để gửi % tiến độ và Chat
             db.ref('DuAnDauThau/data').set(document.getElementById('tbody-bidding').innerHTML);
         }
 
@@ -716,7 +792,9 @@
             tr.innerHTML = `
                 <td class="stt-cell" style="text-align:center;"></td>
                 <td><div contenteditable="true" class="cell-input prj-name" style="cursor: pointer; font-weight:bold; color:#04AA6D;" title="Click đúp chuột để MỞ BẢNG TIẾN ĐỘ & GIAO VIỆC" placeholder="Nhập tên dự án (Click đúp để mở bảng)..."></div></td>
-                <td><div contenteditable="true" class="cell-input" placeholder="Mô tả tiến độ tổng quan..."></div></td>
+                <td><div contenteditable="true" class="cell-input prj-start" style="text-align:center;" placeholder="dd/mm/yyyy"></div></td>
+                <td><div contenteditable="true" class="cell-input prj-end" style="text-align:center;" placeholder="dd/mm/yyyy"></div></td>
+                <td><div class="cell-input cell-readonly prj-total-prog" style="text-align:center; font-weight:bold; color:#e11d48;">0%</div></td>
                 <td class="col-action" style="text-align:center;"><button class="btn-delete" onclick="deleteRow(this, 'tbody-bidding', 'tab3')">Xóa</button></td>
                 <td style="display:none;"><textarea class="hidden-details">{}</textarea></td>
             `;
@@ -756,7 +834,6 @@
             document.getElementById('t_address').value = details.address || '';
             document.getElementById('t_note').value = details.note || '';
 
-            // Đã bổ sung VATTU và THIETKE
             const tasks = ['chuachay', 'baochay', 'den', 'hutkhoi', 'dieuhoa', 'capthoat', 'vattu', 'thietke'];
             tasks.forEach(taskKey => {
                 let taskData = details[taskKey] || {};
@@ -770,7 +847,7 @@
                 }
             });
 
-            // Nếu Tab 3 Khóa: Các ô thông tin chung sẽ bị vô hiệu hóa
+            // Xử lý Giao diện khi bị Khóa
             let disableState = isTab3Locked ? true : false;
             document.getElementById('t_investor').disabled = disableState;
             document.getElementById('t_address').disabled = disableState;
@@ -783,11 +860,25 @@
                     row.querySelector('.m-task-start').disabled = disableState;
                     row.querySelector('.m-task-end').disabled = disableState;
                     
-                    // LUÔN CHO PHÉP NHẬP % TIẾN ĐỘ & GHI CHÚ dù có khóa hay không
+                    // CHO PHÉP NHẬP % TIẾN ĐỘ & GHI CHÚ dù có khóa hay không
                     row.querySelector('.m-task-prog').disabled = false;
                     row.querySelector('.m-task-note').disabled = false;
                 }
             });
+            
+            // Xử lý nút Send Mail
+            let btnSend = document.getElementById('btn-modal-send');
+            if(isTab3Locked) {
+                btnSend.disabled = true;
+                btnSend.style.opacity = '0.4';
+                btnSend.style.cursor = 'not-allowed';
+                btnSend.innerText = 'ĐÃ KHÓA GIAO VIỆC';
+            } else {
+                btnSend.disabled = false;
+                btnSend.style.opacity = '1';
+                btnSend.style.cursor = 'pointer';
+                btnSend.innerText = 'Xác nhận & Gửi Mail';
+            }
 
             // Tải nội dung Chat
             renderChats(details.chats || []);
@@ -807,12 +898,14 @@
             let detailsField = activeProjectRowForModal.querySelector('.hidden-details');
             let details = (detailsField && detailsField.value) ? JSON.parse(detailsField.value) : {};
 
-            // Nếu không bị khóa mới lưu các thông tin chung
             if(!isTab3Locked) {
                 details.investor = document.getElementById('t_investor').value;
                 details.address = document.getElementById('t_address').value;
                 details.note = document.getElementById('t_note').value;
             }
+
+            let totalProg = 0;
+            let taskCount = 0;
 
             const tasks = ['chuachay', 'baochay', 'den', 'hutkhoi', 'dieuhoa', 'capthoat', 'vattu', 'thietke'];
             tasks.forEach(taskKey => {
@@ -824,10 +917,23 @@
                     details[taskKey].start = row.querySelector('.m-task-start').value;
                     details[taskKey].end = row.querySelector('.m-task-end').value;
                 }
+                
                 // Luôn cập nhật Tiến độ & Ghi chú
-                details[taskKey].prog = row.querySelector('.m-task-prog').value;
+                let currentProg = row.querySelector('.m-task-prog').value;
+                details[taskKey].prog = currentProg;
                 details[taskKey].note = row.querySelector('.m-task-note').value;
+
+                // Tính tổng %
+                let pVal = parseFloat(currentProg.replace('%',''));
+                if(isNaN(pVal)) pVal = 0;
+                totalProg += pVal;
+                taskCount++;
             });
+
+            // Tự động tính Trung bình cộng và cập nhật bảng ở ngoài
+            let avg = (totalProg / taskCount).toFixed(1);
+            if(avg.endsWith('.0')) avg = parseInt(avg);
+            activeProjectRowForModal.querySelector('.prj-total-prog').innerText = avg + '%';
 
             if(!detailsField) {
                 detailsField = document.createElement('textarea');
