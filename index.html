@@ -8,7 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script> <!-- Thêm Auth -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     
     <style>
         /* CSS GIAO DIỆN CHÍNH */
@@ -23,7 +23,7 @@
         .btn-login:hover { background-color: #038a59; }
         #login-error { color: red; font-size: 12px; margin-top: 10px; display: none; }
 
-        /* KHUNG ỨNG DỤNG (Ẩn khi chưa đăng nhập) */
+        /* KHUNG ỨNG DỤNG */
         #app-container { display: none; width: 100%; height: 100%; flex-direction: row; }
         
         .sidebar { width: 260px; background-color: #2c3e50; color: white; display: flex; flex-direction: column; }
@@ -53,7 +53,7 @@
         .sync-status.offline { color: #ef4444; }
 
         .btn-export { padding: 9px 15px; background-color: #3b82f6; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-        .btn-admin-lock { padding: 9px 15px; background-color: #f59e0b; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: none; } /* Ẩn mặc định */
+        .btn-admin-lock { padding: 9px 15px; background-color: #f59e0b; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: none; }
         
         /* BẢNG DỮ LIỆU */
         #export-area { background-color: white; padding: 10px; }
@@ -62,16 +62,24 @@
         th { background-color: #04AA6D; color: white; font-weight: bold; text-align: center; }
         .dept-row { background-color: #e2e8f0; font-weight: bold; color: #1e293b; }
         
-        .cell-input { width: 100%; min-height: 24px; box-sizing: border-box; padding: 6px; font-family: inherit; font-size: 14px; outline: none; cursor: text; }
+        .cell-input { width: 100%; min-height: 24px; box-sizing: border-box; padding: 6px; font-family: inherit; font-size: 14px; outline: none; cursor: text; border: 1px solid transparent;}
+        .cell-input:focus { border-bottom: 1px solid #04AA6D; background-color: #f8fafc; }
         .cell-input[placeholder]:empty:before { content: attr(placeholder); color: #888; }
         
         .btn-add-row, .btn-add-task, .btn-delete { cursor: pointer; border-radius: 4px; font-size: 12px; color: white; border: none; padding: 5px; }
-        .btn-add-row { background-color: #2563eb; } .btn-add-task { background-color: #10b981; } .btn-delete { background-color: #ef4444; }
+        .btn-add-row { background-color: #2563eb; } .btn-add-task { background-color: #10b981; margin-right: 2px;} .btn-delete { background-color: #ef4444; }
 
         /* TRẠNG THÁI KHÓA (LOCKED VIEW) */
-        .locked-view .cell-input { pointer-events: none; background-color: transparent !important; }
+        .locked-view .cell-input { pointer-events: none; background-color: transparent !important; border: none;}
         .locked-view .col-action { display: none !important; }
         .locked-view .cell-input[placeholder]:empty:before { content: ''; }
+
+        /* KHI XUẤT PDF */
+        .exporting-pdf .col-action { display: none !important; }
+        .exporting-pdf .cell-input[placeholder]:empty:before { content: ''; }
+        .exporting-pdf .dept-row td { border: 1px solid #ddd; }
+        .exporting-pdf table { border: 1px solid #000; }
+        .exporting-pdf th, .exporting-pdf td { border: 1px solid #000; color: #000;}
     </style>
 </head>
 <body>
@@ -93,8 +101,8 @@
             <div class="logo-box"><img src="logo.jpg" alt="Logo"></div>
             <button class="menu-btn active" id="btn-tab1" onclick="switchTab('tab1')">1. Báo cáo tiến độ</button>
             <button class="menu-btn" id="btn-tab2" onclick="switchTab('tab2')">2. Nhận dự án</button>
+            <button class="menu-btn" id="btn-tab3" onclick="switchTab('tab3')">3. Triển khai trúng thầu</button>
             
-            <!-- Hiển thị người dùng -->
             <div class="user-info-panel">
                 👤 <span id="current-user-email">Đang tải...</span><br>
                 <button class="btn-logout" onclick="logout()">Đăng xuất</button>
@@ -106,12 +114,20 @@
                 <div class="time-filter-bar">
                     <div class="month-selector">
                         <span>Kỳ báo cáo:</span>
-                        <select id="yearSelect" onchange="changeWeek(1)"><option value="2026" selected>Năm 2026</option></select>
-                        <select id="monthSelect" onchange="changeWeek(1)"><option value="8" selected>Tháng 8</option><option value="9">Tháng 9</option></select>
+                        <!-- NĂM SẼ ĐƯỢC ĐIỀN TỰ ĐỘNG BẰNG JS TỪ 2025-2050 -->
+                        <select id="yearSelect" onchange="changeWeek(1)"></select> 
+                        
+                        <select id="monthSelect" onchange="changeWeek(1)">
+                            <option value="1">Tháng 1</option><option value="2">Tháng 2</option><option value="3">Tháng 3</option><option value="4">Tháng 4</option>
+                            <option value="5">Tháng 5</option><option value="6">Tháng 6</option><option value="7">Tháng 7</option><option value="8" selected>Tháng 8</option>
+                            <option value="9">Tháng 9</option><option value="10">Tháng 10</option><option value="11">Tháng 11</option><option value="12">Tháng 12</option>
+                        </select>
                     </div>
                     <div class="week-buttons">
                         <button class="week-btn active" onclick="changeWeek(1)" id="btn-week-1">Tuần 1</button>
                         <button class="week-btn" onclick="changeWeek(2)" id="btn-week-2">Tuần 2</button>
+                        <button class="week-btn" onclick="changeWeek(3)" id="btn-week-3">Tuần 3</button>
+                        <button class="week-btn" onclick="changeWeek(4)" id="btn-week-4">Tuần 4</button>
                     </div>
                     
                     <div class="action-group">
@@ -133,16 +149,29 @@
                                 <th style="width: 110px;" class="col-action">Thao tác</th>
                             </tr>
                         </thead>
+                        <!-- ĐÃ KHÔI PHỤC ĐẦY ĐỦ 5 PHÒNG BAN -->
                         <tbody id="tbody-kinhdoanh"></tbody><tbody id="tbody-kythuat"></tbody>
+                        <tbody id="tbody-muahang"></tbody><tbody id="tbody-ketoan"></tbody><tbody id="tbody-nhansu"></tbody>
                     </table>
                 </div>
             </div>
-            <div id="tab2" class="tab-content"><h3>Tính năng đang phát triển</h3></div>
+            <div id="tab2" class="tab-content"><h3>Giao việc</h3></div>
+            <div id="tab3" class="tab-content"><h3>Triển khai</h3></div>
         </div>
     </div>
 
     <script>
-        // CẤU HÌNH FIREBASE CỦA BẠN
+        // --- 1. TỰ ĐỘNG SINH NĂM TỪ 2025 ĐẾN 2050 ---
+        const yearSelect = document.getElementById("yearSelect");
+        for (let i = 2025; i <= 2050; i++) {
+            let option = document.createElement("option");
+            option.value = i;
+            option.text = "Năm " + i;
+            if (i === 2026) option.selected = true; // Mặc định chọn 2026
+            yearSelect.appendChild(option);
+        }
+
+        // --- 2. CẤU HÌNH FIREBASE CỦA BẠN ---
         const firebaseConfig = {
             apiKey: "AIzaSyDCL83v4p8XXUTCWJ-KNok-bnf1Ga2ayLo",
             authDomain: "quan-ly-du-an-53ce8.firebaseapp.com",
@@ -157,31 +186,26 @@
         const db = firebase.database();
         const auth = firebase.auth();
 
-        // BIẾN QUẢN TRỊ VIÊN CỦA BẠN
+        // --- 3. BIẾN TOÀN CỤC ---
         const ADMIN_EMAIL = "lamtd9798@gmail.com";
         let isGlobalLocked = false;
-        
         let currentWeekKey = 'y2026_m8_w1'; 
         let currentDbRef = null;
         let isTyping = false; 
 
-        /* ==================== XỬ LÝ ĐĂNG NHẬP ==================== */
+        // --- 4. XỬ LÝ ĐĂNG NHẬP ---
         auth.onAuthStateChanged(user => {
             if (user) {
-                // Nếu đã đăng nhập -> Hiện Web, Ẩn màn hình Login
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('app-container').style.display = 'flex';
                 document.getElementById('current-user-email').innerText = user.email;
 
-                // Nếu là ADMIN -> Hiện nút Khóa
-                if(user.email === ADMIN_EMAIL) {
-                    document.getElementById('btnAdminLock').style.display = 'block';
-                }
+                if(user.email === ADMIN_EMAIL) document.getElementById('btnAdminLock').style.display = 'block';
+                else document.getElementById('btnAdminLock').style.display = 'none';
 
-                loadViewFromFirebase(currentWeekKey); // Bắt đầu tải dữ liệu
-                listenToLockStatus(); // Nghe trạng thái Khóa
+                loadViewFromFirebase(currentWeekKey); 
+                listenToLockStatus(); 
             } else {
-                // Nếu chưa đăng nhập -> Hiện màn hình Login
                 document.getElementById('login-screen').style.display = 'flex';
                 document.getElementById('app-container').style.display = 'none';
             }
@@ -195,26 +219,26 @@
                 document.getElementById('login-error').style.display = 'block';
             });
         }
-
         function logout() { auth.signOut(); }
 
-        /* ==================== CHỨC NĂNG KHÓA (ADMIN) ==================== */
+        // --- 5. CHỨC NĂNG KHÓA THEO TỪNG KỲ BÁO CÁO ---
         function listenToLockStatus() {
-            db.ref('SystemStatus/isLocked').on('value', snap => {
+            // Lắng nghe trạng thái khóa của RIÊNG tuần đang chọn
+            db.ref('SystemStatus/' + currentWeekKey + '/isLocked').on('value', snap => {
                 isGlobalLocked = snap.val() || false;
                 const lockBtn = document.getElementById('btnAdminLock');
                 const exportArea = document.getElementById('export-area');
                 const lockWarning = document.getElementById('lock-warning');
 
                 if(isGlobalLocked) {
-                    lockBtn.innerText = "🔓 MỞ KHÓA BÁO CÁO";
-                    lockBtn.style.backgroundColor = "#10b981"; // Xanh
+                    lockBtn.innerText = "🔓 MỞ KHÓA BÁO CÁO NÀY";
+                    lockBtn.style.backgroundColor = "#10b981"; 
                     exportArea.classList.add('locked-view');
                     lockWarning.style.display = 'block';
                     document.querySelectorAll('.cell-input').forEach(el => el.contentEditable = false);
                 } else {
-                    lockBtn.innerText = "🔒 BẬT KHÓA BÁO CÁO";
-                    lockBtn.style.backgroundColor = "#f59e0b"; // Cam
+                    lockBtn.innerText = "🔒 BẬT KHÓA BÁO CÁO NÀY";
+                    lockBtn.style.backgroundColor = "#f59e0b"; 
                     exportArea.classList.remove('locked-view');
                     lockWarning.style.display = 'none';
                     document.querySelectorAll('.cell-input').forEach(el => el.contentEditable = true);
@@ -224,20 +248,23 @@
 
         function toggleLock() {
             const newState = !isGlobalLocked;
-            db.ref('SystemStatus/isLocked').set(newState);
+            // Chỉ khóa tuần hiện tại
+            db.ref('SystemStatus/' + currentWeekKey + '/isLocked').set(newState);
         }
 
-        /* ==================== LOAD & SAVE DỮ LIỆU CŨ ==================== */
+        // --- 6. TẢI VÀ LƯU DỮ LIỆU ---
         db.ref('.info/connected').on('value', snap => {
             const statusEl = document.getElementById('sync-status');
-            if (snap.val() === true) {
-                statusEl.innerHTML = "🟢 Đã kết nối"; statusEl.classList.remove('offline');
-            } else { statusEl.innerHTML = "🔴 Mất mạng"; statusEl.classList.add('offline'); }
+            if (snap.val() === true) { statusEl.innerHTML = "🟢 Đã kết nối"; statusEl.classList.remove('offline'); } 
+            else { statusEl.innerHTML = "🔴 Mất mạng"; statusEl.classList.add('offline'); }
         });
 
         const blankTemplate = {
             'tbody-kinhdoanh': `<tr class="dept-row"><td colspan="6">I. PHÒNG KINH DOANH</td><td class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-kinhdoanh')">+ Thêm NV</button></td></tr>`,
-            'tbody-kythuat': `<tr class="dept-row"><td colspan="6">II. PHÒNG KỸ THUẬT</td><td class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-kythuat')">+ Thêm NV</button></td></tr>`
+            'tbody-kythuat': `<tr class="dept-row"><td colspan="6">II. PHÒNG KỸ THUẬT</td><td class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-kythuat')">+ Thêm NV</button></td></tr>`,
+            'tbody-muahang': `<tr class="dept-row"><td colspan="6">III. PHÒNG MUA HÀNG</td><td class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-muahang')">+ Thêm NV</button></td></tr>`,
+            'tbody-ketoan': `<tr class="dept-row"><td colspan="6">IV. PHÒNG KẾ TOÁN</td><td class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-ketoan')">+ Thêm NV</button></td></tr>`,
+            'tbody-nhansu': `<tr class="dept-row"><td colspan="6">V. PHÒNG NHÂN SỰ</td><td class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-nhansu')">+ Thêm NV</button></td></tr>`
         };
 
         function loadViewFromFirebase(key) {
@@ -250,25 +277,27 @@
                     if (!data) data = blankTemplate; 
                     document.getElementById('tbody-kinhdoanh').innerHTML = data['tbody-kinhdoanh'] || blankTemplate['tbody-kinhdoanh'];
                     document.getElementById('tbody-kythuat').innerHTML = data['tbody-kythuat'] || blankTemplate['tbody-kythuat'];
+                    document.getElementById('tbody-muahang').innerHTML = data['tbody-muahang'] || blankTemplate['tbody-muahang'];
+                    document.getElementById('tbody-ketoan').innerHTML = data['tbody-ketoan'] || blankTemplate['tbody-ketoan'];
+                    document.getElementById('tbody-nhansu').innerHTML = data['tbody-nhansu'] || blankTemplate['tbody-nhansu'];
                     
-                    // Áp dụng lại trạng thái khóa cho các phần tử mới load về
-                    if (isGlobalLocked) {
-                        document.querySelectorAll('.cell-input').forEach(el => el.contentEditable = false);
-                    }
+                    if (isGlobalLocked) document.querySelectorAll('.cell-input').forEach(el => el.contentEditable = false);
                 }
             });
         }
 
         function saveToFirebase() {
-            if(isGlobalLocked) return; // Nếu đang khóa thì cấm lưu
+            if(isGlobalLocked) return; 
             const dataToSave = {
                 'tbody-kinhdoanh': document.getElementById('tbody-kinhdoanh').innerHTML,
-                'tbody-kythuat': document.getElementById('tbody-kythuat').innerHTML
+                'tbody-kythuat': document.getElementById('tbody-kythuat').innerHTML,
+                'tbody-muahang': document.getElementById('tbody-muahang').innerHTML,
+                'tbody-ketoan': document.getElementById('tbody-ketoan').innerHTML,
+                'tbody-nhansu': document.getElementById('tbody-nhansu').innerHTML
             };
             db.ref('TienDoDuAn/' + currentWeekKey).set(dataToSave);
         }
 
-        // Bắt sự kiện gõ chữ
         document.getElementById('progressTable').addEventListener('input', e => { if (e.target.classList.contains('cell-input')) saveToFirebase(); });
         document.getElementById('progressTable').addEventListener('focusin', e => { if (e.target.classList.contains('cell-input')) isTyping = true; });
         document.getElementById('progressTable').addEventListener('focusout', e => { if (e.target.classList.contains('cell-input')) isTyping = false; });
@@ -276,10 +305,16 @@
         function changeWeek(weekNum) {
             document.querySelectorAll('.week-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById('btn-week-' + weekNum).classList.add('active');
+            
+            // Cập nhật lại key
             currentWeekKey = `y${document.getElementById('yearSelect').value}_m${document.getElementById('monthSelect').value}_w${weekNum}`;
+            
+            // Gọi lại hàm Khóa và Load dữ liệu cho tuần mới
+            listenToLockStatus();
             loadViewFromFirebase(currentWeekKey); 
         }
 
+        // --- 7. CÁC HÀM THÊM/XÓA CÒN LẠI ---
         function addEmployeeRow(tbodyId) {
             if(isGlobalLocked) return;
             const tbody = document.getElementById(tbodyId);
@@ -321,8 +356,19 @@
             document.getElementById(tbodyId).querySelectorAll('.emp-row').forEach((r, i) => r.querySelector('.stt-cell').innerText = i + 1);
         }
 
-        function switchTab(id) { /* CSS ẩn hiện bình thường */ }
-        function exportPDF() { /* Hàm xuất PDF cũ */ }
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            document.getElementById('btn-' + tabId).classList.add('active');
+        }
+        
+        function exportPDF() {
+            document.body.classList.add('exporting-pdf');
+            const element = document.getElementById('export-area');
+            const opt = { margin: 0.3, filename: `Bao_Cao_${currentWeekKey}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }};
+            html2pdf().set(opt).from(element).save().then(() => { document.body.classList.remove('exporting-pdf'); });
+        }
     </script>
 </body>
 </html>
