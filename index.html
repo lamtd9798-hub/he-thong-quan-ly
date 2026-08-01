@@ -29,7 +29,7 @@
         .sidebar { width: 260px; background-color: #2c3e50; color: white; display: flex; flex-direction: column; }
         .logo-box { text-align: center; padding: 15px; background-color: #ffffff; border-bottom: 2px solid #04AA6D; }
         .logo-box img { max-width: 90%; height: auto; display: block; margin: 0 auto; }
-        .menu-btn { padding: 20px 25px; background: none; color: #b8c7ce; border: none; text-align: left; font-size: 17px; cursor: pointer; transition: 0.3s; border-left: 5px solid transparent; border-bottom: 1px solid #34495e; width: 100%; box-sizing: border-box; }
+        .menu-btn { padding: 18px 25px; background: none; color: #b8c7ce; border: none; text-align: left; font-size: 16px; cursor: pointer; transition: 0.3s; border-left: 5px solid transparent; border-bottom: 1px solid #34495e; width: 100%; box-sizing: border-box; }
         .menu-btn:hover, .menu-btn.active { background-color: #34495e; color: white; padding-left: 35px; }
         .menu-btn.active { border-left-color: #04AA6D; font-weight: bold; }
         
@@ -102,15 +102,20 @@
 
     <!-- KHUNG ỨNG DỤNG -->
     <div id="app-container">
-        <!-- SIDEBAR -->
+        <!-- SIDEBAR - MENU MỚI -->
         <div class="sidebar">
-            <div class="logo-box"><img src="logo.jpg" alt="Logo"></div>
+            <div class="logo-box">
+                <!-- Đã tích hợp tính năng hòa trộn màu nền cho logo -->
+                <img src="logo.jpg" alt="Logo" style="max-width: 200px; mix-blend-mode: multiply;">
+            </div>
             
-            <!-- Đã thêm Trang chủ và đưa lên đầu tiên -->
             <button class="menu-btn active" id="btn-tab-home" onclick="switchTab('tab-home')">🏠 Trang chủ</button>
-            <button class="menu-btn" id="btn-tab1" onclick="switchTab('tab1')">1. Báo cáo tiến độ</button>
-            <button class="menu-btn" id="btn-tab2" onclick="switchTab('tab2')">2. Nhận dự án</button>
-            <button class="menu-btn" id="btn-tab3" onclick="switchTab('tab3')">3. Triển khai trúng thầu</button>
+            <button class="menu-btn" id="btn-tab1" onclick="switchTab('tab1')">1. Báo cáo công việc</button>
+            <button class="menu-btn" id="btn-tab2" onclick="switchTab('tab2')">2. Danh sách dự án</button>
+            <button class="menu-btn" id="btn-tab3" onclick="switchTab('tab3')">3. Dự án đấu thầu</button>
+            <button class="menu-btn" id="btn-tab4" onclick="switchTab('tab4')">4. Triển khai dự án</button>
+            <button class="menu-btn" id="btn-tab5" onclick="switchTab('tab5')">5. Thống kê giá trị dự án</button>
+            <button class="menu-btn" id="btn-tab6" onclick="switchTab('tab6')">6. Danh sách nhân sự</button>
             
             <div class="user-info-panel">
                 👤 <span id="current-user-email">Đang tải...</span><br>
@@ -119,7 +124,7 @@
         </div>
 
         <div class="main-content">
-            <!-- NỘI DUNG TRANG CHỦ (Mặc định hiển thị) -->
+            <!-- TRANG CHỦ -->
             <div id="tab-home" class="tab-content active" style="background: transparent; box-shadow: none;">
                 <div class="welcome-container">
                     <img src="logo.jpg" alt="Tuannguyen M&E" style="max-width: 280px; mix-blend-mode: multiply;">
@@ -128,7 +133,7 @@
                 </div>
             </div>
 
-            <!-- NỘI DUNG BÁO CÁO TIẾN ĐỘ -->
+            <!-- TAB 1: BÁO CÁO CÔNG VIỆC -->
             <div id="tab1" class="tab-content">
                 <div class="time-filter-bar">
                     <div class="month-selector">
@@ -172,8 +177,32 @@
                 </div>
             </div>
             
-            <div id="tab2" class="tab-content"><h3>Nhận dự án</h3></div>
-            <div id="tab3" class="tab-content"><h3>Triển khai trúng thầu</h3></div>
+            <!-- CÁC TAB CHỨC NĂNG MỚI (Đang phát triển) -->
+            <div id="tab2" class="tab-content">
+                <div class="report-header">DANH SÁCH DỰ ÁN</div>
+                <p>Giao diện tính năng đang được cập nhật...</p>
+            </div>
+            
+            <div id="tab3" class="tab-content">
+                <div class="report-header">DỰ ÁN ĐẤU THẦU</div>
+                <p>Giao diện tính năng đang được cập nhật...</p>
+            </div>
+            
+            <div id="tab4" class="tab-content">
+                <div class="report-header">TRIỂN KHAI DỰ ÁN</div>
+                <p>Giao diện tính năng đang được cập nhật...</p>
+            </div>
+            
+            <div id="tab5" class="tab-content">
+                <div class="report-header">THỐNG KÊ GIÁ TRỊ DỰ ÁN</div>
+                <p>Giao diện tính năng đang được cập nhật...</p>
+            </div>
+            
+            <div id="tab6" class="tab-content">
+                <div class="report-header">DANH SÁCH NHÂN SỰ</div>
+                <p>Giao diện tính năng đang được cập nhật...</p>
+            </div>
+
         </div>
     </div>
 
@@ -372,7 +401,17 @@
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
-            document.getElementById('btn-' + tabId).classList.add('active');
+            
+            // Xử lý nút menu đang active
+            if(tabId === 'tab-home') {
+                document.getElementById('btn-tab-home').classList.add('active');
+            } else {
+                // Nếu bấm tab 1 thì btn-tab1 sáng lên...
+                let btnId = 'btn-' + tabId;
+                if(document.getElementById(btnId)) {
+                    document.getElementById(btnId).classList.add('active');
+                }
+            }
         }
         
         // --- XUẤT PDF ---
