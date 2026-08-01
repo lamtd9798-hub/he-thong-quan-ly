@@ -273,6 +273,7 @@
 
             <div class="modal-footer">
                 <button class="btn-modal-cancel" onclick="closeTaskModal()">Đóng Cửa Sổ</button>
+                <button class="btn-modal-save" onclick="closeTaskModal()">Lưu Dữ Liệu</button>
                 <button class="btn-modal-confirm" id="btn-modal-send" onclick="sendTaskEmailAndNotify()">Xác nhận & Báo chuông</button>
             </div>
         </div>
@@ -709,9 +710,12 @@
             document.querySelectorAll('#tbody-bidding .bidding-row').forEach(row => {
                 let pName = row.querySelector('.prj-name').innerText.trim();
                 let detailsField = row.querySelector('.hidden-details');
-                if(!detailsField || !detailsField.value) return;
+                if(!detailsField) return;
+                
+                let dataStr = detailsField.textContent || detailsField.value;
+                if(!dataStr || dataStr === '{}') return;
 
-                let details = JSON.parse(detailsField.value);
+                let details = JSON.parse(dataStr);
                 const tasks = [
                     {key: 'chuachay', name: 'Chữa cháy'}, {key: 'baochay', name: 'Báo cháy'},
                     {key: 'den', name: 'Đèn Exit, sự cố'}, {key: 'hutkhoi', name: 'Hút khói'},
@@ -757,7 +761,9 @@
                     }
                 });
                 if(needSave) {
-                    detailsField.value = JSON.stringify(details);
+                    let jsonStr = JSON.stringify(details);
+                    detailsField.value = jsonStr;
+                    detailsField.textContent = jsonStr;
                 }
             });
             
@@ -776,11 +782,9 @@
                         document.getElementById('tbody-bidding').innerHTML = newHtml;
                         
                         if (isTab3Locked) {
-                            // Khóa các ô ngoài (trừ tên dự án để click đúp)
                             document.querySelectorAll('#export-area3 .cell-input:not(.prj-name)').forEach(el => el.contentEditable = false);
                         }
                         
-                        // Chạy kiểm tra deadline ngầm
                         checkDeadlines();
                     }
                 }
@@ -788,7 +792,7 @@
         }
 
         function saveTab3Data() {
-            if(isTab3Locked && !document.getElementById('taskModal').style.display === 'flex') return;
+            if(isTab3Locked && document.getElementById('taskModal').style.display !== 'flex') return;
             db.ref('DuAnDauThau/data').set(document.getElementById('tbody-bidding').innerHTML);
         }
 
@@ -835,7 +839,8 @@
             document.getElementById('t_projectName').value = projectName;
 
             let detailsField = activeProjectRowForModal.querySelector('.hidden-details');
-            let details = (detailsField && detailsField.value) ? JSON.parse(detailsField.value) : {};
+            let dataStr = detailsField ? (detailsField.textContent || detailsField.value) : '{}';
+            let details = dataStr ? JSON.parse(dataStr) : {};
 
             document.getElementById('t_investor').value = details.investor || '';
             document.getElementById('t_address').value = details.address || '';
@@ -894,6 +899,7 @@
         }
 
         function closeTaskModal() {
+            updateModalData();
             document.getElementById('taskModal').style.display = 'none';
             isTyping = false;
             saveTab3Data(); 
@@ -903,7 +909,8 @@
             if(!activeProjectRowForModal) return; 
 
             let detailsField = activeProjectRowForModal.querySelector('.hidden-details');
-            let details = (detailsField && detailsField.value) ? JSON.parse(detailsField.value) : {};
+            let dataStr = detailsField ? (detailsField.textContent || detailsField.value) : '{}';
+            let details = dataStr ? JSON.parse(dataStr) : {};
 
             if(!isTab3Locked) {
                 details.investor = document.getElementById('t_investor').value;
@@ -948,7 +955,10 @@
                 let td = document.createElement('td'); td.style.display = 'none'; td.appendChild(detailsField);
                 activeProjectRowForModal.appendChild(td);
             }
-            detailsField.value = JSON.stringify(details);
+            
+            let jsonStr = JSON.stringify(details);
+            detailsField.value = jsonStr;
+            detailsField.textContent = jsonStr; // Cực kỳ quan trọng để lưu được nội dung
         }
 
         // --- CÁC HÀM CHO TÍNH NĂNG CHAT (TRAO ĐỔI CÔNG VIỆC) ---
@@ -978,11 +988,15 @@
             let pName = document.getElementById('t_projectName').value;
 
             let detailsField = activeProjectRowForModal.querySelector('.hidden-details');
-            let details = (detailsField && detailsField.value) ? JSON.parse(detailsField.value) : {};
+            let dataStr = detailsField ? (detailsField.textContent || detailsField.value) : '{}';
+            let details = dataStr ? JSON.parse(dataStr) : {};
             if(!details.chats) details.chats = [];
 
             details.chats.push({ user: currentUser, text: text, time: time });
-            detailsField.value = JSON.stringify(details);
+            
+            let jsonStr = JSON.stringify(details);
+            detailsField.value = jsonStr;
+            detailsField.textContent = jsonStr; // Cực kỳ quan trọng
 
             renderChats(details.chats);
             input.value = '';
@@ -1007,7 +1021,7 @@
             saveTab3Data(); // Lưu lên mạng
         }
 
-        // CHỈ BẮN THÔNG BÁO VÀO CHUÔNG (KHÔNG MỞ MAIL NỮA)
+        // CHỈ BẮN THÔNG BÁO VÀO CHUÔNG
         function sendTaskEmailAndNotify() {
             if(isTab3Locked) return;
 
