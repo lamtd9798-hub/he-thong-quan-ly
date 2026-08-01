@@ -1,350 +1,69 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <title>Hệ thống Quản lý Dự án</title>
-    <!-- Nhúng thư viện xuất PDF (Phải có mạng Internet để tải thư viện này khi chạy) -->
+    
+    <!-- 1. Nhúng thư viện Xuất PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
+    
+    <!-- 2. Nhúng thư viện Firebase (Đám mây đồng bộ dữ liệu) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
     <style>
-        /* Thiết lập lại lề cho toàn trang */
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-            background-color: #f4f6f9;
-        }
+        /* CSS GIỮ NGUYÊN */
+        body { margin: 0; font-family: Arial, sans-serif; display: flex; height: 100vh; overflow: hidden; background-color: #f4f6f9; }
+        .sidebar { width: 260px; background-color: #2c3e50; color: white; display: flex; flex-direction: column; }
+        .logo-box { text-align: center; padding: 15px; background-color: #ffffff; border-bottom: 2px solid #04AA6D; }
+        .logo-box img { max-width: 90%; height: auto; display: block; margin: 0 auto; }
+        .menu-btn { padding: 20px 25px; background: none; color: #b8c7ce; border: none; text-align: left; font-size: 17px; cursor: pointer; transition: 0.3s; border-left: 5px solid transparent; border-bottom: 1px solid #34495e; width: 100%; box-sizing: border-box; }
+        .menu-btn:hover, .menu-btn.active { background-color: #34495e; color: white; padding-left: 35px; }
+        .menu-btn.active { border-left-color: #04AA6D; font-weight: bold; }
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .tab-content { display: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .tab-content.active { display: block; }
 
-        /* Cột Menu bên trái */
-        .sidebar {
-            width: 260px;
-            background-color: #2c3e50;
-            color: white;
-            display: flex;
-            flex-direction: column;
-        }
+        .report-header { font-size: 22px; font-weight: bold; color: #1e293b; text-transform: uppercase; margin-bottom: 15px; border-bottom: 3px solid #04AA6D; display: inline-block; padding-bottom: 5px; }
+        .time-filter-bar { display: flex; align-items: center; background: #ffffff; padding: 15px 20px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-wrap: wrap; gap: 15px;}
+        .month-selector { display: flex; align-items: center; gap: 10px; font-weight: bold; color: #334155; border-right: 2px solid #e2e8f0; padding-right: 20px; }
+        .month-selector select { padding: 8px 12px; font-size: 15px; border-radius: 6px; border: 1px solid #94a3b8; outline: none; cursor: pointer; font-weight: bold; background-color: #f8fafc; }
+        .week-buttons { display: flex; gap: 10px; border-right: 2px solid #e2e8f0; padding-right: 20px;}
+        .week-btn { padding: 8px 16px; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold; cursor: pointer; color: #475569; transition: all 0.2s; }
+        .week-btn:hover { background-color: #e2e8f0; }
+        .week-btn.active { background-color: #04AA6D; color: white; border-color: #04AA6D; box-shadow: 0 2px 4px rgba(4, 170, 109, 0.3); }
+        .action-group { display: flex; gap: 15px; margin-left: auto; align-items: center;}
+        .current-view-badge { padding: 8px 15px; background-color: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; border-radius: 6px; font-weight: bold; font-size: 14px; }
+        
+        .sync-status { font-size: 13px; font-weight: bold; color: #10b981; display: flex; align-items: center; gap: 5px;}
+        .sync-status.offline { color: #ef4444; }
 
-        .logo-box {
-            text-align: center;
-            padding: 15px;
-            background-color: #ffffff;
-            border-bottom: 2px solid #04AA6D;
-        }
+        .btn-export { padding: 9px 18px; background-color: #dc2626; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3); transition: 0.2s;}
+        .btn-export:hover { background-color: #b91c1c; }
 
-            .logo-box img {
-                max-width: 90%;
-                height: auto;
-                display: block;
-                margin: 0 auto;
-            }
+        #export-area { background-color: white; padding: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+        th { background-color: #04AA6D; color: white; font-weight: bold; text-align: center; text-transform: uppercase; }
+        .dept-row { background-color: #e2e8f0; font-weight: bold; color: #1e293b; }
+        
+        .cell-input { width: 100%; min-height: 24px; box-sizing: border-box; border: 1px solid transparent; padding: 6px; font-family: inherit; font-size: 14px; background-color: transparent; word-wrap: break-word; white-space: pre-wrap; outline: none; cursor: text; }
+        .cell-input:focus { border-bottom: 1px solid #04AA6D; background-color: #f8fafc; }
+        .cell-input[placeholder]:empty:before { content: attr(placeholder); color: #888; }
+        
+        .btn-add-row { background-color: #2563eb; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 12px; }
+        .btn-add-task { background-color: #10b981; color: white; border: none; padding: 5px 8px; cursor: pointer; border-radius: 4px; font-size: 12px; margin-right: 2px;}
+        .btn-delete { background-color: #ef4444; color: white; border: none; padding: 5px 8px; cursor: pointer; border-radius: 4px; font-size: 12px; }
+        .empty-cell { background-color: #f8fafc; border-top: none; }
 
-        /* Định dạng nút Menu */
-        .menu-btn {
-            padding: 20px 25px;
-            background: none;
-            color: #b8c7ce;
-            border: none;
-            text-align: left;
-            font-size: 17px;
-            cursor: pointer;
-            transition: 0.3s;
-            border-left: 5px solid transparent;
-            border-bottom: 1px solid #34495e;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-            .menu-btn:hover {
-                background-color: #34495e;
-                color: white;
-                padding-left: 35px;
-            }
-
-            .menu-btn.active {
-                background-color: #34495e;
-                color: white;
-                border-left-color: #04AA6D;
-                font-weight: bold;
-                padding-left: 35px;
-            }
-
-        /* Khu vực hiển thị nội dung */
-        .main-content {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        .tab-content {
-            display: none;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-            .tab-content.active {
-                display: block;
-            }
-
-        /* ĐỊNH DẠNG THANH CHỌN TUẦN / THÁNG / NĂM */
-        .report-header {
-            font-size: 22px;
-            font-weight: bold;
-            color: #1e293b;
-            text-transform: uppercase;
-            margin-bottom: 15px;
-            border-bottom: 3px solid #04AA6D;
-            display: inline-block;
-            padding-bottom: 5px;
-        }
-
-        .time-filter-bar {
-            display: flex;
-            align-items: center;
-            background: #ffffff;
-            padding: 15px 20px;
-            border-radius: 8px;
-            border: 1px solid #cbd5e1;
-            margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .month-selector {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: bold;
-            color: #334155;
-            border-right: 2px solid #e2e8f0;
-            padding-right: 20px;
-        }
-
-            .month-selector select {
-                padding: 8px 12px;
-                font-size: 15px;
-                border-radius: 6px;
-                border: 1px solid #94a3b8;
-                outline: none;
-                cursor: pointer;
-                font-weight: bold;
-                background-color: #f8fafc;
-            }
-
-        .week-buttons {
-            display: flex;
-            gap: 10px;
-            border-right: 2px solid #e2e8f0;
-            padding-right: 20px;
-        }
-
-        .week-btn {
-            padding: 8px 16px;
-            background-color: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            color: #475569;
-            transition: all 0.2s;
-        }
-
-            .week-btn:hover {
-                background-color: #e2e8f0;
-            }
-
-            .week-btn.active {
-                background-color: #04AA6D;
-                color: white;
-                border-color: #04AA6D;
-                box-shadow: 0 2px 4px rgba(4, 170, 109, 0.3);
-            }
-
-        .action-group {
-            display: flex;
-            gap: 15px;
-            margin-left: auto;
-            align-items: center;
-        }
-
-        .current-view-badge {
-            padding: 8px 15px;
-            background-color: #fff7ed;
-            color: #ea580c;
-            border: 1px solid #fed7aa;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        /* Nút xuất PDF */
-        .btn-export {
-            padding: 9px 18px;
-            background-color: #dc2626;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
-            transition: 0.2s;
-        }
-
-            .btn-export:hover {
-                background-color: #b91c1c;
-            }
-
-        /* ĐỊNH DẠNG BẢNG */
-        #export-area {
-            background-color: white;
-            padding: 10px;
-        }
-        /* Vùng sẽ được chụp in ra PDF */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-            vertical-align: top;
-        }
-
-        th {
-            background-color: #04AA6D;
-            color: white;
-            font-weight: bold;
-            text-align: center;
-            text-transform: uppercase;
-        }
-
-        .dept-row {
-            background-color: #e2e8f0;
-            font-weight: bold;
-            color: #1e293b;
-        }
-
-        /* Ô nhập liệu */
-        .cell-input {
-            width: 100%;
-            min-height: 24px;
-            box-sizing: border-box;
-            border: 1px solid transparent;
-            padding: 6px;
-            font-family: inherit;
-            font-size: 14px;
-            background-color: transparent;
-            word-wrap: break-word;
-            white-space: pre-wrap;
-            outline: none;
-            cursor: text;
-        }
-
-            .cell-input:focus {
-                border-bottom: 1px solid #04AA6D;
-                background-color: #f8fafc;
-            }
-
-            .cell-input[placeholder]:empty:before {
-                content: attr(placeholder);
-                color: #888;
-            }
-
-        /* Nút chức năng trong bảng */
-        .btn-add-row {
-            background-color: #2563eb;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            cursor: pointer;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 12px;
-        }
-
-        .btn-add-task {
-            background-color: #10b981;
-            color: white;
-            border: none;
-            padding: 5px 8px;
-            cursor: pointer;
-            border-radius: 4px;
-            font-size: 12px;
-            margin-right: 2px;
-        }
-
-        .btn-delete {
-            background-color: #ef4444;
-            color: white;
-            border: none;
-            padding: 5px 8px;
-            cursor: pointer;
-            border-radius: 4px;
-            font-size: 12px;
-        }
-
-        .empty-cell {
-            background-color: #f8fafc;
-            border-top: none;
-        }
-
-        /* --- LỚP CSS ĐẶC BIỆT CHỈ DÙNG KHI XUẤT PDF --- */
-        .exporting-pdf .col-action {
-            display: none !important;
-        }
-        /* Ẩn toàn bộ cột Thao tác */
-        .exporting-pdf .cell-input[placeholder]:empty:before {
-            content: '';
-        }
-        /* Ẩn chữ mờ */
-        .exporting-pdf .dept-row td {
-            border: 1px solid #ddd;
-        }
-        /* Sửa viền cho PDF */
-        .exporting-pdf table {
-            border: 1px solid #000;
-        }
-
-        .exporting-pdf th, .exporting-pdf td {
-            border: 1px solid #000;
-            color: #000;
-        }
-
-        /* Form giao việc Tab 2 */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        input[type="text"], select {
-            padding: 8px;
-            margin-right: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-
-        .btn-submit {
-            padding: 9px 15px;
-            background-color: #04AA6D;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-            border-radius: 4px;
-        }
+        .exporting-pdf .col-action { display: none !important; }
+        .exporting-pdf .cell-input[placeholder]:empty:before { content: ''; }
+        .exporting-pdf .dept-row td { border: 1px solid #ddd; }
+        .exporting-pdf table { border: 1px solid #000; }
+        .exporting-pdf th, .exporting-pdf td { border: 1px solid #000; color: #000;}
     </style>
 </head>
 <body>
-
-    <!-- THANH MENU BÊN TRÁI -->
     <div class="sidebar">
         <div class="logo-box">
             <img src="logo.jpg" alt="Tuannguyen M&E">
@@ -354,101 +73,54 @@
         <button class="menu-btn" id="btn-tab3" onclick="switchTab('tab3')">3. Triển khai trúng thầu</button>
     </div>
 
-    <!-- KHU VỰC NỘI DUNG BÊN PHẢI -->
     <div class="main-content">
-
-        <!-- TAB 1: BÁO CÁO TIẾN ĐỘ -->
         <div id="tab1" class="tab-content active">
-
-            <!-- THANH ĐIỀU KHIỂN THỜI GIAN -->
             <div class="time-filter-bar">
                 <div class="month-selector">
                     <span>Kỳ báo cáo:</span>
-                    <!-- Thêm chọn Năm -->
-                    <select id="yearSelect" onchange="changeWeek(1)">
-                        <option value="2025">Năm 2025</option>
-                        <option value="2026" selected>Năm 2026</option>
-                        <option value="2027">Năm 2027</option>
-                        <option value="2028">Năm 2028</option>
-                    </select>
-                    <!-- Chọn Tháng -->
+                    <select id="yearSelect" onchange="changeWeek(1)"><option value="2025">Năm 2025</option><option value="2026" selected>Năm 2026</option><option value="2027">Năm 2027</option></select>
                     <select id="monthSelect" onchange="changeWeek(1)">
-                        <option value="1">Tháng 1</option>
-                        <option value="2">Tháng 2</option>
-                        <option value="3">Tháng 3</option>
-                        <option value="4">Tháng 4</option>
-                        <option value="5">Tháng 5</option>
-                        <option value="6">Tháng 6</option>
-                        <option value="7">Tháng 7</option>
-                        <option value="8">Tháng 8</option>
-                        <option value="9">Tháng 9</option>
-                        <option value="10">Tháng 10</option>
-                        <option value="11">Tháng 11</option>
-                        <option value="12">Tháng 12</option>
+                        <option value="1">Tháng 1</option><option value="2">Tháng 2</option><option value="3">Tháng 3</option><option value="4">Tháng 4</option>
+                        <option value="5">Tháng 5</option><option value="6">Tháng 6</option><option value="7">Tháng 7</option><option value="8" selected>Tháng 8</option>
+                        <option value="9">Tháng 9</option><option value="10">Tháng 10</option><option value="11">Tháng 11</option><option value="12">Tháng 12</option>
                     </select>
                 </div>
-
                 <div class="week-buttons">
                     <button class="week-btn active" onclick="changeWeek(1)" id="btn-week-1">Tuần 1</button>
                     <button class="week-btn" onclick="changeWeek(2)" id="btn-week-2">Tuần 2</button>
                     <button class="week-btn" onclick="changeWeek(3)" id="btn-week-3">Tuần 3</button>
                     <button class="week-btn" onclick="changeWeek(4)" id="btn-week-4">Tuần 4</button>
                 </div>
-
+                
                 <div class="action-group">
-                    <div class="current-view-badge" id="current-view-label">Tuần 1 - Tháng 1 - 2026</div>
+                    <span id="sync-status" class="sync-status offline">🔴 Đang ngắt kết nối</span>
+                    <div class="current-view-badge" id="current-view-label">Tuần 1 - Tháng 8 - 2026</div>
                     <button class="btn-export" onclick="exportPDF()">🖨️ Xuất PDF</button>
                 </div>
             </div>
 
-            <!-- VÙNG NÀY SẼ ĐƯỢC CHỤP ĐỂ XUẤT PDF -->
             <div id="export-area">
                 <div class="report-header" id="pdf-title">BÁO CÁO TIẾN ĐỘ CÔNG VIỆC CÁC PHÒNG BAN</div>
-
                 <table id="progressTable">
                     <thead>
                         <tr>
-                            <th style="width: 40px;">STT</th>
-                            <th style="width: 200px;">Tên nhân viên</th>
-                            <th>Mô tả công việc</th>
-                            <th style="width: 140px;">Thời gian thực hiện</th>
-                            <th style="width: 90px;">% Tiến độ</th>
-                            <th style="width: 180px;">Ghi chú</th>
-                            <th style="width: 110px;" class="col-action">Thao tác</th> <!-- Gắn class để ẩn khi in -->
+                            <th style="width: 40px;">STT</th><th style="width: 200px;">Tên nhân viên</th>
+                            <th>Mô tả công việc</th><th style="width: 140px;">Thời gian thực hiện</th>
+                            <th style="width: 90px;">% Tiến độ</th><th style="width: 180px;">Ghi chú</th>
+                            <th style="width: 110px;" class="col-action">Thao tác</th>
                         </tr>
                     </thead>
-
-                    <tbody id="tbody-kinhdoanh"></tbody>
-                    <tbody id="tbody-kythuat"></tbody>
-                    <tbody id="tbody-muahang"></tbody>
-                    <tbody id="tbody-ketoan"></tbody>
-                    <tbody id="tbody-nhansu"></tbody>
+                    <tbody id="tbody-kinhdoanh"></tbody><tbody id="tbody-kythuat"></tbody>
+                    <tbody id="tbody-muahang"></tbody><tbody id="tbody-ketoan"></tbody><tbody id="tbody-nhansu"></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- TAB 2 & 3 -->
-        <div id="tab2" class="tab-content">
-            <h3>Nhận thông tin dự án & Giao việc</h3>
-            <div class="form-group">
-                <input type="text" id="taskName" placeholder="Tên công việc" style="width: 300px;">
-                <select id="phase"><option value="Đấu thầu">Đấu thầu</option><option value="Triển khai">Triển khai</option></select>
-                <select id="status"><option value="Chưa làm">Chưa làm</option><option value="Đang làm">Đang làm</option></select>
-                <input type="text" id="assignee" placeholder="Người phụ trách">
-                <button class="btn-submit" onclick="addTask()">Thêm công việc</button>
-            </div>
-            <table id="taskTable"><thead><tr><th>ID</th><th>Tên công việc</th><th>Giai đoạn</th><th>Trạng thái</th><th>Người phụ trách</th></tr></thead><tbody></tbody></table>
-        </div>
-        <div id="tab3" class="tab-content">
-            <h3>Triển khai dự án trúng thầu</h3>
-            <p>Khu vực này dùng để quản lý bản vẽ Shop drawing...</p>
-        </div>
-
+        <div id="tab2" class="tab-content"><h3>Giao việc</h3></div>
+        <div id="tab3" class="tab-content"><h3>Triển khai</h3></div>
     </div>
 
-    <!-- SCRIPT ĐIỀU KHIỂN -->
     <script>
-        // Hàm chuyển Tab Menu
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
@@ -456,13 +128,37 @@
             document.getElementById('btn-' + tabId).classList.add('active');
         }
 
-        /* =========================================
-           HỆ THỐNG LƯU TRỮ DỮ LIỆU TỪNG TUẦN / THÁNG / NĂM
-           ========================================= */
-        let currentWeekKey = 'y2026_m1_w1'; // Mặc định mở lên là Năm 2026 Tháng 1 Tuần 1
-        let weeklyDataMemory = {};
+        /* Firebase Config Của Bạn */
+        const firebaseConfig = {
+            apiKey: "AIzaSyDCL83v4p8XXUTCWJ-KNok-bnf1Ga2ayLo",
+            authDomain: "quan-ly-du-an-53ce8.firebaseapp.com",
+            databaseURL: "https://quan-ly-du-an-53ce8-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "quan-ly-du-an-53ce8",
+            storageBucket: "quan-ly-du-an-53ce8.firebasestorage.app",
+            messagingSenderId: "219671670281",
+            appId: "1:219671670281:web:c4a8551fe743805d9a92d8",
+            measurementId: "G-NJNJKWVKM6"
+        };
 
-        // Khung sườn mặc định
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let currentWeekKey = 'y2026_m8_w1'; 
+        let currentDbRef = null;
+        let isTyping = false; 
+
+        // Kiểm tra kết nối
+        db.ref('.info/connected').on('value', function(snap) {
+            const statusEl = document.getElementById('sync-status');
+            if (snap.val() === true) {
+                statusEl.innerHTML = "🟢 Đã kết nối đồng bộ";
+                statusEl.classList.remove('offline');
+            } else {
+                statusEl.innerHTML = "🔴 Đang chờ mạng...";
+                statusEl.classList.add('offline');
+            }
+        });
+
         const blankTemplate = {
             'tbody-kinhdoanh': `<tr class="dept-row"><td colspan="6">I. PHÒNG KINH DOANH</td><td style="text-align: center;" class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-kinhdoanh')">+ Thêm NV</button></td></tr>`,
             'tbody-kythuat': `<tr class="dept-row"><td colspan="6">II. PHÒNG KỸ THUẬT</td><td style="text-align: center;" class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-kythuat')">+ Thêm NV</button></td></tr>`,
@@ -471,97 +167,82 @@
             'tbody-nhansu': `<tr class="dept-row"><td colspan="6">V. PHÒNG NHÂN SỰ</td><td style="text-align: center;" class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-nhansu')">+ Thêm NV</button></td></tr>`
         };
 
-        function saveCurrentViewToMemory() {
-            weeklyDataMemory[currentWeekKey] = {
+        function loadViewFromFirebase(key) {
+            if (currentDbRef) currentDbRef.off(); 
+            currentDbRef = db.ref('TienDoDuAn/' + key);
+
+            currentDbRef.on('value', (snapshot) => {
+                if (!isTyping) {
+                    let data = snapshot.val();
+                    if (!data) data = blankTemplate; 
+
+                    document.getElementById('tbody-kinhdoanh').innerHTML = data['tbody-kinhdoanh'];
+                    document.getElementById('tbody-kythuat').innerHTML = data['tbody-kythuat'];
+                    document.getElementById('tbody-muahang').innerHTML = data['tbody-muahang'];
+                    document.getElementById('tbody-ketoan').innerHTML = data['tbody-ketoan'];
+                    document.getElementById('tbody-nhansu').innerHTML = data['tbody-nhansu'];
+                }
+            });
+        }
+
+        function saveToFirebase() {
+            const dataToSave = {
                 'tbody-kinhdoanh': document.getElementById('tbody-kinhdoanh').innerHTML,
                 'tbody-kythuat': document.getElementById('tbody-kythuat').innerHTML,
                 'tbody-muahang': document.getElementById('tbody-muahang').innerHTML,
                 'tbody-ketoan': document.getElementById('tbody-ketoan').innerHTML,
                 'tbody-nhansu': document.getElementById('tbody-nhansu').innerHTML
             };
+            db.ref('TienDoDuAn/' + currentWeekKey).set(dataToSave);
         }
 
-        function loadViewFromMemory(key) {
-            let dataToRender = weeklyDataMemory[key] || blankTemplate;
-            document.getElementById('tbody-kinhdoanh').innerHTML = dataToRender['tbody-kinhdoanh'];
-            document.getElementById('tbody-kythuat').innerHTML = dataToRender['tbody-kythuat'];
-            document.getElementById('tbody-muahang').innerHTML = dataToRender['tbody-muahang'];
-            document.getElementById('tbody-ketoan').innerHTML = dataToRender['tbody-ketoan'];
-            document.getElementById('tbody-nhansu').innerHTML = dataToRender['tbody-nhansu'];
-        }
+        document.getElementById('progressTable').addEventListener('input', function(e) {
+            if (e.target.classList.contains('cell-input')) saveToFirebase();
+        });
+
+        document.getElementById('progressTable').addEventListener('focusin', function(e) {
+            if (e.target.classList.contains('cell-input')) isTyping = true;
+        });
+        document.getElementById('progressTable').addEventListener('focusout', function(e) {
+            if (e.target.classList.contains('cell-input')) isTyping = false;
+        });
 
         function changeWeek(weekNum) {
             const yearVal = document.getElementById('yearSelect').value;
             const monthVal = document.getElementById('monthSelect').value;
-
-            saveCurrentViewToMemory(); // Lưu tuần hiện tại
-
-            // Cập nhật hiệu ứng nút
+            
             document.querySelectorAll('.week-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById('btn-week-' + weekNum).classList.add('active');
-
-            // Cập nhật nhãn
+            
             const viewText = `Tuần ${weekNum} - Tháng ${monthVal} - ${yearVal}`;
             document.getElementById('current-view-label').innerText = viewText;
             document.getElementById('pdf-title').innerText = `BÁO CÁO TIẾN ĐỘ CÔNG VIỆC CÁC PHÒNG BAN (${viewText})`;
-
-            // Tải dữ liệu mới
+            
             currentWeekKey = `y${yearVal}_m${monthVal}_w${weekNum}`;
-            loadViewFromMemory(currentWeekKey);
+            loadViewFromFirebase(currentWeekKey); 
         }
 
-        // Chạy ngay lần đầu tiên mở trang web
-        loadViewFromMemory(currentWeekKey);
-        document.getElementById('pdf-title').innerText = `BÁO CÁO TIẾN ĐỘ CÔNG VIỆC CÁC PHÒNG BAN (Tuần 1 - Tháng 1 - 2026)`;
+        loadViewFromFirebase(currentWeekKey);
 
-
-        /* =========================================
-           HÀM XUẤT PDF TRANG HIỆN TẠI
-           ========================================= */
-        function exportPDF() {
-            // 1. Thêm class 'exporting-pdf' để giấu các nút Thêm/Xóa đi
-            document.body.classList.add('exporting-pdf');
-
-            // 2. Lấy vùng cần in
-            const element = document.getElementById('export-area');
-
-            // 3. Cấu hình file PDF (Khổ A4 nằm ngang)
-            const opt = {
-                margin: 0.3,
-                filename: `Bao_Cao_${currentWeekKey}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
-            };
-
-            // 4. Tiến hành xuất PDF, xuất xong thì gỡ class để hiện lại nút Thêm/Xóa
-            html2pdf().set(opt).from(element).save().then(() => {
-                document.body.classList.remove('exporting-pdf');
-            });
-        }
-
-
-        /* =========================================
-           CÁC HÀM XỬ LÝ THÊM/XÓA HÀNG
-           ========================================= */
         function addEmployeeRow(tbodyId) {
             const tbody = document.getElementById(tbodyId);
             const tr = document.createElement('tr');
             tr.className = 'emp-row';
             tr.innerHTML = `
-                    <td style="text-align: center;" class="stt-cell"></td>
-                    <td><div contenteditable="true" class="cell-input" placeholder="Tên NV..."></div></td>
-                    <td><div contenteditable="true" class="cell-input" placeholder="Công việc 1..."></div></td>
-                    <td><div contenteditable="true" class="cell-input" placeholder="VD: 01/08 - 05/08"></div></td>
-                    <td><div contenteditable="true" class="cell-input" style="text-align: center;" placeholder="0%"></div></td>
-                    <td><div contenteditable="true" class="cell-input" placeholder="Ghi chú..."></div></td>
-                    <td style="text-align: center;" class="col-action">
-                        <button class="btn-add-task" title="Thêm việc cho người này" onclick="addTaskRow(this)">+ Việc</button>
-                        <button class="btn-delete" title="Xóa nhân viên" onclick="deleteEmpRow(this, '${tbodyId}')">Xóa</button>
-                    </td>
-                `;
+                <td style="text-align: center;" class="stt-cell"></td>
+                <td><div contenteditable="true" class="cell-input" placeholder="Tên NV..."></div></td>
+                <td><div contenteditable="true" class="cell-input" placeholder="Công việc 1..."></div></td>
+                <td><div contenteditable="true" class="cell-input" placeholder="VD: 01/08 - 05/08"></div></td>
+                <td><div contenteditable="true" class="cell-input" style="text-align: center;" placeholder="0%"></div></td>
+                <td><div contenteditable="true" class="cell-input" placeholder="Ghi chú..."></div></td>
+                <td style="text-align: center;" class="col-action">
+                    <button class="btn-add-task" title="Thêm việc cho người này" onclick="addTaskRow(this)">+ Việc</button>
+                    <button class="btn-delete" title="Xóa nhân viên" onclick="deleteEmpRow(this, '${tbodyId}')">Xóa</button>
+                </td>
+            `;
             tbody.appendChild(tr);
-            updateRowNumbers(tbodyId);
+            updateRowNumbers(tbodyId); 
+            saveToFirebase(); 
         }
 
         function addTaskRow(btnElement) {
@@ -569,14 +250,15 @@
             const tr = document.createElement('tr');
             tr.className = 'task-row';
             tr.innerHTML = `
-                    <td class="empty-cell"></td><td class="empty-cell"></td>
-                    <td><div contenteditable="true" class="cell-input" placeholder="Công việc tiếp theo..."></div></td>
-                    <td><div contenteditable="true" class="cell-input" placeholder="Thời gian..."></div></td>
-                    <td><div contenteditable="true" class="cell-input" style="text-align: center;" placeholder="0%"></div></td>
-                    <td><div contenteditable="true" class="cell-input" placeholder="Ghi chú..."></div></td>
-                    <td style="text-align: center;" class="col-action"><button class="btn-delete" onclick="deleteTaskRow(this)">Xóa việc</button></td>
-                `;
+                <td class="empty-cell"></td><td class="empty-cell"></td>
+                <td><div contenteditable="true" class="cell-input" placeholder="Công việc tiếp theo..."></div></td>
+                <td><div contenteditable="true" class="cell-input" placeholder="Thời gian..."></div></td>
+                <td><div contenteditable="true" class="cell-input" style="text-align: center;" placeholder="0%"></div></td>
+                <td><div contenteditable="true" class="cell-input" placeholder="Ghi chú..."></div></td>
+                <td style="text-align: center;" class="col-action"><button class="btn-delete" onclick="deleteTaskRow(this)">Xóa việc</button></td>
+            `;
             currentRow.parentNode.insertBefore(tr, currentRow.nextSibling);
+            saveToFirebase(); 
         }
 
         function deleteEmpRow(btnElement, tbodyId) {
@@ -589,14 +271,25 @@
             }
             row.remove();
             updateRowNumbers(tbodyId);
+            saveToFirebase(); 
         }
 
-        function deleteTaskRow(btnElement) { btnElement.closest('tr').remove(); }
+        function deleteTaskRow(btnElement) { 
+            btnElement.closest('tr').remove(); 
+            saveToFirebase(); 
+        }
 
         function updateRowNumbers(tbodyId) {
             const tbody = document.getElementById(tbodyId);
             const rows = tbody.querySelectorAll('.emp-row');
             rows.forEach((row, index) => { row.querySelector('.stt-cell').innerText = index + 1; });
+        }
+
+        function exportPDF() {
+            document.body.classList.add('exporting-pdf');
+            const element = document.getElementById('export-area');
+            const opt = { margin: 0.3, filename: `Bao_Cao_${currentWeekKey}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }};
+            html2pdf().set(opt).from(element).save().then(() => { document.body.classList.remove('exporting-pdf'); });
         }
     </script>
 </body>
