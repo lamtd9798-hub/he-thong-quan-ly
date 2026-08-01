@@ -70,7 +70,6 @@
         th { background-color: #04AA6D; color: white; font-weight: bold; text-align: center; text-transform: uppercase; }
         .dept-row { background-color: #e2e8f0; font-weight: bold; color: #1e293b; }
         
-        /* Dòng tổng cộng (Tab 5) */
         .total-row td { background-color: #fef08a; font-weight: bold; color: #b91c1c; border-bottom: 2px solid #04AA6D;}
         
         .cell-input { width: 100%; min-height: 24px; box-sizing: border-box; padding: 6px; font-family: inherit; font-size: 14px; outline: none; cursor: text; border: 1px solid transparent;}
@@ -79,16 +78,15 @@
         
         .btn-add-row, .btn-add-task, .btn-delete { cursor: pointer; border-radius: 4px; font-size: 12px; color: white; border: none; padding: 5px; font-weight: bold;}
         .btn-add-row { background-color: #2563eb; } .btn-add-task { background-color: #10b981; margin-right: 2px;} .btn-delete { background-color: #ef4444; }
-        
         .cell-readonly { background-color: #f8fafc; font-weight: bold; color: #b91c1c; text-align: right; }
 
         /* TRẠNG THÁI KHÓA */
         .locked-view .cell-input { pointer-events: none; background-color: transparent !important; border: none;}
-        .locked-view .col-action { display: none !important; }
+        .locked-view .col-action, .locked-view .btn-action-main { display: none !important; }
         .locked-view .cell-input[placeholder]:empty:before { content: ''; }
 
         /* KHI XUẤT PDF */
-        .exporting-pdf .col-action { display: none !important; }
+        .exporting-pdf .col-action, .exporting-pdf .btn-action-main { display: none !important; }
         .exporting-pdf .cell-input[placeholder]:empty:before { content: ''; }
         .exporting-pdf .dept-row td { border: 1px solid #ddd; }
         .exporting-pdf table { border: 1px solid #000; }
@@ -96,62 +94,130 @@
 
         /* CSS CHO BẢNG POPUP (MODAL) TẠO DỰ ÁN */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; justify-content: center; align-items: center; }
-        .modal-content { background: white; width: 650px; padding: 25px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;}
+        .modal-content { background: white; width: 1100px; max-width: 95%; padding: 25px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 95vh; overflow-y: auto;}
         .modal-header { font-size: 20px; font-weight: bold; color: #1e293b; margin-bottom: 15px; border-bottom: 2px solid #04AA6D; padding-bottom: 10px; text-transform: uppercase;}
         .modal-form-group { margin-bottom: 12px; }
         .modal-form-group label { display: block; font-weight: bold; font-size: 13px; color: #475569; margin-bottom: 4px; }
         .modal-form-group input { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-family: inherit;}
         
-        /* Khung phân công */
+        /* BẢNG PHÂN CÔNG BÊN TRONG MODAL */
         .task-assign-container { border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; background: #f8fafc; margin-top: 15px;}
         .task-assign-container h4 { margin-top: 0; margin-bottom: 10px; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; color: #04AA6D;}
-        .task-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .task-row span { font-weight: bold; font-size: 13px; width: 35%; color: #334155;}
-        .task-row input { width: 62%; padding: 7px; border: 1px solid #cbd5e1; border-radius: 4px; }
+        
+        .modal-task-table { width: 100%; border-collapse: collapse; background: white;}
+        .modal-task-table th, .modal-task-table td { border: 1px solid #cbd5e1; padding: 6px; }
+        .modal-task-table th { background-color: #e2e8f0; color: #1e293b; text-align: center; font-size: 12px;}
+        .modal-task-table td { vertical-align: middle; }
+        .modal-task-table input { width: 100%; border: 1px solid transparent; padding: 6px; box-sizing: border-box; outline: none; background: transparent; font-family: inherit; font-size: 13px;}
+        .modal-task-table input:focus { border-bottom: 1px solid #04AA6D; background: #f8fafc; }
+        
+        .m-task-prog { text-align: center; font-weight: bold; color: #04AA6D;}
 
         .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;}
         .btn-modal-cancel { background: #94a3b8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
+        .btn-modal-save { background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
         .btn-modal-confirm { background: #04AA6D; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
     </style>
 </head>
 <body>
 
-    <!-- BẢNG POPUP (MODAL) GIAO VIỆC DỰ ÁN -->
+    <!-- BẢNG POPUP (MODAL) GIAO VIỆC DỰ ÁN & TIẾN ĐỘ -->
     <div id="taskModal" class="modal-overlay">
         <div class="modal-content">
-            <div class="modal-header">TRIỂN KHAI GIAO VIỆC DỰ ÁN</div>
+            <div class="modal-header">TRIỂN KHAI GIAO VIỆC & THEO DÕI TIẾN ĐỘ</div>
             
-            <div class="modal-form-group">
-                <label>1. Tên dự án:</label>
-                <input type="text" id="t_projectName" style="background-color: #e2e8f0; font-weight: bold;" readonly>
+            <div style="display: flex; gap: 15px;">
+                <div class="modal-form-group" style="flex: 1;">
+                    <label>1. Tên dự án:</label>
+                    <input type="text" id="t_projectName" style="background-color: #e2e8f0; font-weight: bold;" readonly>
+                </div>
+                <div class="modal-form-group" style="flex: 1;">
+                    <label>2. Tên chủ đầu tư:</label>
+                    <input type="text" id="t_investor" placeholder="Nhập tên chủ đầu tư..." oninput="updateModalData()">
+                </div>
             </div>
-            <div class="modal-form-group">
-                <label>2. Tên chủ đầu tư:</label>
-                <input type="text" id="t_investor" placeholder="Nhập tên chủ đầu tư...">
-            </div>
-            <div class="modal-form-group">
-                <label>3. Địa chỉ dự án:</label>
-                <input type="text" id="t_address" placeholder="Nhập địa chỉ dự án...">
-            </div>
-            <div class="modal-form-group">
-                <label>4. Ghi chú chung:</label>
-                <input type="text" id="t_note" placeholder="Các thông tin cần lưu ý...">
+            
+            <div style="display: flex; gap: 15px;">
+                <div class="modal-form-group" style="flex: 1;">
+                    <label>3. Địa chỉ dự án:</label>
+                    <input type="text" id="t_address" placeholder="Nhập địa chỉ dự án..." oninput="updateModalData()">
+                </div>
+                <div class="modal-form-group" style="flex: 1;">
+                    <label>4. Ghi chú chung:</label>
+                    <input type="text" id="t_note" placeholder="Các thông tin cần lưu ý..." oninput="updateModalData()">
+                </div>
             </div>
             
             <div class="task-assign-container">
-                <h4>5. PHÂN CÔNG HẠNG MỤC GIAO VIỆC</h4>
-                <div style="font-size: 12px; color: #64748b; margin-bottom: 10px;">(Nhập địa chỉ Email của người phụ trách vào ô tương ứng, để trống nếu chưa có)</div>
+                <h4>5. BẢNG PHÂN CÔNG VÀ TIẾN ĐỘ CÁC HẠNG MỤC M&E</h4>
                 
-                <div class="task-row"><span>🔥 Hạng mục Chữa cháy:</span> <input type="email" id="t_email_chuachay" placeholder="Nhập email..."></div>
-                <div class="task-row"><span>🚨 Hạng mục Báo cháy:</span> <input type="email" id="t_email_baochay" placeholder="Nhập email..."></div>
-                <div class="task-row"><span>💡 Hạng mục Đèn Exit, sự cố:</span> <input type="email" id="t_email_den" placeholder="Nhập email..."></div>
-                <div class="task-row"><span>💨 Hạng mục Hút khói:</span> <input type="email" id="t_email_hutkhoi" placeholder="Nhập email..."></div>
-                <div class="task-row"><span>❄️ Điều hòa không khí:</span> <input type="email" id="t_email_dieuhoa" placeholder="Nhập email..."></div>
-                <div class="task-row"><span>🚰 Hạng mục Cấp thoát nước:</span> <input type="email" id="t_email_capthoat" placeholder="Nhập email..."></div>
+                <table class="modal-task-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 170px;">HẠNG MỤC</th>
+                            <th style="width: 200px;">EMAIL NHẬN VIỆC</th>
+                            <th style="width: 100px;">BẮT ĐẦU</th>
+                            <th style="width: 100px;">KẾT THÚC</th>
+                            <th style="width: 80px;">% TIẾN ĐỘ</th>
+                            <th>GHI CHÚ CHI TIẾT</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-task-tbody">
+                        <tr data-task="chuachay">
+                            <td style="font-weight:bold; color:#b91c1c;">🔥 Chữa cháy</td>
+                            <td><input type="text" class="m-task-email" placeholder="Nhập Email..." oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-start" style="text-align:center;" placeholder="dd/mm/yyyy" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-end" style="text-align:center;" placeholder="dd/mm/yyyy" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-prog" placeholder="0%" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-note" placeholder="..." oninput="updateModalData()"></td>
+                        </tr>
+                        <tr data-task="baochay">
+                            <td style="font-weight:bold; color:#b91c1c;">🚨 Báo cháy</td>
+                            <td><input type="text" class="m-task-email" placeholder="Nhập Email..." oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-start" style="text-align:center;" placeholder="dd/mm/yyyy" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-end" style="text-align:center;" placeholder="dd/mm/yyyy" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-prog" placeholder="0%" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-note" placeholder="..." oninput="updateModalData()"></td>
+                        </tr>
+                        <tr data-task="den">
+                            <td style="font-weight:bold; color:#eab308;">💡 Đèn Exit, sự cố</td>
+                            <td><input type="text" class="m-task-email" placeholder="Nhập Email..." oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-start" style="text-align:center;" placeholder="dd/mm/yyyy" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-end" style="text-align:center;" placeholder="dd/mm/yyyy" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-prog" placeholder="0%" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-note" placeholder="..." oninput="updateModalData()"></td>
+                        </tr>
+                        <tr data-task="hutkhoi">
+                            <td style="font-weight:bold; color:#64748b;">💨 Hút khói</td>
+                            <td><input type="text" class="m-task-email" placeholder="Nhập Email..." oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-start" style="text-align:center;" placeholder="dd/mm/yyyy" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-end" style="text-align:center;" placeholder="dd/mm/yyyy" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-prog" placeholder="0%" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-note" placeholder="..." oninput="updateModalData()"></td>
+                        </tr>
+                        <tr data-task="dieuhoa">
+                            <td style="font-weight:bold; color:#0ea5e9;">❄️ Điều hòa K.Khí</td>
+                            <td><input type="text" class="m-task-email" placeholder="Nhập Email..." oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-start" style="text-align:center;" placeholder="dd/mm/yyyy" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-end" style="text-align:center;" placeholder="dd/mm/yyyy" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-prog" placeholder="0%" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-note" placeholder="..." oninput="updateModalData()"></td>
+                        </tr>
+                        <tr data-task="capthoat">
+                            <td style="font-weight:bold; color:#3b82f6;">🚰 Cấp thoát nước</td>
+                            <td><input type="text" class="m-task-email" placeholder="Nhập Email..." oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-start" style="text-align:center;" placeholder="dd/mm/yyyy" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-end" style="text-align:center;" placeholder="dd/mm/yyyy" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-prog" placeholder="0%" oninput="updateModalData()"></td>
+                            <td><input type="text" class="m-task-note" placeholder="..." oninput="updateModalData()"></td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
             <div class="modal-footer">
-                <button class="btn-modal-cancel" onclick="closeTaskModal()">Hủy Bỏ</button>
+                <button class="btn-modal-cancel" onclick="closeTaskModal()">Đóng</button>
+                <button class="btn-modal-save" onclick="closeTaskModal()">Lưu Dữ Liệu</button>
                 <button class="btn-modal-confirm" onclick="sendTaskEmail()">Xác nhận & Gửi Mail</button>
             </div>
         </div>
@@ -276,7 +342,7 @@
                 </div>
             </div>
 
-            <!-- TAB 3: DỰ ÁN ĐẤU THẦU (NÂNG CẤP GIAO VIỆC) -->
+            <!-- TAB 3: DỰ ÁN ĐẤU THẦU -->
             <div id="tab3" class="tab-content">
                 <div class="time-filter-bar" style="justify-content: flex-end;">
                     <div class="action-group">
@@ -289,14 +355,14 @@
                 <div id="export-area3" class="export-area">
                     <div class="report-header centered" id="pdf-title3">DỰ ÁN ĐẤU THẦU</div>
                     <div id="lock-warning3" style="color:red; font-weight:bold; display:none; margin-bottom: 10px; text-align:center;">⚠️ DỮ LIỆU ĐÃ BỊ ADMIN KHÓA. KHÔNG THỂ CHỈNH SỬA!</div>
-                    <div style="text-align: center; font-style: italic; color: #64748b; margin-bottom: 15px;">* Mẹo: Click chuột 2 lần vào "Tên dự án" để mở bảng Phân công Giao việc</div>
+                    <div style="text-align: center; font-style: italic; color: #10b981; margin-bottom: 15px; font-weight: bold;">* Mẹo: Click chuột 2 lần vào tên "DỰ ÁN" để mở Bảng giao việc chi tiết & Đánh % tiến độ</div>
                     
                     <table id="biddingTable">
                         <thead>
                             <tr>
                                 <th style="width: 60px;">STT</th>
                                 <th>TÊN DỰ ÁN</th>
-                                <th style="width: 300px;">TIẾN ĐỘ</th>
+                                <th style="width: 300px;">TIẾN ĐỘ TỔNG QUAN</th>
                                 <th style="width: 80px;" class="col-action">THAO TÁC</th>
                             </tr>
                         </thead>
@@ -415,6 +481,7 @@
         let isTab1Locked = false, isTab2Locked = false, isTab3Locked = false, isTab5Locked = false, isTab6Locked = false;
         let currentWeekKey = 'y2026_m8_w1'; 
         let isTyping = false; 
+        let activeProjectRowForModal = null; 
 
         // --- XỬ LÝ ĐĂNG NHẬP ---
         auth.onAuthStateChanged(user => {
@@ -459,7 +526,7 @@
         });
 
         /* ========================================================================= */
-        /* CÁC TAB 1, 2, 5, 6 (Đã giữ nguyên hoàn toàn)                              */
+        /* CÁC TAB 1, 2, 5, 6 (Giữ nguyên)                                           */
         /* ========================================================================= */
         
         // TAB 1
@@ -505,8 +572,9 @@
         document.getElementById('personnelTable').addEventListener('focusin', e => { if (e.target.classList.contains('cell-input')) isTyping = true; });
         document.getElementById('personnelTable').addEventListener('focusout', e => { if (e.target.classList.contains('cell-input')) { isTyping = false; saveTab6Data(); } });
 
+
         /* ========================================================================= */
-        /* KHU VỰC TAB 3: DỰ ÁN ĐẤU THẦU (NÂNG CẤP GIAO VIỆC BẰNG CLICK ĐÚP)         */
+        /* KHU VỰC TAB 3: DỰ ÁN ĐẤU THẦU (NÂNG CẤP GIAO VIỆC & ĐÁNH TIẾN ĐỘ)         */
         /* ========================================================================= */
         function loadTab3Data() {
             db.ref('DuAnDauThau/data').on('value', (snapshot) => {
@@ -530,16 +598,17 @@
             const tr = document.createElement('tr'); tr.className = 'bidding-row';
             tr.innerHTML = `
                 <td class="stt-cell" style="text-align:center;"></td>
-                <td><div contenteditable="true" class="cell-input prj-name" style="cursor: pointer;" title="Click đúp chuột để mở Bảng Giao Việc" placeholder="Nhập tên dự án (Click đúp để giao việc)..."></div></td>
-                <td><div contenteditable="true" class="cell-input" placeholder="Nhập thông tin tiến độ..."></div></td>
+                <td><div contenteditable="true" class="cell-input prj-name" style="cursor: pointer; font-weight:bold; color:#04AA6D;" title="Click đúp chuột để MỞ BẢNG TIẾN ĐỘ & GIAO VIỆC" placeholder="Nhập tên dự án (Click đúp để mở bảng)..."></div></td>
+                <td><div contenteditable="true" class="cell-input" placeholder="Mô tả tiến độ tổng quan..."></div></td>
                 <td class="col-action" style="text-align:center;"><button class="btn-delete" onclick="deleteRow(this, 'tbody-bidding', 'tab3')">Xóa</button></td>
+                <td style="display:none;"><textarea class="hidden-details">{}</textarea></td>
             `;
             tbody.appendChild(tr);
             updateRowNumbers('tbody-bidding');
             saveTab3Data();
         }
 
-        // Bắt sự kiện gõ phím cho Tab 3
+        // Focus & Edit trên bảng bên ngoài
         document.getElementById('biddingTable').addEventListener('focusin', e => { if (e.target.classList.contains('cell-input')) isTyping = true; });
         document.getElementById('biddingTable').addEventListener('focusout', e => { 
             if (e.target.classList.contains('cell-input')) {
@@ -548,86 +617,146 @@
             }
         });
 
-        // Bắt sự kiện CLICK ĐÚP CHUỘT vào ô Tên Dự Án ở Tab 3
+        // MỞ MODAL KHI CLICK ĐÚP VÀO TÊN DỰ ÁN
         document.getElementById('biddingTable').addEventListener('dblclick', e => {
             if (e.target.classList.contains('prj-name')) {
                 openTaskModal(e.target);
             }
         });
 
-        // --- CÁC HÀM CHO BẢNG GIAO VIỆC (MODAL) ---
+        // Bắt sự kiện focusin/focusout ĐỂ GIỮ CHẾ ĐỘ TYPING (Chống giật modal)
+        document.getElementById('taskModal').addEventListener('focusin', () => { isTyping = true; });
+        document.getElementById('taskModal').addEventListener('focusout', () => { isTyping = false; });
+
+        // --- CÁC HÀM XỬ LÝ DỮ LIỆU BÊN TRONG MODAL ---
         function openTaskModal(cellElement) {
-            // Lấy tên dự án từ ô vừa click
+            activeProjectRowForModal = cellElement.closest('tr');
             let projectName = cellElement.innerText.trim();
-            
-            // Xóa rỗng các ô cũ
             document.getElementById('t_projectName').value = projectName;
-            document.getElementById('t_investor').value = '';
-            document.getElementById('t_address').value = '';
-            document.getElementById('t_note').value = '';
-            
-            // Reset toàn bộ input email
-            let emailInputs = document.querySelectorAll('.task-assign-container input[type="email"]');
-            emailInputs.forEach(input => input.value = '');
-            
-            // Hiển thị bảng
+
+            // Đọc dữ liệu ẩn đang lưu trong dòng
+            let detailsField = activeProjectRowForModal.querySelector('.hidden-details');
+            let details = (detailsField && detailsField.value) ? JSON.parse(detailsField.value) : {};
+
+            // Đổ dữ liệu vào Modal
+            document.getElementById('t_investor').value = details.investor || '';
+            document.getElementById('t_address').value = details.address || '';
+            document.getElementById('t_note').value = details.note || '';
+
+            const tasks = ['chuachay', 'baochay', 'den', 'hutkhoi', 'dieuhoa', 'capthoat'];
+            tasks.forEach(taskKey => {
+                let taskData = details[taskKey] || {};
+                let row = document.querySelector(`tr[data-task="${taskKey}"]`);
+                row.querySelector('.m-task-email').value = taskData.email || '';
+                row.querySelector('.m-task-start').value = taskData.start || '';
+                row.querySelector('.m-task-end').value = taskData.end || '';
+                row.querySelector('.m-task-prog').value = taskData.prog || '';
+                row.querySelector('.m-task-note').value = taskData.note || '';
+            });
+
+            // Nếu Tab 3 đang bị khóa, khóa luôn các ô trong Modal không cho nhập (Chỉ xem)
+            let disableState = isTab3Locked ? true : false;
+            document.querySelectorAll('#taskModal input:not(#t_projectName)').forEach(el => el.disabled = disableState);
+
             document.getElementById('taskModal').style.display = 'flex';
         }
 
         function closeTaskModal() {
             document.getElementById('taskModal').style.display = 'none';
+            isTyping = false;
+            saveTab3Data(); // Cập nhật lần cuối trước khi đóng
         }
 
+        function updateModalData() {
+            if(!activeProjectRowForModal || isTab3Locked) return; // Khóa thì không cho update
+
+            let details = {
+                investor: document.getElementById('t_investor').value,
+                address: document.getElementById('t_address').value,
+                note: document.getElementById('t_note').value
+            };
+
+            const tasks = ['chuachay', 'baochay', 'den', 'hutkhoi', 'dieuhoa', 'capthoat'];
+            tasks.forEach(taskKey => {
+                let row = document.querySelector(`tr[data-task="${taskKey}"]`);
+                details[taskKey] = {
+                    email: row.querySelector('.m-task-email').value,
+                    start: row.querySelector('.m-task-start').value,
+                    end: row.querySelector('.m-task-end').value,
+                    prog: row.querySelector('.m-task-prog').value,
+                    note: row.querySelector('.m-task-note').value
+                };
+            });
+
+            // Tìm thẻ textarea ẩn trong dòng, nếu bị mất thì tạo lại
+            let detailsField = activeProjectRowForModal.querySelector('.hidden-details');
+            if(!detailsField) {
+                detailsField = document.createElement('textarea');
+                detailsField.className = 'hidden-details';
+                let td = document.createElement('td');
+                td.style.display = 'none';
+                td.appendChild(detailsField);
+                activeProjectRowForModal.appendChild(td);
+            }
+            // Nạp chuỗi JSON vào ô ẩn
+            detailsField.value = JSON.stringify(details);
+        }
+
+        // TỰ ĐỘNG GỬI MAIL THEO TIẾN ĐỘ
         function sendTaskEmail() {
+            if(isTab3Locked) return;
+
             const pName = document.getElementById('t_projectName').value.trim();
             const pInv = document.getElementById('t_investor').value.trim();
             const pAddr = document.getElementById('t_address').value.trim();
             const pNote = document.getElementById('t_note').value.trim();
             
-            // Đọc dữ liệu từ 6 hạng mục
-            let tasks = [
-                {name: "Chữa cháy", el: document.getElementById('t_email_chuachay')},
-                {name: "Báo cháy", el: document.getElementById('t_email_baochay')},
-                {name: "Đèn Exit, sự cố", el: document.getElementById('t_email_den')},
-                {name: "Hút khói", el: document.getElementById('t_email_hutkhoi')},
-                {name: "Điều hòa không khí", el: document.getElementById('t_email_dieuhoa')},
-                {name: "Cấp thoát nước", el: document.getElementById('t_email_capthoat')}
-            ];
-            
             let allEmails = [];
-            let taskDetails = "";
-            
+            let taskText = "";
+
+            const tasks = [
+                {key: 'chuachay', name: "Chữa cháy"}, {key: 'baochay', name: "Báo cháy"}, {key: 'den', name: "Đèn Exit, sự cố"},
+                {key: 'hutkhoi', name: "Hút khói"}, {key: 'dieuhoa', name: "Điều hòa không khí"}, {key: 'capthoat', name: "Cấp thoát nước"}
+            ];
+
             tasks.forEach(t => {
-                let mailsStr = t.el.value.trim();
-                if(mailsStr) {
-                    // Nếu gõ nhiều email cách nhau bằng dấu phẩy, tách ra để quét
-                    let mailsArr = mailsStr.split(',').map(m => m.trim());
+                let row = document.querySelector(`tr[data-task="${t.key}"]`);
+                let emailStr = row.querySelector('.m-task-email').value.trim();
+                let startStr = row.querySelector('.m-task-start').value.trim() || "...";
+                let endStr = row.querySelector('.m-task-end').value.trim() || "...";
+                let progStr = row.querySelector('.m-task-prog').value.trim() || "0%";
+                let noteStr = row.querySelector('.m-task-note').value.trim() || "Không";
+
+                if(emailStr) {
+                    let mailsArr = emailStr.split(',').map(m => m.trim());
                     allEmails.push(...mailsArr);
-                    taskDetails += `- Hệ thống ${t.name}: Phụ trách bởi ${mailsStr}\r\n`;
+                    
+                    taskText += `- Hạng mục ${t.name}:\r\n`;
+                    taskText += `  + Phụ trách: ${emailStr}\r\n`;
+                    taskText += `  + Thời gian thực hiện: Từ ${startStr} đến ${endStr}\r\n`;
+                    taskText += `  + Tiến độ hiện tại: ${progStr}\r\n`;
+                    taskText += `  + Ghi chú: ${noteStr}\r\n\r\n`;
                 }
             });
-            
+
             if(allEmails.length === 0) {
-                alert("Vui lòng nhập ít nhất 1 email để phân công công việc!");
+                alert("Bạn chưa điền bất kỳ Email Nhận Việc nào trong các hạng mục!");
                 return;
             }
+
+            let uniqueEmails = [...new Set(allEmails)]; // Lọc trùng lặp
             
-            // Lọc các email bị trùng lặp (nếu 1 người làm 2 hạng mục thì chỉ gửi 1 mail cho họ)
-            let uniqueEmails = [...new Set(allEmails)]; 
-            
-            // Soạn nội dung Email
-            let subject = `[GIAO VIỆC] Triển khai dự án: ${pName}`;
-            let body = `Kính gửi các anh/chị phụ trách dự án,\r\n\r\n`;
-            body += `Ban quản lý xin giao việc triển khai dự án mới với các thông tin chi tiết như sau:\r\n`;
+            let subject = `[TIẾN ĐỘ DỰ ÁN] ${pName}`;
+            let body = `Kính gửi các anh/chị tham gia dự án,\r\n\r\n`;
+            body += `Dưới đây là thông tin và tiến độ cập nhật mới nhất của dự án:\r\n`;
             body += `1. Tên dự án: ${pName}\r\n`;
             body += `2. Chủ đầu tư: ${pInv}\r\n`;
             body += `3. Địa chỉ thi công: ${pAddr}\r\n`;
             body += `4. Ghi chú chung: ${pNote}\r\n\r\n`;
-            body += `5. PHÂN CÔNG HẠNG MỤC CỤ THỂ:\r\n`;
-            body += taskDetails + `\r\n`;
-            body += `Đề nghị các cá nhân có tên trong danh sách kiểm tra hạng mục và phối hợp thực hiện đúng tiến độ.\r\n\r\nTrân trọng!`;
+            body += `5. PHÂN CÔNG & TIẾN ĐỘ HẠNG MỤC M&E:\r\n`;
+            body += taskText;
+            body += `Kính đề nghị các bộ phận kiểm tra hạng mục phụ trách và tiếp tục đẩy nhanh tiến độ.\r\n\r\nTrân trọng!`;
             
-            // Mở ứng dụng Gửi Mail mặc định
             let mailtoLink = `mailto:${uniqueEmails.join(',')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             window.location.href = mailtoLink;
             
@@ -635,7 +764,7 @@
         }
 
         /* ========================================================================= */
-        /* CÁC HÀM CHUNG (XÓA, KHÓA, PDF)                                            */
+        /* CÁC HÀM CHUNG KHÁC (XÓA, KHÓA, PDF)                                       */
         /* ========================================================================= */
         function deleteRow(btn, tbodyId, tabContext) {
             if(tabContext === 'tab1' && isTab1Locked) return;
