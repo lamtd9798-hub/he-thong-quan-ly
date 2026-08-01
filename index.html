@@ -36,9 +36,14 @@
         .user-info-panel { margin-top: auto; padding: 15px; background-color: #1a252f; text-align: center; font-size: 13px; }
         .btn-logout { background-color: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-top: 5px; width: 100%;}
         
-        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
-        .tab-content { display: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column;}
+        .tab-content { display: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1; overflow-y: auto;}
         .tab-content.active { display: block; }
+
+        /* TRANG CHỦ */
+        .welcome-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 60vh; text-align: center; }
+        .welcome-title { font-size: 32px; font-weight: bold; color: #04AA6D; margin-top: 25px; text-transform: uppercase; letter-spacing: 1px;}
+        .welcome-subtitle { font-size: 18px; color: #64748b; margin-top: 15px; }
 
         .report-header { font-size: 22px; font-weight: bold; color: #1e293b; text-transform: uppercase; margin-bottom: 15px; border-bottom: 3px solid #04AA6D; display: inline-block; padding-bottom: 5px; }
         .time-filter-bar { display: flex; align-items: center; background: #ffffff; padding: 15px 20px; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-wrap: wrap; gap: 15px;}
@@ -97,9 +102,13 @@
 
     <!-- KHUNG ỨNG DỤNG -->
     <div id="app-container">
+        <!-- SIDEBAR -->
         <div class="sidebar">
             <div class="logo-box"><img src="logo.jpg" alt="Logo"></div>
-            <button class="menu-btn active" id="btn-tab1" onclick="switchTab('tab1')">1. Báo cáo tiến độ</button>
+            
+            <!-- Đã thêm Trang chủ và đưa lên đầu tiên -->
+            <button class="menu-btn active" id="btn-tab-home" onclick="switchTab('tab-home')">🏠 Trang chủ</button>
+            <button class="menu-btn" id="btn-tab1" onclick="switchTab('tab1')">1. Báo cáo tiến độ</button>
             <button class="menu-btn" id="btn-tab2" onclick="switchTab('tab2')">2. Nhận dự án</button>
             <button class="menu-btn" id="btn-tab3" onclick="switchTab('tab3')">3. Triển khai trúng thầu</button>
             
@@ -110,13 +119,21 @@
         </div>
 
         <div class="main-content">
-            <div id="tab1" class="tab-content active">
+            <!-- NỘI DUNG TRANG CHỦ (Mặc định hiển thị) -->
+            <div id="tab-home" class="tab-content active" style="background: transparent; box-shadow: none;">
+                <div class="welcome-container">
+                    <img src="logo.jpg" alt="Tuannguyen M&E" style="max-width: 250px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    <div class="welcome-title">Chào mừng đến với Hệ thống Quản lý</div>
+                    <div class="welcome-subtitle">Vui lòng chọn các chức năng tại menu bên trái để bắt đầu làm việc.</div>
+                </div>
+            </div>
+
+            <!-- NỘI DUNG BÁO CÁO TIẾN ĐỘ -->
+            <div id="tab1" class="tab-content">
                 <div class="time-filter-bar">
                     <div class="month-selector">
                         <span>Kỳ báo cáo:</span>
-                        <!-- NĂM SẼ ĐƯỢC ĐIỀN TỰ ĐỘNG BẰNG JS TỪ 2025-2050 -->
                         <select id="yearSelect" onchange="changeWeek(1)"></select> 
-                        
                         <select id="monthSelect" onchange="changeWeek(1)">
                             <option value="1">Tháng 1</option><option value="2">Tháng 2</option><option value="3">Tháng 3</option><option value="4">Tháng 4</option>
                             <option value="5">Tháng 5</option><option value="6">Tháng 6</option><option value="7">Tháng 7</option><option value="8" selected>Tháng 8</option>
@@ -149,29 +166,28 @@
                                 <th style="width: 110px;" class="col-action">Thao tác</th>
                             </tr>
                         </thead>
-                        <!-- ĐÃ KHÔI PHỤC ĐẦY ĐỦ 5 PHÒNG BAN -->
                         <tbody id="tbody-kinhdoanh"></tbody><tbody id="tbody-kythuat"></tbody>
                         <tbody id="tbody-muahang"></tbody><tbody id="tbody-ketoan"></tbody><tbody id="tbody-nhansu"></tbody>
                     </table>
                 </div>
             </div>
-            <div id="tab2" class="tab-content"><h3>Giao việc</h3></div>
-            <div id="tab3" class="tab-content"><h3>Triển khai</h3></div>
+            
+            <div id="tab2" class="tab-content"><h3>Nhận dự án</h3></div>
+            <div id="tab3" class="tab-content"><h3>Triển khai trúng thầu</h3></div>
         </div>
     </div>
 
     <script>
-        // --- 1. TỰ ĐỘNG SINH NĂM TỪ 2025 ĐẾN 2050 ---
+        // --- TỰ ĐỘNG SINH NĂM TỪ 2025 ĐẾN 2050 ---
         const yearSelect = document.getElementById("yearSelect");
         for (let i = 2025; i <= 2050; i++) {
             let option = document.createElement("option");
-            option.value = i;
-            option.text = "Năm " + i;
-            if (i === 2026) option.selected = true; // Mặc định chọn 2026
+            option.value = i; option.text = "Năm " + i;
+            if (i === 2026) option.selected = true; 
             yearSelect.appendChild(option);
         }
 
-        // --- 2. CẤU HÌNH FIREBASE CỦA BẠN ---
+        // --- CẤU HÌNH FIREBASE ---
         const firebaseConfig = {
             apiKey: "AIzaSyDCL83v4p8XXUTCWJ-KNok-bnf1Ga2ayLo",
             authDomain: "quan-ly-du-an-53ce8.firebaseapp.com",
@@ -186,14 +202,14 @@
         const db = firebase.database();
         const auth = firebase.auth();
 
-        // --- 3. BIẾN TOÀN CỤC ---
+        // --- BIẾN TOÀN CỤC ---
         const ADMIN_EMAIL = "lamtd9798@gmail.com";
         let isGlobalLocked = false;
         let currentWeekKey = 'y2026_m8_w1'; 
         let currentDbRef = null;
         let isTyping = false; 
 
-        // --- 4. XỬ LÝ ĐĂNG NHẬP ---
+        // --- XỬ LÝ ĐĂNG NHẬP ---
         auth.onAuthStateChanged(user => {
             if (user) {
                 document.getElementById('login-screen').style.display = 'none';
@@ -221,9 +237,8 @@
         }
         function logout() { auth.signOut(); }
 
-        // --- 5. CHỨC NĂNG KHÓA THEO TỪNG KỲ BÁO CÁO ---
+        // --- CHỨC NĂNG KHÓA THEO TỪNG KỲ BÁO CÁO ---
         function listenToLockStatus() {
-            // Lắng nghe trạng thái khóa của RIÊNG tuần đang chọn
             db.ref('SystemStatus/' + currentWeekKey + '/isLocked').on('value', snap => {
                 isGlobalLocked = snap.val() || false;
                 const lockBtn = document.getElementById('btnAdminLock');
@@ -248,11 +263,10 @@
 
         function toggleLock() {
             const newState = !isGlobalLocked;
-            // Chỉ khóa tuần hiện tại
             db.ref('SystemStatus/' + currentWeekKey + '/isLocked').set(newState);
         }
 
-        // --- 6. TẢI VÀ LƯU DỮ LIỆU ---
+        // --- TẢI VÀ LƯU DỮ LIỆU ---
         db.ref('.info/connected').on('value', snap => {
             const statusEl = document.getElementById('sync-status');
             if (snap.val() === true) { statusEl.innerHTML = "🟢 Đã kết nối"; statusEl.classList.remove('offline'); } 
@@ -306,15 +320,12 @@
             document.querySelectorAll('.week-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById('btn-week-' + weekNum).classList.add('active');
             
-            // Cập nhật lại key
             currentWeekKey = `y${document.getElementById('yearSelect').value}_m${document.getElementById('monthSelect').value}_w${weekNum}`;
-            
-            // Gọi lại hàm Khóa và Load dữ liệu cho tuần mới
             listenToLockStatus();
             loadViewFromFirebase(currentWeekKey); 
         }
 
-        // --- 7. CÁC HÀM THÊM/XÓA CÒN LẠI ---
+        // --- CÁC HÀM THÊM/XÓA ---
         function addEmployeeRow(tbodyId) {
             if(isGlobalLocked) return;
             const tbody = document.getElementById(tbodyId);
@@ -356,6 +367,7 @@
             document.getElementById(tbodyId).querySelectorAll('.emp-row').forEach((r, i) => r.querySelector('.stt-cell').innerText = i + 1);
         }
 
+        // --- ĐIỀU HƯỚNG TAB ---
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.menu-btn').forEach(btn => btn.classList.remove('active'));
@@ -363,6 +375,7 @@
             document.getElementById('btn-' + tabId).classList.add('active');
         }
         
+        // --- XUẤT PDF ---
         function exportPDF() {
             document.body.classList.add('exporting-pdf');
             const element = document.getElementById('export-area');
