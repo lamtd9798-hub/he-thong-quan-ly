@@ -9,9 +9,11 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <style>
         /* CSS GIAO DIỆN CHÍNH */
-        body { margin: 0; font-family: Arial, sans-serif; height: 100vh; overflow: hidden; background-color: #f4f6f9; display: flex; flex-direction: column; }
+        body { margin: 0; font-family: 'Inter', Arial, sans-serif; height: 100vh; overflow: hidden; background-color: #f4f6f9; display: flex; flex-direction: column; }
         
         /* MÀN HÌNH ĐĂNG NHẬP */
         #login-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #2c3e50; display: flex; justify-content: center; align-items: center; z-index: 9999; }
@@ -27,7 +29,7 @@
         
         .sidebar { width: 260px; background-color: #2c3e50; color: white; display: flex; flex-direction: column; z-index: 50; box-shadow: 2px 0 10px rgba(0,0,0,0.1);}
         .logo-box { text-align: center; padding: 15px; background-color: #ffffff; border-bottom: 2px solid #04AA6D; }
-        .menu-btn { padding: 18px 20px; background: none; color: #b8c7ce; border: none; text-align: left; font-size: 15px; cursor: pointer; transition: 0.3s; border-left: 5px solid transparent; border-bottom: 1px solid #34495e; width: 100%; box-sizing: border-box; font-weight: bold;}
+        .menu-btn { padding: 18px 20px; background: none; color: #b8c7ce; border: none; text-align: left; font-size: 15px; cursor: pointer; transition: 0.3s; border-left: 5px solid transparent; border-bottom: 1px solid #34495e; width: 100%; box-sizing: border-box; font-weight: 600;}
         .menu-btn:hover, .menu-btn.active { background-color: #34495e; color: white; padding-left: 30px; }
         .menu-btn.active { border-left-color: #04AA6D; }
         
@@ -69,13 +71,13 @@
         }
         @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
         
-        /* ĐÃ CẬP NHẬT CSS CHO PHẦN HÌNH ĐỘNG VÀ CHỮ */
+        /* ĐÃ CẬP NHẬT: Xóa bóng mờ (text-shadow) để nét chữ phẳng, đều và đẹp */
         .animation-wrapper { width: 100%; max-width: 600px; height: 350px; margin: 0 auto 25px; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 2px solid rgba(255, 255, 255, 0.1); }
         .pccc-animation { width: 100%; height: 100%; object-fit: cover; }
-        .welcome-title-updated { font-size: 32px; font-weight: 800; color: #10b981; margin-top: 0; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-        .welcome-subtitle-updated { font-size: 18px; color: #f8fafc; margin-top: 10px; font-weight: 600; letter-spacing: 0.5px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
-        .welcome-categories-updated { font-size: 16px; color: #cbd5e1; margin-top: 15px; font-weight: 500; display: flex; gap: 15px; justify-content: center; }
-        .welcome-desc-updated { color: #94a3b8; font-size: 14px; margin-top: 20px; font-style: italic; }
+        .welcome-title-updated { font-size: 32px; font-weight: 800; color: #10b981; margin-top: 0; text-transform: uppercase; letter-spacing: 1.5px; }
+        .welcome-subtitle-updated { font-size: 18px; color: #f8fafc; margin-top: 10px; font-weight: 500; letter-spacing: 0.5px; }
+        .welcome-categories-updated { font-size: 16px; color: #cbd5e1; margin-top: 15px; font-weight: 600; display: flex; gap: 15px; justify-content: center; }
+        .welcome-desc-updated { color: #94a3b8; font-size: 14px; margin-top: 20px; font-style: italic; font-weight: 400; }
         /* ========================================================================= */
 
         /* CHUÔNG THÔNG BÁO (NOTIFICATION) */
@@ -367,7 +369,7 @@
                 <div class="welcome-container">
                     <div class="welcome-box">
                         <div class="animation-wrapper">
-                            <img src="hinh-dong-pccc.gif" alt="Phòng cháy chữa cháy animation" class="pccc-animation">
+                            <img src="https://media.giphy.com/media/26FPy3QZFsMpCGtX2/giphy.gif" alt="Phòng cháy chữa cháy animation" class="pccc-animation">
                         </div>
                         <div class="welcome-title-updated">HỆ THỐNG QUẢN LÝ DỰ ÁN M&E</div>
                         <div class="welcome-subtitle-updated">
