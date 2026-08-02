@@ -697,10 +697,9 @@
 
 
         /* ========================================================================= */
-        /* KHU VỰC TAB 3: DỰ ÁN ĐẤU THẦU (NÂNG CẤP CHAT & TIẾN ĐỘ)                   */
+        /* KHU VỰC TAB 3: DỰ ÁN ĐẤU THẦU (BẢN VÁ LỖI LƯU DỮ LIỆU MODAL)              */
         /* ========================================================================= */
         
-        // --- HÀM KIỂM TRA NHẮC NHỞ DEADLINE TRƯỚC 1 NGÀY ---
         function checkDeadlines() {
             let today = new Date();
             today.setHours(0,0,0,0);
@@ -730,15 +729,13 @@
                     let pVal = parseFloat(tInfo.prog.replace('%',''));
                     if(isNaN(pVal)) pVal = 0;
 
-                    // Chỉ kiểm tra khi chưa xong 100%
                     if(pVal < 100) {
-                        let parts = tInfo.end.split('/'); // dd/mm/yyyy
+                        let parts = tInfo.end.split('/'); 
                         if(parts.length === 3) {
                             let endDt = new Date(parts[2], parts[1]-1, parts[0]);
                             endDt.setHours(0,0,0,0);
                             let daysDiff = (endDt.getTime() - timeToday) / (1000 * 3600 * 24);
 
-                            // Nếu còn 1 ngày (hoặc quá hạn) mà chưa nhắc
                             if(daysDiff <= 1 && !tInfo.reminded1Day) {
                                 let emailsArr = tInfo.email.split(',').map(m => m.trim());
                                 emailsArr.forEach(emp => {
@@ -767,7 +764,6 @@
                 }
             });
             
-            // Lưu lại đánh dấu đã gửi nhắc nhở để tránh spam liên tục
             if(needSave) {
                 db.ref('DuAnDauThau/data').set(document.getElementById('tbody-bidding').innerHTML);
             }
@@ -792,7 +788,6 @@
         }
 
         function saveTab3Data() {
-            if(isTab3Locked && document.getElementById('taskModal').style.display !== 'flex') return;
             db.ref('DuAnDauThau/data').set(document.getElementById('tbody-bidding').innerHTML);
         }
 
@@ -832,7 +827,6 @@
         document.getElementById('taskModal').addEventListener('focusin', () => { isTyping = true; });
         document.getElementById('taskModal').addEventListener('focusout', () => { isTyping = false; });
 
-        // --- CÁC HÀM XỬ LÝ DỮ LIỆU BÊN TRONG MODAL ---
         function openTaskModal(cellElement) {
             activeProjectRowForModal = cellElement.closest('tr');
             let projectName = cellElement.innerText.trim();
@@ -859,7 +853,6 @@
                 }
             });
 
-            // Xử lý Giao diện khi bị Khóa
             let disableState = isTab3Locked ? true : false;
             document.getElementById('t_investor').disabled = disableState;
             document.getElementById('t_address').disabled = disableState;
@@ -872,13 +865,11 @@
                     row.querySelector('.m-task-start').disabled = disableState;
                     row.querySelector('.m-task-end').disabled = disableState;
                     
-                    // CHO PHÉP NHẬP % TIẾN ĐỘ & GHI CHÚ dù có khóa hay không
                     row.querySelector('.m-task-prog').disabled = false;
                     row.querySelector('.m-task-note').disabled = false;
                 }
             });
             
-            // Xử lý nút Báo chuông
             let btnSend = document.getElementById('btn-modal-send');
             if(isTab3Locked) {
                 btnSend.disabled = true;
@@ -892,17 +883,18 @@
                 btnSend.innerText = 'Xác nhận & Báo chuông';
             }
 
-            // Tải nội dung Chat
             renderChats(details.chats || []);
 
             document.getElementById('taskModal').style.display = 'flex';
         }
 
+        // LỆNH ĐƯỢC SỬA: LƯU TRƯỚC RỒI MỚI TẮT BẢNG
         function closeTaskModal() {
-            updateModalData();
-            document.getElementById('taskModal').style.display = 'none';
+            updateModalData(); // Nạp dữ liệu vào HTML
+            saveTab3Data(); // ÉP LƯU LÊN FIREBASE NGAY LẬP TỨC
+            
+            document.getElementById('taskModal').style.display = 'none'; // Sau đó mới tắt bảng
             isTyping = false;
-            saveTab3Data(); 
         }
 
         function updateModalData() {
@@ -932,19 +924,16 @@
                     details[taskKey].end = row.querySelector('.m-task-end').value;
                 }
                 
-                // Luôn cập nhật Tiến độ & Ghi chú
                 let currentProg = row.querySelector('.m-task-prog').value;
                 details[taskKey].prog = currentProg;
                 details[taskKey].note = row.querySelector('.m-task-note').value;
 
-                // Tính tổng %
                 let pVal = parseFloat(currentProg.replace('%',''));
                 if(isNaN(pVal)) pVal = 0;
                 totalProg += pVal;
                 taskCount++;
             });
 
-            // Tự động tính Trung bình cộng và cập nhật bảng ở ngoài
             let avg = (totalProg / taskCount).toFixed(1);
             if(avg.endsWith('.0')) avg = parseInt(avg);
             activeProjectRowForModal.querySelector('.prj-total-prog').innerText = avg + '%';
@@ -958,10 +947,11 @@
             
             let jsonStr = JSON.stringify(details);
             detailsField.value = jsonStr;
-            detailsField.textContent = jsonStr; // Cực kỳ quan trọng để lưu được nội dung
+            // ÉP CỨNG VÀO HTML ĐỂ ĐẨY LÊN MẠNG CHÍNH XÁC
+            detailsField.innerHTML = jsonStr; 
+            detailsField.textContent = jsonStr; 
         }
 
-        // --- CÁC HÀM CHO TÍNH NĂNG CHAT (TRAO ĐỔI CÔNG VIỆC) ---
         function renderChats(chats) {
             let box = document.getElementById('chat-messages-box');
             box.innerHTML = '';
@@ -975,7 +965,7 @@
             } else {
                 box.innerHTML = '<div style="color:#94a3b8; text-align:center; font-style:italic; margin-top: 10px;">Chưa có trao đổi nào. Gõ nội dung bên dưới để bắt đầu.</div>';
             }
-            box.scrollTop = box.scrollHeight; // Tự cuộn xuống dưới cùng
+            box.scrollTop = box.scrollHeight; 
         }
 
         function sendChatMessage() {
@@ -996,16 +986,15 @@
             
             let jsonStr = JSON.stringify(details);
             detailsField.value = jsonStr;
-            detailsField.textContent = jsonStr; // Cực kỳ quan trọng
+            detailsField.textContent = jsonStr; 
 
             renderChats(details.chats);
             input.value = '';
 
-            // Quét tìm các Email được @tag trong tin nhắn
             let emailsInText = text.match(/@([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi);
             if (emailsInText) {
                 emailsInText.forEach(tagged => {
-                    let cleanEmail = tagged.replace('@', ''); // Xóa chữ @ đi
+                    let cleanEmail = tagged.replace('@', '');
                     let safeKey = formatEmailKey(cleanEmail);
                     let notiId = Date.now() + Math.floor(Math.random() * 1000);
                     let notiData = {
@@ -1018,10 +1007,9 @@
                 });
             }
 
-            saveTab3Data(); // Lưu lên mạng
+            saveTab3Data(); 
         }
 
-        // CHỈ BẮN THÔNG BÁO VÀO CHUÔNG
         function sendTaskEmailAndNotify() {
             if(isTab3Locked) return;
 
@@ -1065,7 +1053,7 @@
             }
 
             alert("Đã phân công thành công! Hệ thống đã gửi thông báo đến các nhân viên liên quan.");
-            closeTaskModal();
+            closeTaskModal(); // Lệnh closeTaskModal mới đã bao gồm lệnh Save vững chắc
         }
 
         /* ========================================================================= */
