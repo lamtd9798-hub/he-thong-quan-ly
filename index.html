@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Hệ thống Quản lý Dự án</title>
     
-    <!-- Nhúng thư viện -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -70,13 +69,13 @@
         }
         @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
         
-        .logo-wrapper { background: white; padding: 15px 30px; border-radius: 12px; display: inline-block; margin-bottom: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
-        .logo-wrapper img { max-width: 280px; display: block; }
-        
-        .welcome-title { font-size: 36px; font-weight: 900; color: #10b981; margin-top: 0; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);}
-        .welcome-subtitle { font-size: 18px; color: #f8fafc; margin-top: 15px; font-weight: bold; letter-spacing: 1px; text-shadow: 0 1px 3px rgba(0,0,0,0.8);}
-        .highlight-text { color: #facc15; margin: 0 10px; font-size: 20px;}
-        .welcome-desc { color: #cbd5e1; font-size: 15px; margin-top: 25px; font-style: italic; }
+        /* ĐÃ CẬP NHẬT CSS CHO PHẦN HÌNH ĐỘNG VÀ CHỮ */
+        .animation-wrapper { width: 100%; max-width: 600px; height: 350px; margin: 0 auto 25px; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 2px solid rgba(255, 255, 255, 0.1); }
+        .pccc-animation { width: 100%; height: 100%; object-fit: cover; }
+        .welcome-title-updated { font-size: 32px; font-weight: 800; color: #10b981; margin-top: 0; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .welcome-subtitle-updated { font-size: 18px; color: #f8fafc; margin-top: 10px; font-weight: 600; letter-spacing: 0.5px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+        .welcome-categories-updated { font-size: 16px; color: #cbd5e1; margin-top: 15px; font-weight: 500; display: flex; gap: 15px; justify-content: center; }
+        .welcome-desc-updated { color: #94a3b8; font-size: 14px; margin-top: 20px; font-style: italic; }
         /* ========================================================================= */
 
         /* CHUÔNG THÔNG BÁO (NOTIFICATION) */
@@ -186,7 +185,6 @@
 </head>
 <body>
 
-    <!-- BẢNG POPUP (MODAL) GIAO VIỆC DỰ ÁN & TIẾN ĐỘ -->
     <div id="taskModal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
@@ -299,12 +297,10 @@
                 </table>
             </div>
 
-            <!-- KHUNG TRAO ĐỔI CÔNG VIỆC -->
             <div class="chat-container">
                 <div class="chat-header">💬 TRAO ĐỔI CÔNG VIỆC DỰ ÁN</div>
                 <div class="chat-messages" id="chat-messages-box">
-                    <!-- Nội dung chat tự động load vào đây -->
-                </div>
+                    </div>
                 <div class="chat-input-area">
                     <input type="text" id="chat-input" placeholder="Nhập nội dung trao đổi... (Gõ @kèm_địa_chỉ_email để báo chuông cho họ, VD: @nguyenvana@gmail.com)" onkeypress="if(event.key==='Enter') sendChatMessage()">
                     <button onclick="sendChatMessage()">Gửi</button>
@@ -319,7 +315,6 @@
         </div>
     </div>
 
-    <!-- MÀN HÌNH ĐĂNG NHẬP -->
     <div id="login-screen">
         <div class="login-box">
             <h2>ĐĂNG NHẬP HỆ THỐNG</h2>
@@ -330,10 +325,8 @@
         </div>
     </div>
 
-    <!-- KHUNG ỨNG DỤNG -->
     <div id="app-container">
         
-        <!-- BIỂU TƯỢNG CHUÔNG THÔNG BÁO -->
         <div id="noti-container">
             <div id="noti-bell" onclick="toggleNotiPanel()">
                 🔔
@@ -347,7 +340,6 @@
             </div>
         </div>
 
-        <!-- SIDEBAR -->
         <div class="sidebar">
             <div class="logo-box">
                 <img src="logo.jpg" alt="Logo" style="max-width: 200px; mix-blend-mode: multiply;">
@@ -368,28 +360,27 @@
         </div>
 
         <div class="main-content">
-            <!-- TRANG CHỦ MỚI HOÀN TOÀN -->
             <div id="tab-home" class="tab-content active">
                 <div class="bg-animation"></div>
                 <div class="bg-overlay"></div>
                 
                 <div class="welcome-container">
                     <div class="welcome-box">
-                        <div class="logo-wrapper">
-                            <img src="logo.jpg" alt="Tuannguyen M&E">
+                        <div class="animation-wrapper">
+                            <img src="hinh-dong-pccc.gif" alt="Phòng cháy chữa cháy animation" class="pccc-animation">
                         </div>
-                        <div class="welcome-title">HỆ THỐNG QUẢN LÝ DỰ ÁN M&E</div>
-                        <div class="welcome-subtitle">
-                            <span class="highlight-text">🔥 PCCC</span> | 
-                            <span class="highlight-text">❄️ ĐHKK</span> | 
-                            <span class="highlight-text">⚡ ĐIỆN NƯỚC</span>
+                        <div class="welcome-title-updated">HỆ THỐNG QUẢN LÝ DỰ ÁN M&E</div>
+                        <div class="welcome-subtitle-updated">
+                            Công cụ phân công và theo dõi tiến độ các hạng mục Cơ điện cho Dự án Đấu thầu.
                         </div>
-                        <div class="welcome-desc">Chào mừng bạn quay trở lại. Vui lòng chọn các chức năng tại menu bên trái để bắt đầu làm việc.</div>
+                        <div class="welcome-categories-updated">
+                            🔥 PCCC | ❄️ ĐHKK | ⚡ ĐIỆN NƯỚC
+                        </div>
+                        <div class="welcome-desc-updated">Chào mừng bạn trở lại. Công việc của hôm nay đang chờ.</div>
                     </div>
                 </div>
             </div>
 
-            <!-- TAB 1: BÁO CÁO CÔNG VIỆC -->
             <div id="tab1" class="tab-content">
                 <div class="time-filter-bar">
                     <div class="month-selector">
@@ -432,7 +423,6 @@
                 </div>
             </div>
             
-            <!-- TAB 2: DANH SÁCH DỰ ÁN -->
             <div id="tab2" class="tab-content">
                 <div class="time-filter-bar" style="justify-content: flex-end;">
                     <div class="action-group">
@@ -464,7 +454,6 @@
                 </div>
             </div>
 
-            <!-- TAB 3: DỰ ÁN ĐẤU THẦU -->
             <div id="tab3" class="tab-content">
                 <div class="time-filter-bar" style="justify-content: flex-end;">
                     <div class="action-group">
@@ -496,10 +485,8 @@
                 </div>
             </div>
 
-            <!-- TAB 4 -->
             <div id="tab4" class="tab-content"><div class="report-header centered">TRIỂN KHAI DỰ ÁN</div></div>
 
-            <!-- TAB 5: THỐNG KÊ GIÁ TRỊ DỰ ÁN -->
             <div id="tab5" class="tab-content">
                 <div class="time-filter-bar" style="justify-content: flex-end;">
                     <div class="action-group">
@@ -541,7 +528,6 @@
                 </div>
             </div>
 
-            <!-- TAB 6: DANH SÁCH NHÂN SỰ -->
             <div id="tab6" class="tab-content">
                 <div class="time-filter-bar" style="justify-content: flex-end;">
                     <div class="action-group">
