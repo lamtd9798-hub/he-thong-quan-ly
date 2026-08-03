@@ -71,9 +71,9 @@
         }
         @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
         
-        /* ĐÃ CẬP NHẬT: Xóa bóng mờ (text-shadow) để nét chữ phẳng, đều và đẹp */
-        .animation-wrapper { width: 100%; max-width: 600px; height: 350px; margin: 0 auto 25px; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 2px solid rgba(255, 255, 255, 0.1); }
-        .pccc-animation { width: 100%; height: 100%; object-fit: cover; }
+        /* ĐÃ CẬP NHẬT CSS ĐỂ ẢNH BANNER HIỂN THỊ ĐẦY ĐỦ KHÔNG BỊ CẮT */
+        .animation-wrapper { width: 100%; max-width: 750px; height: auto; margin: 0 auto 25px; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 2px solid rgba(255, 255, 255, 0.1); }
+        .pccc-animation { width: 100%; height: auto; display: block; }
         .welcome-title-updated { font-size: 32px; font-weight: 800; color: #10b981; margin-top: 0; text-transform: uppercase; letter-spacing: 1.5px; }
         .welcome-subtitle-updated { font-size: 18px; color: #f8fafc; margin-top: 10px; font-weight: 500; letter-spacing: 0.5px; }
         .welcome-categories-updated { font-size: 16px; color: #cbd5e1; margin-top: 15px; font-weight: 600; display: flex; gap: 15px; justify-content: center; }
@@ -369,7 +369,7 @@
                 <div class="welcome-container">
                     <div class="welcome-box">
                         <div class="animation-wrapper">
-                          <img src="PCCC.JPG.gif" alt="Phòng cháy chữa cháy animation" class="pccc-animation">
+                            <img src="PCCC.JPG.gif" alt="Phòng cháy chữa cháy animation" class="pccc-animation">
                         </div>
                         <div class="welcome-title-updated">HỆ THỐNG QUẢN LÝ DỰ ÁN M&E</div>
                         <div class="welcome-subtitle-updated">
