@@ -126,6 +126,29 @@
         .group-title-input:focus { border-bottom: 1px solid #04AA6D !important; background: white !important; }
         .dynamic-col-cell { background-color: #fefce8; } /* Làm nổi bật cột tự thêm */
 
+        /* NÚT THÊM CỘT TẠI CHỖ (INLINE) */
+        .btn-add-col-inline {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(255,255,255,0.25);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 4px;
+            margin-left: 6px;
+            cursor: pointer;
+            width: 20px;
+            height: 20px;
+            font-size: 15px;
+            font-weight: bold;
+            line-height: 1;
+            transition: all 0.2s;
+            padding: 0;
+            vertical-align: middle;
+        }
+        .btn-add-col-inline:hover { background-color: #fff; color: #04AA6D; }
+        .btn-add-col-inline.btn-del-col:hover { color: #ef4444; }
+
         /* CSS TÍNH NĂNG NGHỈ VIỆC */
         .resigned-row { background-color: #f1f5f9 !important; opacity: 0.6; }
         .resigned-row .cell-input { text-decoration: line-through; color: #94a3b8; }
@@ -133,13 +156,13 @@
 
         /* TRẠNG THÁI KHÓA DỮ LIỆU */
         .locked-view .cell-input { pointer-events: none; background-color: transparent !important; border: none;}
-        .locked-view .col-action, .locked-view .btn-action-main, .locked-view .action-buttons-container { display: none !important; }
+        .locked-view .col-action, .locked-view .btn-action-main, .locked-view .action-buttons-container, .locked-view .btn-add-col-inline { display: none !important; }
         .locked-view .cell-input[placeholder]:empty:before { content: ''; }
         .locked-view .prj-name { pointer-events: auto !important; }
         .locked-view .btn-toggle-group { display: inline-block !important; pointer-events: auto !important; }
 
         /* KHI XUẤT PDF */
-        .exporting-pdf .col-action, .exporting-pdf .btn-action-main, .exporting-pdf .action-buttons-container { display: none !important; }
+        .exporting-pdf .col-action, .exporting-pdf .btn-action-main, .exporting-pdf .action-buttons-container, .exporting-pdf .btn-add-col-inline { display: none !important; }
         .exporting-pdf .cell-input[placeholder]:empty:before { content: ''; }
         .exporting-pdf .dept-row td { border: 1px solid #ddd; }
         .exporting-pdf table { border: 1px solid #000; }
@@ -418,9 +441,12 @@
                     <table id="progressTable">
                         <thead>
                             <tr>
-                                <th style="width: 40px;">STT</th><th style="width: 200px;">NHÂN VIÊN</th>
-                                <th>CÔNG VIỆC</th><th style="width: 140px;">THỜI GIAN</th>
-                                <th style="width: 90px;">% TIẾN ĐỘ</th><th style="width: 180px;">GHI CHÚ</th>
+                                <th style="width: 40px;">STT</th>
+                                <th style="width: 200px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">NHÂN VIÊN <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab1', 'progressTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th><div style="display:flex; justify-content:center; align-items:center; gap:4px;">CÔNG VIỆC <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab1', 'progressTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 140px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">THỜI GIAN <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab1', 'progressTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 90px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">% TIẾN ĐỘ <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab1', 'progressTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 180px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">GHI CHÚ <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab1', 'progressTable')" title="Thêm cột bên phải">+</button></div></th>
                                 <th style="width: 110px;" class="col-action">THAO TÁC</th>
                             </tr>
                         </thead>
@@ -430,8 +456,7 @@
                     
                     <div class="action-buttons-container">
                         <button class="btn-add-row" onclick="addEmployeeRow('tbody-kinhdoanh')">+ THÊM NHÂN VIÊN</button>
-                        <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('progressTable', 'tbody-kinhdoanh', 'tab1')">+ THÊM NHÓM MỚI</button>
-                        <button class="btn-add-row" style="background-color: #0ea5e9;" onclick="addColumn('progressTable', 'tab1')">+ THÊM CỘT</button>
+                        <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('progressTable', 'tbody-kinhdoanh', 'tab1')">+ THÊM NHÓM (GROUP)</button>
                     </div>
                 </div>
             </div>
@@ -453,11 +478,11 @@
                         <thead>
                             <tr>
                                 <th style="width: 40px;">STT</th>
-                                <th>TÊN DỰ ÁN</th>
-                                <th style="width: 160px;">THỜI GIAN NHẬN</th>
-                                <th style="width: 160px;">THỜI GIAN NỘP</th>
-                                <th style="width: 200px;">LINK HỒ SƠ</th>
-                                <th style="width: 200px;">GHI CHÚ</th>
+                                <th><div style="display:flex; justify-content:center; align-items:center; gap:4px;">TÊN DỰ ÁN <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab2', 'projectListTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 160px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">THỜI GIAN NHẬN <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab2', 'projectListTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 160px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">THỜI GIAN NỘP <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab2', 'projectListTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 200px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">LINK HỒ SƠ <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab2', 'projectListTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 200px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">GHI CHÚ <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab2', 'projectListTable')" title="Thêm cột bên phải">+</button></div></th>
                                 <th style="width: 100px;" class="col-action">THAO TÁC</th>
                             </tr>
                         </thead>
@@ -467,8 +492,7 @@
                     <div class="action-buttons-container">
                         <button class="btn-add-row" onclick="addProjectRowTab2()">+ THÊM DỰ ÁN</button>
                         <button class="btn-add-row" style="background-color: #f59e0b;" onclick="addYearRow('tbody-project-list')">+ THÊM NĂM (ĐẦU MỤC)</button>
-                        <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('projectListTable', 'tbody-project-list', 'tab2')">+ THÊM NHÓM</button>
-                        <button class="btn-add-row" style="background-color: #0ea5e9;" onclick="addColumn('projectListTable', 'tab2')">+ THÊM CỘT</button>
+                        <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('projectListTable', 'tbody-project-list', 'tab2')">+ THÊM NHÓM (GROUP)</button>
                     </div>
                 </div>
             </div>
@@ -491,10 +515,10 @@
                         <thead>
                             <tr>
                                 <th style="width: 40px;">STT</th>
-                                <th>TÊN DỰ ÁN</th>
-                                <th style="width: 120px;">BẮT ĐẦU</th>
-                                <th style="width: 120px;">KẾT THÚC</th>
-                                <th style="width: 120px;">TIẾN ĐỘ TỔNG</th>
+                                <th><div style="display:flex; justify-content:center; align-items:center; gap:4px;">TÊN DỰ ÁN <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab3', 'biddingTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 120px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">BẮT ĐẦU <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab3', 'biddingTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 120px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">KẾT THÚC <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab3', 'biddingTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 120px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">TIẾN ĐỘ TỔNG <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab3', 'biddingTable')" title="Thêm cột bên phải">+</button></div></th>
                                 <th style="width: 80px;" class="col-action">THAO TÁC</th>
                             </tr>
                         </thead>
@@ -503,8 +527,7 @@
                     
                     <div class="action-buttons-container">
                         <button class="btn-add-row" onclick="addBiddingRow()">+ THÊM DỰ ÁN ĐẤU THẦU</button>
-                        <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('biddingTable', 'tbody-bidding', 'tab3')">+ THÊM NHÓM</button>
-                        <button class="btn-add-row" style="background-color: #0ea5e9;" onclick="addColumn('biddingTable', 'tab3')">+ THÊM CỘT</button>
+                        <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('biddingTable', 'tbody-bidding', 'tab3')">+ THÊM NHÓM (GROUP)</button>
                     </div>
                 </div>
             </div>
@@ -528,12 +551,12 @@
                         <thead>
                             <tr>
                                 <th style="width: 40px;">STT</th>
-                                <th>TÊN DỰ ÁN</th>
-                                <th style="width: 150px;">ĐƠN GIÁ NET</th>
-                                <th style="width: 150px;">GIÁ TRỊ NỘP THẦU</th>
-                                <th style="width: 150px;">LỢI NHUẬN</th>
-                                <th style="width: 100px;">% LỢI NHUẬN</th>
-                                <th style="width: 180px;">GHI CHÚ</th>
+                                <th><div style="display:flex; justify-content:center; align-items:center; gap:4px;">TÊN DỰ ÁN <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab5', 'projectValueTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 150px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">ĐƠN GIÁ NET <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab5', 'projectValueTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 150px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">GIÁ TRỊ NỘP THẦU <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab5', 'projectValueTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 150px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">LỢI NHUẬN <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab5', 'projectValueTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 100px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">% LỢI NHUẬN <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab5', 'projectValueTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 180px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">GHI CHÚ <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab5', 'projectValueTable')" title="Thêm cột bên phải">+</button></div></th>
                                 <th style="width: 80px;" class="col-action">THAO TÁC</th>
                             </tr>
                             <tr class="total-row">
@@ -551,8 +574,7 @@
                     
                     <div class="action-buttons-container">
                         <button class="btn-add-row" onclick="addProjectRow()">+ THÊM DỰ ÁN</button>
-                        <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('projectValueTable', 'tbody-project-value', 'tab5')">+ THÊM NHÓM</button>
-                        <button class="btn-add-row" style="background-color: #0ea5e9;" onclick="addColumn('projectValueTable', 'tab5')">+ THÊM CỘT</button>
+                        <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('projectValueTable', 'tbody-project-value', 'tab5')">+ THÊM NHÓM (GROUP)</button>
                     </div>
                 </div>
             </div>
@@ -574,15 +596,15 @@
                         <thead>
                             <tr>
                                 <th style="width: 40px;">STT</th>
-                                <th style="width: 120px;">CHỨC VỤ</th>
-                                <th style="width: 160px;">TÊN NHÂN VIÊN</th>
-                                <th style="width: 110px;">NGÀY SINH</th>
-                                <th style="width: 120px;">SỐ ĐIỆN THOẠI</th>
-                                <th style="width: 160px;">ĐỊA CHỈ MAIL</th>
-                                <th>ĐỊA CHỈ</th>
-                                <th style="width: 120px;">NGÀY NHẬN VIỆC</th>
-                                <th style="width: 120px;">LOẠI HĐ</th>
-                                <th style="width: 120px;">NGÀY KẾT THÚC</th>
+                                <th style="width: 120px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">CHỨC VỤ <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab6', 'personnelTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 160px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">TÊN NHÂN VIÊN <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab6', 'personnelTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 110px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">NGÀY SINH <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab6', 'personnelTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 120px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">SỐ ĐIỆN THOẠI <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab6', 'personnelTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 160px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">ĐỊA CHỈ MAIL <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab6', 'personnelTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th><div style="display:flex; justify-content:center; align-items:center; gap:4px;">ĐỊA CHỈ <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab6', 'personnelTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 120px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">NGÀY NHẬN VIỆC <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab6', 'personnelTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 120px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">LOẠI HĐ <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab6', 'personnelTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 120px;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">NGÀY KẾT THÚC <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab6', 'personnelTable')" title="Thêm cột bên phải">+</button></div></th>
                                 <th style="width: 70px;">NGHỈ VIỆC</th>
                                 <th style="width: 80px;" class="col-action">THAO TÁC</th>
                             </tr>
@@ -592,8 +614,7 @@
                     
                     <div class="action-buttons-container">
                         <button class="btn-add-row" onclick="addPersonnelRow()">+ THÊM NHÂN SỰ</button>
-                        <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('personnelTable', 'tbody-personnel', 'tab6')">+ THÊM NHÓM</button>
-                        <button class="btn-add-row" style="background-color: #0ea5e9;" onclick="addColumn('personnelTable', 'tab6')">+ THÊM CỘT</button>
+                        <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('personnelTable', 'tbody-personnel', 'tab6')">+ THÊM NHÓM (GROUP)</button>
                     </div>
                 </div>
             </div>
@@ -616,19 +637,19 @@
                         <thead>
                             <tr>
                                 <th rowspan="2" style="width: 40px; vertical-align: middle;">STT</th>
-                                <th rowspan="2" style="vertical-align: middle;">MÔ TẢ HẠNG MỤC</th>
-                                <th rowspan="2" style="width: 80px; vertical-align: middle;">ĐƠN VỊ</th>
-                                <th rowspan="2" style="width: 120px; vertical-align: middle;">KHỐI LƯỢNG</th>
-                                <th colspan="2" style="background-color: #04AA6D;">ĐƠN GIÁ</th>
-                                <th colspan="2" style="background-color: #04AA6D;">THÀNH TIỀN</th>
-                                <th rowspan="2" style="width: 180px; vertical-align: middle;">GHI CHÚ</th>
+                                <th rowspan="2" style="vertical-align: middle;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">MÔ TẢ HẠNG MỤC <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab7', 'volumeTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th rowspan="2" style="width: 80px; vertical-align: middle;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">ĐƠN VỊ <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab7', 'volumeTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th rowspan="2" style="width: 120px; vertical-align: middle;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">KHỐI LƯỢNG <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab7', 'volumeTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th colspan="2" style="background-color: #04AA6D;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">ĐƠN GIÁ <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab7', 'volumeTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th colspan="2" style="background-color: #04AA6D;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">THÀNH TIỀN <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab7', 'volumeTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th rowspan="2" style="width: 180px; vertical-align: middle;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">GHI CHÚ <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab7', 'volumeTable')" title="Thêm cột bên phải">+</button></div></th>
                                 <th rowspan="2" style="width: 80px; vertical-align: middle;" class="col-action">THAO TÁC</th>
                             </tr>
                             <tr>
-                                <th style="width: 120px; font-size: 13px; background-color: #038a59;">VẬT TƯ</th>
-                                <th style="width: 120px; font-size: 13px; background-color: #038a59;">NHÂN CÔNG</th>
-                                <th style="width: 130px; font-size: 13px; background-color: #038a59;">VẬT TƯ</th>
-                                <th style="width: 130px; font-size: 13px; background-color: #038a59;">NHÂN CÔNG</th>
+                                <th style="width: 120px; font-size: 13px; background-color: #038a59;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">VẬT TƯ <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab7', 'volumeTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 120px; font-size: 13px; background-color: #038a59;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">NHÂN CÔNG <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab7', 'volumeTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 130px; font-size: 13px; background-color: #038a59;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">VẬT TƯ <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab7', 'volumeTable')" title="Thêm cột bên phải">+</button></div></th>
+                                <th style="width: 130px; font-size: 13px; background-color: #038a59;"><div style="display:flex; justify-content:center; align-items:center; gap:4px;">NHÂN CÔNG <button class="btn-add-col-inline" onclick="insertColAfter(this, 'tab7', 'volumeTable')" title="Thêm cột bên phải">+</button></div></th>
                             </tr>
                         </thead>
                         <tbody id="tbody-volume"></tbody>
@@ -636,8 +657,7 @@
                     
                     <div class="action-buttons-container">
                         <button class="btn-add-row" onclick="addVolumeRow()">+ THÊM HẠNG MỤC</button>
-                        <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('volumeTable', 'tbody-volume', 'tab7')">+ THÊM NHÓM</button>
-                        <button class="btn-add-row" style="background-color: #0ea5e9;" onclick="addColumn('volumeTable', 'tab7')">+ THÊM CỘT</button>
+                        <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('volumeTable', 'tbody-volume', 'tab7')">+ THÊM NHÓM (GROUP)</button>
                     </div>
                 </div>
             </div>
@@ -770,69 +790,165 @@
         }
 
         /* ========================================================================= */
-        /* TÍNH NĂNG NHÓM (GROUP) VÀ THÊM CỘT ĐỘNG CHO MỌI BẢNG                      */
+        /* TÍNH NĂNG NHÓM (GROUP) VÀ THÊM/XÓA CỘT ĐỘNG CHUYÊN SÂU                  */
         /* ========================================================================= */
         
-        function syncExtraColumns(tr, tableId) {
-            const table = document.getElementById(tableId);
-            const thead = table.querySelector('thead');
-            const extraThs = thead.rows[0].querySelectorAll('.dynamic-col');
-            const actionTd = tr.querySelector('.col-action');
+        // Tính toán đúng vị trí cột tuyệt đối (dùng cho cả Header lồng nhau)
+        function getAbsoluteColIndex(th) {
+            let row = th.parentElement;
+            let thead = row.parentElement;
+            let grid = [];
+            let targetCol = -1;
             
-            extraThs.forEach(() => {
-                const td = document.createElement('td');
-                td.className = 'dynamic-col-cell';
-                td.innerHTML = `<div contenteditable="true" class="cell-input" placeholder="..."></div>`;
-                if(actionTd) tr.insertBefore(td, actionTd);
-                else tr.appendChild(td);
-            });
+            for (let r = 0; r < thead.rows.length; r++) {
+                let currRow = thead.rows[r];
+                let colIdx = 0;
+                for (let c = 0; c < currRow.cells.length; c++) {
+                    let cell = currRow.cells[c];
+                    while (grid[r] && grid[r][colIdx]) colIdx++; // Tìm ô trống
+                    for (let rs = 0; rs < (cell.rowSpan || 1); rs++) {
+                        for (let cs = 0; cs < (cell.colSpan || 1); cs++) {
+                            if (!grid[r + rs]) grid[r + rs] = [];
+                            grid[r + rs][colIdx + cs] = cell;
+                        }
+                    }
+                    if (cell === th) targetCol = colIdx + (cell.colSpan || 1) - 1;
+                    colIdx += (cell.colSpan || 1);
+                }
+            }
+            return targetCol + 1; 
         }
 
-        function addColumn(tableId, tabId) {
+        // Chèn Cột
+        function insertColAfter(btn, tabId, tableId) {
             if (isLockedTab(tabId)) return;
+            const th = btn.closest('th');
+            const tr = th.parentElement;
+            const thead = tr.parentElement;
             const table = document.getElementById(tableId);
-            const thead = table.querySelector('thead');
-            const firstHeaderRow = thead.rows[0];
             
-            const th = document.createElement('th');
-            th.className = 'dynamic-col';
-            if (thead.rows.length > 1) th.rowSpan = thead.rows.length; // Khớp với các bảng có header phức tạp
-            th.innerHTML = `<div contenteditable="true" class="cell-input" style="color:white; font-weight:bold; text-align:center;" placeholder="TÊN CỘT MỚI"></div>`;
-            
-            const actionTh = firstHeaderRow.querySelector('.col-action');
-            if (actionTh) firstHeaderRow.insertBefore(th, actionTh);
-            else firstHeaderRow.appendChild(th);
+            let insertIndex = getAbsoluteColIndex(th);
 
-            // Bổ sung thẻ <td> vào các dòng đang có
+            // 1. Chèn vào thead
+            const newTh = document.createElement('th');
+            newTh.className = 'dynamic-col';
+            newTh.rowSpan = thead.rows.length - tr.sectionRowIndex; // Kéo dài cột phủ kín phần thead còn lại
+            newTh.innerHTML = `
+                <div style="display:flex; justify-content:center; align-items:center; gap:5px;">
+                    <div contenteditable="true" class="cell-input" style="color:white; font-weight:bold; min-width:50px; text-align:center; padding:2px;" placeholder="TÊN CỘT"></div>
+                    <button class="btn-add-col-inline btn-del-col" style="background:#ef4444; border-color:#b91c1c;" onclick="deleteCol(this, '${tabId}', '${tableId}')" title="Xóa cột này">x</button>
+                    <button class="btn-add-col-inline" onclick="insertColAfter(this, '${tabId}', '${tableId}')" title="Thêm cột bên phải">+</button>
+                </div>
+            `;
+            
+            if (th.nextElementSibling) {
+                tr.insertBefore(newTh, th.nextElementSibling);
+            } else {
+                tr.appendChild(newTh);
+            }
+
+            // 2. Chèn vào tbody
             const tbodies = table.querySelectorAll('tbody');
             tbodies.forEach(tbody => {
                 Array.from(tbody.rows).forEach(row => {
                     if (row.classList.contains('group-row') || row.classList.contains('dept-row') || row.classList.contains('year-row')) {
-                        let td = row.cells[0];
-                        td.colSpan = (td.colSpan || 1) + 1;
+                        let firstCell = row.cells[0];
+                        firstCell.colSpan = (firstCell.colSpan || 1) + 1;
                     } else if (row.classList.contains('total-row')) {
-                        const td = document.createElement('td');
-                        const actionTd = row.querySelector('.col-action');
-                        if (actionTd) row.insertBefore(td, actionTd);
-                        else row.appendChild(td);
+                        const newTd = document.createElement('td');
+                        let currentCols = 0; let inserted = false;
+                        for(let c = 0; c < row.cells.length; c++) {
+                            currentCols += row.cells[c].colSpan;
+                            if (currentCols >= insertIndex) {
+                                row.insertBefore(newTd, row.cells[c].nextElementSibling);
+                                inserted = true; break;
+                            }
+                        }
+                        if(!inserted) row.appendChild(newTd);
                     } else {
-                        const td = document.createElement('td');
-                        td.className = 'dynamic-col-cell';
-                        td.innerHTML = `<div contenteditable="true" class="cell-input" placeholder="..."></div>`;
-                        const actionTd = row.querySelector('.col-action');
-                        if (actionTd) row.insertBefore(td, actionTd);
-                        else row.appendChild(td);
+                        const newTd = document.createElement('td');
+                        newTd.className = 'dynamic-col-cell';
+                        newTd.innerHTML = `<div contenteditable="true" class="cell-input" placeholder="..."></div>`;
+                        if (insertIndex < row.cells.length) {
+                            row.insertBefore(newTd, row.cells[insertIndex]);
+                        } else {
+                            row.appendChild(newTd);
+                        }
                     }
                 });
             });
+
             triggerSave(tabId);
         }
 
+        // Xóa Cột
+        function deleteCol(btn, tabId, tableId) {
+            if (isLockedTab(tabId)) return;
+            if(!confirm('⚠️ Xóa cột này sẽ mất toàn bộ dữ liệu bên dưới cột. Bạn có chắc chắn không?')) return;
+            
+            const th = btn.closest('th');
+            const colIndex = getAbsoluteColIndex(th) - (th.colSpan || 1); // Lấy index gốc của chính nó
+            const table = document.getElementById(tableId);
+            
+            // Xóa ở Thead
+            th.remove();
+            
+            // Xóa ở Tbody
+            const tbodies = table.querySelectorAll('tbody');
+            tbodies.forEach(tbody => {
+                Array.from(tbody.rows).forEach(row => {
+                    if (row.classList.contains('group-row') || row.classList.contains('dept-row') || row.classList.contains('year-row')) {
+                        let firstCell = row.cells[0];
+                        firstCell.colSpan = Math.max(1, (firstCell.colSpan || 1) - 1);
+                    } else if (row.classList.contains('total-row')) {
+                        let currentCols = 0;
+                        for(let c = 0; c < row.cells.length; c++) {
+                            currentCols += row.cells[c].colSpan;
+                            if (currentCols > colIndex) {
+                                row.cells[c].remove(); break;
+                            }
+                        }
+                    } else {
+                        if(row.cells[colIndex]) {
+                            row.cells[colIndex].remove();
+                        }
+                    }
+                });
+            });
+
+            triggerSave(tabId);
+        }
+
+        // Tự động chèn lại các cột phụ cho Dòng Mới khi ấn Thêm Dòng
+        function syncRowColumns(newRow, tableId) {
+            let table = document.getElementById(tableId);
+            let dynamicThs = table.querySelectorAll('thead .dynamic-col');
+            if(dynamicThs.length === 0) return;
+
+            let dynamicIndices = Array.from(dynamicThs).map(th => {
+                return getAbsoluteColIndex(th) - (th.colSpan || 1);
+            }).sort((a,b) => a - b);
+            
+            dynamicIndices.forEach(index => {
+                const newTd = document.createElement('td');
+                newTd.className = 'dynamic-col-cell';
+                newTd.innerHTML = `<div contenteditable="true" class="cell-input" placeholder="..."></div>`;
+                
+                if (index < newRow.cells.length) {
+                    newRow.insertBefore(newTd, newRow.cells[index]);
+                } else {
+                    newRow.appendChild(newTd);
+                }
+            });
+        }
+
+        // Thêm nhóm (Group row)
         function addGroupRow(tableId, tbodyId, tabId) {
             if (isLockedTab(tabId)) return;
             const table = document.getElementById(tableId);
             const tbody = document.getElementById(tbodyId) || table.querySelector('tbody');
             
+            // Tính tổng số cột hiện tại của bảng để gộp colspan cho chuẩn
             let colCount = 0;
             Array.from(table.querySelector('thead').rows[0].cells).forEach(cell => { colCount += cell.colSpan || 1; });
 
@@ -899,14 +1015,14 @@
             if(isTab1Locked) return; 
             const tr = document.createElement('tr'); tr.className = 'emp-row'; 
             tr.innerHTML = `<td class="stt-cell" style="text-align:center;"></td><td><div contenteditable="true" class="cell-input" placeholder="Tên NV..."></div></td><td><div contenteditable="true" class="cell-input" placeholder="Công việc 1..."></div></td><td><div contenteditable="true" class="cell-input" placeholder="T/Gian"></div></td><td><div contenteditable="true" class="cell-input" style="text-align:center;" placeholder="0%"></div></td><td><div contenteditable="true" class="cell-input" placeholder="Ghi chú"></div></td><td class="col-action"><button class="btn-add-task" onclick="addTaskRow(this)">+ Việc</button> <button class="btn-delete" onclick="deleteRow(this, '${tbodyId}', 'tab1')">Xóa</button></td>`; 
-            syncExtraColumns(tr, 'progressTable');
+            syncRowColumns(tr, 'progressTable');
             document.getElementById(tbodyId).appendChild(tr); updateRowNumbers(tbodyId); saveTab1Data(); 
         }
         function addTaskRow(btn) { 
             if(isTab1Locked) return; 
             const tr = document.createElement('tr'); tr.className = 'task-row'; 
             tr.innerHTML = `<td></td><td></td><td><div contenteditable="true" class="cell-input" placeholder="Việc tiếp theo..."></div></td><td><div contenteditable="true" class="cell-input" placeholder="T/gian"></div></td><td><div contenteditable="true" class="cell-input" style="text-align:center;" placeholder="0%"></div></td><td><div contenteditable="true" class="cell-input" placeholder="Ghi chú"></div></td><td class="col-action"><button class="btn-delete" onclick="deleteRow(this, null, 'tab1')">Xóa</button></td>`; 
-            syncExtraColumns(tr, 'progressTable');
+            syncRowColumns(tr, 'progressTable');
             btn.closest('tr').after(tr); saveTab1Data(); 
         }
 
@@ -937,7 +1053,6 @@
             if(isTab2Locked) return; 
             const tr = document.createElement('tr'); tr.className = 'year-row dept-row'; 
             tr.innerHTML = `<td colspan="6"><div contenteditable="true" class="cell-input" style="font-size: 15px; text-transform: uppercase;" placeholder="NHẬP NĂM HOẶC GIAI ĐOẠN..."></div></td><td class="col-action" style="text-align:center;"><button class="btn-add-task" onclick="addProjectUnderYear(this)">+ Dự án</button> <button class="btn-delete" onclick="deleteRow(this, '${tbodyId}', 'tab2')">Xóa</button></td>`; 
-            // Fix colspan for Year Row based on current max cols
             let colCount = 0; Array.from(document.getElementById('projectListTable').querySelector('thead').rows[0].cells).forEach(c => colCount += c.colSpan||1);
             tr.cells[0].colSpan = colCount - 1;
             
@@ -947,7 +1062,7 @@
             if(isTab2Locked) return; 
             const tr = document.createElement('tr'); tr.className = 'project-list-row'; 
             tr.innerHTML = `<td class="stt-cell" style="text-align:center;"></td><td><div contenteditable="true" class="cell-input" placeholder="Tên dự án..."></div></td><td><div contenteditable="true" class="cell-input" style="text-align:center;" placeholder="dd/mm/yyyy"></div></td><td><div contenteditable="true" class="cell-input" style="text-align:center;" placeholder="dd/mm/yyyy"></div></td><td><div contenteditable="true" class="cell-input" placeholder="Dán link vào đây..."></div></td><td><div contenteditable="true" class="cell-input" placeholder="Ghi chú..."></div></td><td class="col-action" style="text-align:center;"><button class="btn-delete" onclick="deleteRow(this, 'tbody-project-list', 'tab2')">Xóa</button></td>`; 
-            syncExtraColumns(tr, 'projectListTable');
+            syncRowColumns(tr, 'projectListTable');
             let nextRow = btn.closest('tr').nextElementSibling; while(nextRow && nextRow.classList.contains('project-list-row')) { nextRow = nextRow.nextElementSibling; } 
             if (nextRow) btn.closest('tbody').insertBefore(tr, nextRow); else btn.closest('tbody').appendChild(tr); 
             updateRowNumbers('tbody-project-list'); saveTab2Data(); 
@@ -956,7 +1071,7 @@
             if(isTab2Locked) return; 
             const tr = document.createElement('tr'); tr.className = 'project-list-row'; 
             tr.innerHTML = `<td class="stt-cell" style="text-align:center;"></td><td><div contenteditable="true" class="cell-input" placeholder="Tên dự án..."></div></td><td><div contenteditable="true" class="cell-input" style="text-align:center;" placeholder="dd/mm/yyyy"></div></td><td><div contenteditable="true" class="cell-input" style="text-align:center;" placeholder="dd/mm/yyyy"></div></td><td><div contenteditable="true" class="cell-input" placeholder="Dán link vào đây..."></div></td><td><div contenteditable="true" class="cell-input" placeholder="Ghi chú..."></div></td><td class="col-action" style="text-align:center;"><button class="btn-delete" onclick="deleteRow(this, 'tbody-project-list', 'tab2')">Xóa</button></td>`; 
-            syncExtraColumns(tr, 'projectListTable');
+            syncRowColumns(tr, 'projectListTable');
             document.getElementById('tbody-project-list').appendChild(tr);
             updateRowNumbers('tbody-project-list'); saveTab2Data(); 
         }
@@ -991,7 +1106,7 @@
             if(isTab5Locked) return; 
             const tr = document.createElement('tr'); tr.className = 'proj-row'; 
             tr.innerHTML = `<td class="stt-cell" style="text-align:center;"></td><td><div contenteditable="true" class="cell-input" placeholder="Nhập tên dự án..."></div></td><td><div contenteditable="true" class="cell-input col-calc col-net" style="text-align:right;" placeholder="0"></div></td><td><div contenteditable="true" class="cell-input col-calc col-bid" style="text-align:right;" placeholder="0"></div></td><td><div class="cell-input cell-readonly col-profit" style="text-align:right;">0</div></td><td><div class="cell-input cell-readonly col-percent" style="text-align:center;">0%</div></td><td><div contenteditable="true" class="cell-input" placeholder="Ghi chú..."></div></td><td class="col-action" style="text-align:center;"><button class="btn-delete" onclick="deleteRow(this, 'tbody-project-value', 'tab5')">Xóa</button></td>`; 
-            syncExtraColumns(tr, 'projectValueTable');
+            syncRowColumns(tr, 'projectValueTable');
             document.getElementById('tbody-project-value').appendChild(tr); updateRowNumbers('tbody-project-value'); saveTab5Data(); 
         }
         document.getElementById('projectValueTable').addEventListener('focusin', e => { if (e.target.classList.contains('cell-input')) isTyping = true; });
@@ -1045,7 +1160,7 @@
                 <td style="text-align:center;"><input type="checkbox" class="resign-checkbox" onchange="toggleResign(this)" title="Đánh dấu nghỉ việc"></td>
                 <td class="col-action" style="text-align:center;"><button class="btn-delete" onclick="deleteRow(this, 'tbody-personnel', 'tab6')">Xóa</button></td>
             `; 
-            syncExtraColumns(tr, 'personnelTable');
+            syncRowColumns(tr, 'personnelTable');
             let firstResigned = document.querySelector('#tbody-personnel .resigned-row');
             if(firstResigned) document.getElementById('tbody-personnel').insertBefore(tr, firstResigned);
             else document.getElementById('tbody-personnel').appendChild(tr); 
@@ -1107,7 +1222,7 @@
                 <td><div contenteditable="true" class="cell-input" placeholder="Ghi chú..."></div></td>
                 <td class="col-action" style="text-align:center;"><button class="btn-delete" onclick="deleteRow(this, 'tbody-volume', 'tab7')">Xóa</button></td>
             `;
-            syncExtraColumns(tr, 'volumeTable');
+            syncRowColumns(tr, 'volumeTable');
             document.getElementById('tbody-volume').appendChild(tr);
             updateRowNumbers('tbody-volume');
             saveTab7Data();
@@ -1240,7 +1355,7 @@
                 <td class="col-action" style="text-align:center;"><button class="btn-delete" onclick="deleteRow(this, 'tbody-bidding', 'tab3')">Xóa</button></td>
                 <td style="display:none;"><textarea class="hidden-details">{}</textarea></td>
             `;
-            syncExtraColumns(tr, 'biddingTable');
+            syncRowColumns(tr, 'biddingTable');
             document.getElementById('tbody-bidding').appendChild(tr); updateRowNumbers('tbody-bidding'); saveTab3Data();
         }
 
