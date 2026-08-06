@@ -27,7 +27,7 @@
         /* KHUNG ỨNG DỤNG */
         #app-container { display: none; width: 100%; height: 100%; flex-direction: row; position: relative;}
         
-        .sidebar { width: 260px; background-color: #2c3e50; color: white; display: flex; flex-direction: column; z-index: 50; box-shadow: 2px 0 10px rgba(0,0,0,0.1);}
+        .sidebar { width: 260px; background-color: #2c3e50; color: white; display: flex; flex-direction: column; z-index: 50; box-shadow: 2px 0 10px rgba(0,0,0,0.1); flex-shrink: 0;}
         .logo-box { text-align: center; padding: 15px; background-color: #ffffff; border-bottom: 2px solid #04AA6D; }
         .menu-btn { padding: 18px 20px; background: none; color: #b8c7ce; border: none; text-align: left; font-size: 15px; cursor: pointer; transition: 0.3s; border-left: 5px solid transparent; border-bottom: 1px solid #34495e; width: 100%; box-sizing: border-box; font-weight: 600;}
         .menu-btn:hover, .menu-btn.active { background-color: #34495e; color: white; padding-left: 30px; }
@@ -40,11 +40,8 @@
         .tab-content { display: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1; overflow-y: auto;}
         .tab-content.active { display: block; }
 
-        /* ========================================================================= */
-        /* TRANG CHỦ MỚI (HIỆU ỨNG CINEMATIC LÍNH CỨU HỎA)                           */
-        /* ========================================================================= */
+        /* TRANG CHỦ MỚI (HIỆU ỨNG CINEMATIC LÍNH CỨU HỎA) */
         #tab-home { padding: 0; overflow: hidden; position: relative; border-radius: 8px; border: none; }
-        
         .bg-animation {
             position: absolute; top: -5%; left: -5%; width: 110%; height: 110%;
             background: url('https://images.unsplash.com/photo-1605814589252-70b9ce4f3a14?q=80&w=2070&auto=format&fit=crop') center/cover no-repeat;
@@ -57,9 +54,7 @@
             z-index: 1;
         }
         @keyframes kenBurns { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }
-        
         .welcome-container { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; }
-        
         .welcome-box {
             background: rgba(255, 255, 255, 0.05); 
             backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -70,15 +65,12 @@
             max-width: 80%;
         }
         @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
-        
-        /* CSS CHO PHẦN HÌNH ĐỘNG VÀ VĂN BẢN NÉT ĐỀU */
         .animation-wrapper { width: 100%; max-width: 750px; height: auto; margin: 0 auto 25px; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 2px solid rgba(255, 255, 255, 0.1); }
         .pccc-animation { width: 100%; height: auto; display: block; }
         .welcome-title-updated { font-size: 32px; font-weight: 800; color: #10b981; margin-top: 0; text-transform: uppercase; letter-spacing: 1.5px; }
         .welcome-subtitle-updated { font-size: 18px; color: #f8fafc; margin-top: 10px; font-weight: 500; letter-spacing: 0.5px; }
         .welcome-categories-updated { font-size: 16px; color: #cbd5e1; margin-top: 15px; font-weight: 600; display: flex; gap: 15px; justify-content: center; }
         .welcome-desc-updated { color: #94a3b8; font-size: 14px; margin-top: 20px; font-style: italic; font-weight: 400; }
-        /* ========================================================================= */
 
         /* CHUÔNG THÔNG BÁO (NOTIFICATION) */
         #noti-container { position: absolute; top: 15px; right: 20px; z-index: 1000; }
@@ -359,6 +351,7 @@
             <button class="menu-btn" id="btn-tab4" onclick="switchTab('tab4')">4. TRIỂN KHAI DỰ ÁN</button>
             <button class="menu-btn" id="btn-tab5" onclick="switchTab('tab5')">5. THỐNG KÊ GIÁ TRỊ DỰ ÁN</button>
             <button class="menu-btn" id="btn-tab6" onclick="switchTab('tab6')">6. DANH SÁCH NHÂN SỰ</button>
+            <button class="menu-btn" id="btn-tab7" onclick="switchTab('tab7')">7. THEO DÕI KHỐI LƯỢNG</button>
             
             <div class="user-info-panel">
                 👤 <span id="current-user-email">Đang tải...</span><br>
@@ -571,6 +564,45 @@
                 </div>
             </div>
 
+            <!-- TAB 7 MỚI: THEO DÕI KHỐI LƯỢNG -->
+            <div id="tab7" class="tab-content">
+                <div class="time-filter-bar" style="justify-content: flex-end;">
+                    <div class="action-group">
+                        <span id="sync-status7" class="sync-status offline">🔴 Chờ mạng...</span>
+                        <button class="btn-admin-lock" id="btnAdminLock7" onclick="toggleLock('tab7')">BẬT KHÓA DỮ LIỆU</button>
+                        <button class="btn-export" onclick="exportPDF('export-area7', 'Theo_Doi_Khoi_Luong')">🖨️ Xuất PDF</button>
+                    </div>
+                </div>
+
+                <div id="export-area7" class="export-area">
+                    <div class="report-header centered" id="pdf-title7">BẢNG THEO DÕI KHỐI LƯỢNG VÀ ĐƠN GIÁ</div>
+                    <div id="lock-warning7" style="color:red; font-weight:bold; display:none; margin-bottom: 10px; text-align:center;">⚠️ DỮ LIỆU ĐÃ BỊ ADMIN KHÓA. KHÔNG THỂ CHỈNH SỬA!</div>
+                    
+                    <table id="volumeTable">
+                        <thead>
+                            <tr>
+                                <th rowspan="2" style="width: 40px; vertical-align: middle;">STT</th>
+                                <th rowspan="2" style="vertical-align: middle;">MÔ TẢ HẠNG MỤC</th>
+                                <th rowspan="2" style="width: 80px; vertical-align: middle;">ĐƠN VỊ</th>
+                                <th rowspan="2" style="width: 120px; vertical-align: middle;">KHỐI LƯỢNG</th>
+                                <th colspan="2" style="background-color: #04AA6D;">ĐƠN GIÁ</th>
+                                <th colspan="2" style="background-color: #04AA6D;">THÀNH TIỀN</th>
+                                <th rowspan="2" style="width: 180px; vertical-align: middle;">GHI CHÚ</th>
+                                <th rowspan="2" style="width: 80px; vertical-align: middle;" class="col-action">THAO TÁC</th>
+                            </tr>
+                            <tr>
+                                <th style="width: 120px; font-size: 13px; background-color: #038a59;">VẬT TƯ</th>
+                                <th style="width: 120px; font-size: 13px; background-color: #038a59;">NHÂN CÔNG</th>
+                                <th style="width: 130px; font-size: 13px; background-color: #038a59;">VẬT TƯ</th>
+                                <th style="width: 130px; font-size: 13px; background-color: #038a59;">NHÂN CÔNG</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-volume"></tbody>
+                    </table>
+                    <button class="btn-add-row col-action" style="padding: 8px 15px; margin-top: 5px;" onclick="addVolumeRow()">+ THÊM HẠNG MỤC</button>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -599,7 +631,7 @@
 
         // --- BIẾN TOÀN CỤC ---
         const ADMIN_EMAIL = "lamtd9798@gmail.com";
-        let isTab1Locked = false, isTab2Locked = false, isTab3Locked = false, isTab5Locked = false, isTab6Locked = false;
+        let isTab1Locked = false, isTab2Locked = false, isTab3Locked = false, isTab5Locked = false, isTab6Locked = false, isTab7Locked = false;
         let currentWeekKey = 'y2026_m8_w1'; 
         let isTyping = false; 
         let activeProjectRowForModal = null; 
@@ -611,14 +643,15 @@
                 document.getElementById('app-container').style.display = 'flex';
                 document.getElementById('current-user-email').innerText = user.email;
 
-                let displayStyle = (user.email === ADMIN_EMAIL) ? 'flex' : 'none';
+                let displayStyle = (user.email === ADMIN_EMAIL) ? 'inline-block' : 'none';
                 document.getElementById('btnAdminLock1').style.display = displayStyle;
                 document.getElementById('btnAdminLock2').style.display = displayStyle;
                 document.getElementById('btnAdminLock3').style.display = displayStyle;
                 document.getElementById('btnAdminLock5').style.display = displayStyle;
                 document.getElementById('btnAdminLock6').style.display = displayStyle;
+                document.getElementById('btnAdminLock7').style.display = displayStyle;
 
-                loadTab1Data(); loadTab2Data(); loadTab3Data(); loadTab5Data(); loadTab6Data();
+                loadTab1Data(); loadTab2Data(); loadTab3Data(); loadTab5Data(); loadTab6Data(); loadTab7Data();
                 listenToLockStatus(); 
                 
                 startListeningNotifications(user.email);
@@ -638,7 +671,7 @@
 
         db.ref('.info/connected').on('value', snap => {
             let txt = (snap.val() === true) ? "🟢 Đã kết nối" : "🔴 Mất mạng";
-            ['sync-status1', 'sync-status2', 'sync-status3', 'sync-status5', 'sync-status6'].forEach(id => {
+            ['sync-status1', 'sync-status2', 'sync-status3', 'sync-status5', 'sync-status6', 'sync-status7'].forEach(id => {
                 let el = document.getElementById(id);
                 if(el) { el.innerHTML = txt; el.classList.toggle('offline', snap.val() !== true); }
             });
@@ -705,8 +738,13 @@
         }
 
         /* ========================================================================= */
-        /* CÁC TAB 1, 2, 5, 6 (Giữ nguyên)                                           */
+        /* CÁC TAB 1, 2, 5, 6, 7                                                     */
         /* ========================================================================= */
+        
+        // TIỆN ÍCH CHUNG 
+        function parseNum(str) { let num = parseFloat(str.replace(/,/g, '').trim()); return isNaN(num) ? 0 : num; }
+        function formatNum(num) { return num.toLocaleString('en-US', {maximumFractionDigits: 2}); }
+
         // TAB 1
         const blankTemplate1 = { 'tbody-kinhdoanh': `<tr class="dept-row"><td colspan="6">I. PHÒNG KINH DOANH</td><td class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-kinhdoanh')">+ Thêm NV</button></td></tr>`, 'tbody-kythuat': `<tr class="dept-row"><td colspan="6">II. PHÒNG KỸ THUẬT</td><td class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-kythuat')">+ Thêm NV</button></td></tr>`, 'tbody-muahang': `<tr class="dept-row"><td colspan="6">III. PHÒNG MUA HÀNG</td><td class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-muahang')">+ Thêm NV</button></td></tr>`, 'tbody-ketoan': `<tr class="dept-row"><td colspan="6">IV. PHÒNG KẾ TOÁN</td><td class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-ketoan')">+ Thêm NV</button></td></tr>`, 'tbody-nhansu': `<tr class="dept-row"><td colspan="6">V. PHÒNG NHÂN SỰ</td><td class="col-action"><button class="btn-add-row" onclick="addEmployeeRow('tbody-nhansu')">+ Thêm NV</button></td></tr>` };
         function loadTab1Data() { db.ref('TienDoDuAn/' + currentWeekKey).on('value', snap => { if (!isTyping) { let d = snap.val() || blankTemplate1; ['tbody-kinhdoanh', 'tbody-kythuat', 'tbody-muahang', 'tbody-ketoan', 'tbody-nhansu'].forEach(id => { document.getElementById(id).innerHTML = d[id] || blankTemplate1[id]; }); if (isTab1Locked) document.getElementById('export-area1').querySelectorAll('.cell-input').forEach(el => el.contentEditable = false); } }); }
@@ -732,36 +770,14 @@
         function addProjectRow() { if(isTab5Locked) return; const tr = document.createElement('tr'); tr.className = 'proj-row'; tr.innerHTML = `<td class="stt-cell" style="text-align:center;"></td><td><div contenteditable="true" class="cell-input" placeholder="Nhập tên dự án..."></div></td><td><div contenteditable="true" class="cell-input col-calc col-net" style="text-align:right;" placeholder="0"></div></td><td><div contenteditable="true" class="cell-input col-calc col-bid" style="text-align:right;" placeholder="0"></div></td><td><div class="cell-input cell-readonly col-profit" style="text-align:right;">0</div></td><td><div class="cell-input cell-readonly col-percent" style="text-align:center;">0%</div></td><td><div contenteditable="true" class="cell-input" placeholder="Ghi chú..."></div></td><td class="col-action" style="text-align:center;"><button class="btn-delete" onclick="deleteRow(this, 'tbody-project-value', 'tab5')">Xóa</button></td>`; document.getElementById('tbody-project-value').appendChild(tr); updateRowNumbers('tbody-project-value'); saveTab5Data(); }
         document.getElementById('projectValueTable').addEventListener('focusin', e => { if (e.target.classList.contains('cell-input')) isTyping = true; });
         document.getElementById('projectValueTable').addEventListener('focusout', e => { if (e.target.classList.contains('cell-input')) { isTyping = false; if(e.target.classList.contains('col-calc')) { calculateProfit(e.target.closest('tr')); calculateTotals(); } saveTab5Data(); } });
-        function parseNum(str) { let num = parseFloat(str.replace(/,/g, '').trim()); return isNaN(num) ? 0 : num; }
-        function formatNum(num) { return num.toLocaleString('en-US'); }
         function calculateProfit(row) { let netDiv = row.querySelector('.col-net'); let bidDiv = row.querySelector('.col-bid'); let profitDiv = row.querySelector('.col-profit'); let percentDiv = row.querySelector('.col-percent'); let netVal = parseNum(netDiv.innerText); let bidVal = parseNum(bidDiv.innerText); if(netVal > 0) netDiv.innerText = formatNum(netVal); if(bidVal > 0) bidDiv.innerText = formatNum(bidVal); if(bidVal > 0 && netVal > 0) { let profit = bidVal - netVal; profitDiv.innerText = formatNum(profit); percentDiv.innerText = ((profit / bidVal) * 100).toFixed(2) + '%'; } else { profitDiv.innerText = '0'; percentDiv.innerText = '0%'; } }
         function calculateTotals() { let totalNet = 0, totalBid = 0, totalProfit = 0; document.querySelectorAll('#tbody-project-value .proj-row').forEach(row => { totalNet += parseNum(row.querySelector('.col-net').innerText); totalBid += parseNum(row.querySelector('.col-bid').innerText); totalProfit += parseNum(row.querySelector('.col-profit').innerText); }); document.getElementById('total-net').innerText = formatNum(totalNet); document.getElementById('total-bid').innerText = formatNum(totalBid); document.getElementById('total-profit').innerText = formatNum(totalProfit); document.getElementById('total-percent').innerText = (totalBid > 0) ? ((totalProfit / totalBid) * 100).toFixed(2) + '%' : '0%'; }
 
-        // TAB 6: NHÂN SỰ VÀ TÍNH NĂNG NGHỈ VIỆC
+        // TAB 6
         function loadTab6Data() { 
             db.ref('DanhSachNhanSu/data').on('value', snap => { 
                 if (!isTyping) { 
                     document.getElementById('tbody-personnel').innerHTML = snap.val() || ""; 
-                    
-                    // ĐOẠN CODE NÀY TỰ ĐỘNG VÁ LỖI CHO DỮ LIỆU CŨ TRÊN FIREBASE (CHƯA CÓ 4 CỘT MỚI)
-                    let needSave = false;
-                    document.querySelectorAll('#tbody-personnel tr').forEach(tr => {
-                        if (tr.children.length < 12) { // Nếu dòng đó thiếu cột (dòng cũ chỉ có 8 cột)
-                            let colsToAdd = `
-                                <td><div contenteditable="true" class="cell-input" style="text-align:center;" placeholder="dd/mm/yyyy"></div></td>
-                                <td><div contenteditable="true" class="cell-input" style="text-align:center;" placeholder="Loại HĐ..."></div></td>
-                                <td><div contenteditable="true" class="cell-input" style="text-align:center;" placeholder="dd/mm/yyyy"></div></td>
-                                <td style="text-align:center;"><input type="checkbox" class="resign-checkbox" onchange="toggleResign(this)" title="Đánh dấu nghỉ việc"></td>
-                            `;
-                            // Chèn 4 cột mới vào trước cột cuối cùng (cột Thao Tác)
-                            tr.lastElementChild.insertAdjacentHTML('beforebegin', colsToAdd);
-                            needSave = true;
-                        }
-                    });
-                    if(needSave && !isTab6Locked) {
-                        saveTab6Data(); // Lưu lại cấu trúc mới vá lỗi lên Firebase
-                    }
-
                     if (isTab6Locked) { 
                         document.getElementById('export-area6').querySelectorAll('.cell-input').forEach(el => el.contentEditable = false); 
                         document.getElementById('export-area6').querySelectorAll('.resign-checkbox').forEach(el => el.disabled = true); 
@@ -771,12 +787,7 @@
                 } 
             }); 
         }
-
-        function saveTab6Data() { 
-            if(isTab6Locked) return; 
-            db.ref('DanhSachNhanSu/data').set(document.getElementById('tbody-personnel').innerHTML); 
-        }
-
+        function saveTab6Data() { if(isTab6Locked) return; db.ref('DanhSachNhanSu/data').set(document.getElementById('tbody-personnel').innerHTML); }
         function addPersonnelRow() { 
             if(isTab6Locked) return; 
             const tr = document.createElement('tr'); 
@@ -795,47 +806,99 @@
                 <td style="text-align:center;"><input type="checkbox" class="resign-checkbox" onchange="toggleResign(this)" title="Đánh dấu nghỉ việc"></td>
                 <td class="col-action" style="text-align:center;"><button class="btn-delete" onclick="deleteRow(this, 'tbody-personnel', 'tab6')">Xóa</button></td>
             `; 
-            
-            // Tìm nhân viên nghỉ việc đầu tiên (nếu có) để chèn nhân viên mới vào trước người đó
             let firstResigned = document.querySelector('#tbody-personnel .resigned-row');
-            if(firstResigned) {
-                document.getElementById('tbody-personnel').insertBefore(tr, firstResigned);
-            } else {
-                document.getElementById('tbody-personnel').appendChild(tr); 
-            }
-
+            if(firstResigned) document.getElementById('tbody-personnel').insertBefore(tr, firstResigned);
+            else document.getElementById('tbody-personnel').appendChild(tr); 
             updateRowNumbers('tbody-personnel'); 
             saveTab6Data(); 
         }
-
         function toggleResign(checkbox) {
-            if(isTab6Locked) {
-                checkbox.checked = !checkbox.checked; // Từ chối tương tác nếu đang khóa
-                return;
-            }
+            if(isTab6Locked) { checkbox.checked = !checkbox.checked; return; }
             const row = checkbox.closest('tr');
             const tbody = document.getElementById('tbody-personnel');
-            
             if (checkbox.checked) {
-                checkbox.setAttribute('checked', 'true'); // Lưu trạng thái tích vào HTML
-                row.classList.add('resigned-row');
-                tbody.appendChild(row); // Đẩy xuống cuối cùng bảng
+                checkbox.setAttribute('checked', 'true'); row.classList.add('resigned-row'); tbody.appendChild(row); 
             } else {
-                checkbox.removeAttribute('checked');
-                row.classList.remove('resigned-row');
-                tbody.prepend(row); // Đẩy lại lên đầu bảng (có thể sửa để ghim vào vị trí mong muốn)
+                checkbox.removeAttribute('checked'); row.classList.remove('resigned-row'); tbody.prepend(row); 
             }
-            
-            updateRowNumbers('tbody-personnel');
-            saveTab6Data();
+            updateRowNumbers('tbody-personnel'); saveTab6Data();
         }
-
         document.getElementById('personnelTable').addEventListener('focusin', e => { if (e.target.classList.contains('cell-input')) isTyping = true; });
         document.getElementById('personnelTable').addEventListener('focusout', e => { if (e.target.classList.contains('cell-input')) { isTyping = false; saveTab6Data(); } });
 
+        // TAB 7: THEO DÕI KHỐI LƯỢNG
+        function loadTab7Data() {
+            db.ref('TheoDoiKhoiLuong/data').on('value', snap => {
+                if (!isTyping) {
+                    document.getElementById('tbody-volume').innerHTML = snap.val() || "";
+                    if (isTab7Locked) {
+                        document.getElementById('export-area7').querySelectorAll('.cell-input').forEach(el => el.contentEditable = false);
+                    }
+                }
+            });
+        }
+        function saveTab7Data() {
+            if(isTab7Locked) return;
+            db.ref('TheoDoiKhoiLuong/data').set(document.getElementById('tbody-volume').innerHTML);
+        }
+        function addVolumeRow() {
+            if(isTab7Locked) return;
+            const tr = document.createElement('tr');
+            tr.className = 'volume-row';
+            tr.innerHTML = `
+                <td class="stt-cell" style="text-align:center;"></td>
+                <td><div contenteditable="true" class="cell-input" placeholder="Mô tả hạng mục..."></div></td>
+                <td><div contenteditable="true" class="cell-input" style="text-align:center;" placeholder="ĐVT"></div></td>
+                <td><div contenteditable="true" class="cell-input col-calc-vol col-qty" style="text-align:right;" placeholder="0"></div></td>
+                <td><div contenteditable="true" class="cell-input col-calc-vol col-price-mat" style="text-align:right;" placeholder="0"></div></td>
+                <td><div contenteditable="true" class="cell-input col-calc-vol col-price-lab" style="text-align:right;" placeholder="0"></div></td>
+                <td><div class="cell-input cell-readonly col-total-mat" style="text-align:right; color:#04AA6D;">0</div></td>
+                <td><div class="cell-input cell-readonly col-total-lab" style="text-align:right; color:#04AA6D;">0</div></td>
+                <td><div contenteditable="true" class="cell-input" placeholder="Ghi chú..."></div></td>
+                <td class="col-action" style="text-align:center;"><button class="btn-delete" onclick="deleteRow(this, 'tbody-volume', 'tab7')">Xóa</button></td>
+            `;
+            document.getElementById('tbody-volume').appendChild(tr);
+            updateRowNumbers('tbody-volume');
+            saveTab7Data();
+        }
+
+        document.getElementById('volumeTable').addEventListener('focusin', e => { 
+            if (e.target.classList.contains('cell-input')) isTyping = true; 
+        });
+
+        document.getElementById('volumeTable').addEventListener('focusout', e => { 
+            if (e.target.classList.contains('cell-input')) { 
+                isTyping = false; 
+                if(e.target.classList.contains('col-calc-vol')) {
+                    calculateVolume(e.target.closest('tr'));
+                }
+                saveTab7Data(); 
+            } 
+        });
+
+        function calculateVolume(row) {
+            let qtyDiv = row.querySelector('.col-qty');
+            let priceMatDiv = row.querySelector('.col-price-mat');
+            let priceLabDiv = row.querySelector('.col-price-lab');
+            let totalMatDiv = row.querySelector('.col-total-mat');
+            let totalLabDiv = row.querySelector('.col-total-lab');
+
+            let qty = parseNum(qtyDiv.innerText);
+            let pMat = parseNum(priceMatDiv.innerText);
+            let pLab = parseNum(priceLabDiv.innerText);
+
+            // Cập nhật lại format số khi click ra ngoài
+            if(qty !== 0) qtyDiv.innerText = formatNum(qty);
+            if(pMat !== 0) priceMatDiv.innerText = formatNum(pMat);
+            if(pLab !== 0) priceLabDiv.innerText = formatNum(pLab);
+
+            // Tính và xuất thành tiền
+            totalMatDiv.innerText = formatNum(qty * pMat);
+            totalLabDiv.innerText = formatNum(qty * pLab);
+        }
 
         /* ========================================================================= */
-        /* KHU VỰC TAB 3: DỰ ÁN ĐẤU THẦU (BẢN VÁ LỖI LƯU DỮ LIỆU MODAL)              */
+        /* KHU VỰC TAB 3: DỰ ÁN ĐẤU THẦU (MODAL VÀ GIAO VIỆC)                        */
         /* ========================================================================= */
         
         function checkDeadlines() {
@@ -925,9 +988,7 @@
             });
         }
 
-        function saveTab3Data() {
-            db.ref('DuAnDauThau/data').set(document.getElementById('tbody-bidding').innerHTML);
-        }
+        function saveTab3Data() { db.ref('DuAnDauThau/data').set(document.getElementById('tbody-bidding').innerHTML); }
 
         function addBiddingRow() {
             if(isTab3Locked) return;
@@ -955,13 +1016,7 @@
             }
         });
 
-        // MỞ MODAL KHI CLICK ĐÚP VÀO TÊN DỰ ÁN
-        document.getElementById('biddingTable').addEventListener('dblclick', e => {
-            if (e.target.classList.contains('prj-name')) {
-                openTaskModal(e.target);
-            }
-        });
-
+        document.getElementById('biddingTable').addEventListener('dblclick', e => { if (e.target.classList.contains('prj-name')) openTaskModal(e.target); });
         document.getElementById('taskModal').addEventListener('focusin', () => { isTyping = true; });
         document.getElementById('taskModal').addEventListener('focusout', () => { isTyping = false; });
 
@@ -1022,7 +1077,6 @@
             }
 
             renderChats(details.chats || []);
-
             document.getElementById('taskModal').style.display = 'flex';
         }
 
@@ -1141,7 +1195,6 @@
                     db.ref('Notifications/' + safeKey + '/' + notiId).set(notiData);
                 });
             }
-
             saveTab3Data(); 
         }
 
@@ -1200,6 +1253,7 @@
             if(tabContext === 'tab3' && isTab3Locked) return;
             if(tabContext === 'tab5' && isTab5Locked) return;
             if(tabContext === 'tab6' && isTab6Locked) return;
+            if(tabContext === 'tab7' && isTab7Locked) return;
 
             const row = btn.closest('tr');
             if(row.classList.contains('emp-row')) { while(row.nextElementSibling && row.nextElementSibling.classList.contains('task-row')) row.nextElementSibling.remove(); }
@@ -1213,6 +1267,7 @@
             if(tabContext === 'tab3') saveTab3Data();
             if(tabContext === 'tab5') { calculateTotals(); saveTab5Data(); }
             if(tabContext === 'tab6') saveTab6Data();
+            if(tabContext === 'tab7') saveTab7Data();
         }
 
         function updateRowNumbers(tbodyId) {
@@ -1227,6 +1282,7 @@
                 if (tbodyId === 'tbody-project-value') rowClass = '.proj-row';
                 else if (tbodyId === 'tbody-personnel') rowClass = '.personnel-row';
                 else if (tbodyId === 'tbody-bidding') rowClass = '.bidding-row';
+                else if (tbodyId === 'tbody-volume') rowClass = '.volume-row';
                 document.getElementById(tbodyId).querySelectorAll(rowClass).forEach((r, i) => r.querySelector('.stt-cell').innerText = i + 1);
             }
         }
@@ -1237,6 +1293,7 @@
             db.ref('SystemStatus/Tab3/isLocked').on('value', snap => { isTab3Locked = snap.val() || false; applyLockUI('3', isTab3Locked, 'DỮ LIỆU'); });
             db.ref('SystemStatus/Tab5/isLocked').on('value', snap => { isTab5Locked = snap.val() || false; applyLockUI('5', isTab5Locked, 'DỮ LIỆU'); });
             db.ref('SystemStatus/Tab6/isLocked').on('value', snap => { isTab6Locked = snap.val() || false; applyLockUI('6', isTab6Locked, 'DỮ LIỆU'); });
+            db.ref('SystemStatus/Tab7/isLocked').on('value', snap => { isTab7Locked = snap.val() || false; applyLockUI('7', isTab7Locked, 'DỮ LIỆU'); });
         }
 
         function applyLockUI(tabId, isLocked, textLabel) {
@@ -1269,6 +1326,7 @@
             if(tab === 'tab3') db.ref('SystemStatus/Tab3/isLocked').set(!isTab3Locked);
             if(tab === 'tab5') db.ref('SystemStatus/Tab5/isLocked').set(!isTab5Locked);
             if(tab === 'tab6') db.ref('SystemStatus/Tab6/isLocked').set(!isTab6Locked);
+            if(tab === 'tab7') db.ref('SystemStatus/Tab7/isLocked').set(!isTab7Locked);
         }
 
         function exportPDF(areaId, fileNamePrefix) {
