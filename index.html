@@ -42,28 +42,11 @@
 
         /* TRANG CHỦ MỚI */
         #tab-home { padding: 0; overflow: hidden; position: relative; border-radius: 8px; border: none; }
-        .bg-animation {
-            position: absolute; top: -5%; left: -5%; width: 110%; height: 110%;
-            background: url('https://images.unsplash.com/photo-1605814589252-70b9ce4f3a14?q=80&w=2070&auto=format&fit=crop') center/cover no-repeat;
-            animation: kenBurns 25s infinite alternate linear;
-            z-index: 0;
-        }
-        .bg-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, rgba(15,23,42,0.85) 0%, rgba(15,23,42,0.5) 100%);
-            z-index: 1;
-        }
+        .bg-animation { position: absolute; top: -5%; left: -5%; width: 110%; height: 110%; background: url('https://images.unsplash.com/photo-1605814589252-70b9ce4f3a14?q=80&w=2070&auto=format&fit=crop') center/cover no-repeat; animation: kenBurns 25s infinite alternate linear; z-index: 0; }
+        .bg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(15,23,42,0.85) 0%, rgba(15,23,42,0.5) 100%); z-index: 1; }
         @keyframes kenBurns { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }
         .welcome-container { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; }
-        .welcome-box {
-            background: rgba(255, 255, 255, 0.05); 
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            padding: 40px 60px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            transform: translateY(30px); opacity: 0;
-            animation: slideUpFade 1s ease-out 0.3s forwards;
-            max-width: 80%;
-        }
+        .welcome-box { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 40px 60px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); transform: translateY(30px); opacity: 0; animation: slideUpFade 1s ease-out 0.3s forwards; max-width: 80%; }
         @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
         .animation-wrapper { width: 100%; max-width: 750px; height: auto; margin: 0 auto 25px; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 2px solid rgba(255, 255, 255, 0.1); }
         .pccc-animation { width: 100%; height: auto; display: block; }
@@ -108,7 +91,30 @@
         .export-area { background-color: white; padding: 10px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 10px;}
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: middle; }
-        th { background-color: #04AA6D; color: white; font-weight: bold; text-align: center; text-transform: uppercase; }
+        
+        /* THIẾT LẬP TH TƯƠNG TÁC CỘT (+ VÀ -) */
+        th { background-color: #04AA6D; color: white; font-weight: bold; text-align: center; text-transform: uppercase; position: relative; padding-right: 20px; }
+        .col-divider {
+            position: absolute; top: 0; right: 0; width: 15px; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            background: transparent; cursor: pointer; z-index: 10;
+            border-left: 1px dashed rgba(255,255,255,0.2); transition: all 0.2s;
+        }
+        .col-divider:hover { background: #0ea5e9; width: 25px; border-left: none; }
+        .col-divider::after { content: '+'; color: white; font-weight: bold; font-size: 18px; opacity: 0; transition: opacity 0.2s; }
+        .col-divider:hover::after { opacity: 1; }
+
+        .btn-del-col-abs {
+            position: absolute; top: 0; left: 0;
+            background: #ef4444; color: white; border: none;
+            width: 20px; height: 20px; font-size: 18px; font-weight: bold;
+            cursor: pointer; display: none; z-index: 10;
+            align-items: center; justify-content: center; line-height: 0;
+            border-bottom-right-radius: 4px;
+        }
+        th.dynamic-col:hover .btn-del-col-abs { display: flex; }
+        .btn-del-col-abs:hover { background: #b91c1c; }
+
         .dept-row { background-color: #e2e8f0; font-weight: bold; color: #1e293b; }
         .total-row td { background-color: #fef08a; font-weight: bold; color: #b91c1c; border-bottom: 2px solid #04AA6D;}
         
@@ -124,18 +130,7 @@
         .group-row { background-color: #cbd5e1 !important; }
         .group-row .cell-input { color: #0f172a !important; font-size: 15px; }
         .group-title-input:focus { border-bottom: 1px solid #04AA6D !important; background: white !important; }
-        .dynamic-col-cell { background-color: #fefce8; } /* Làm nổi bật cột tự thêm */
-
-        /* NÚT THÊM CỘT TẠI CHỖ (INLINE) */
-        .btn-add-col-inline {
-            display: inline-flex; align-items: center; justify-content: center;
-            background-color: rgba(255,255,255,0.25); color: white;
-            border: 1px solid rgba(255,255,255,0.4); border-radius: 4px;
-            margin-left: 6px; cursor: pointer; width: 22px; height: 22px;
-            font-size: 15px; font-weight: bold; line-height: 1; transition: all 0.2s; padding: 0; vertical-align: middle;
-        }
-        .btn-add-col-inline:hover { background-color: #fff; color: #04AA6D; }
-        .btn-add-col-inline.btn-del-col:hover { color: #ef4444; }
+        .dynamic-col-cell { background-color: #fefce8; } 
 
         /* CSS TÍNH NĂNG NGHỈ VIỆC */
         .resigned-row { background-color: #f1f5f9 !important; opacity: 0.6; }
@@ -144,13 +139,14 @@
 
         /* TRẠNG THÁI KHÓA DỮ LIỆU */
         .locked-view .cell-input { pointer-events: none; background-color: transparent !important; border: none;}
-        .locked-view .col-action, .locked-view .btn-action-main, .locked-view .action-buttons-container, .locked-view .btn-add-col-inline { display: none !important; }
+        .locked-view .col-action, .locked-view .btn-action-main, .locked-view .action-buttons-container, .locked-view .col-divider, .locked-view .btn-del-col-abs { display: none !important; }
         .locked-view .cell-input[placeholder]:empty:before { content: ''; }
         .locked-view .prj-name { pointer-events: auto !important; }
         .locked-view .btn-toggle-group { display: inline-block !important; pointer-events: auto !important; }
 
         /* KHI XUẤT PDF */
-        .exporting-pdf .col-action, .exporting-pdf .btn-action-main, .exporting-pdf .action-buttons-container, .exporting-pdf .btn-add-col-inline { display: none !important; }
+        .exporting-pdf .col-action, .exporting-pdf .btn-action-main, .exporting-pdf .action-buttons-container, .exporting-pdf .col-divider, .exporting-pdf .btn-del-col-abs { display: none !important; }
+        .exporting-pdf th { padding-right: 8px; }
         .exporting-pdf .cell-input[placeholder]:empty:before { content: ''; }
         .exporting-pdf .dept-row td { border: 1px solid #ddd; }
         .exporting-pdf table { border: 1px solid #000; }
@@ -172,7 +168,7 @@
         .task-assign-container { border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; background: #f8fafc; margin-top: 15px;}
         .task-assign-container h4 { margin-top: 0; margin-bottom: 10px; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; color: #04AA6D;}
         .modal-task-table { width: 100%; border-collapse: collapse; background: white;}
-        .modal-task-table th, .modal-task-table td { border: 1px solid #cbd5e1; padding: 6px; }
+        .modal-task-table th, .modal-task-table td { border: 1px solid #cbd5e1; padding: 6px; padding-right: 6px;} /* Hủy bỏ padding của TH cột cộng trừ trong bảng nhỏ */
         .modal-task-table th { background-color: #e2e8f0; color: #1e293b; text-align: center; font-size: 12px;}
         .modal-task-table td { vertical-align: middle; }
         .modal-task-table input { width: 100%; border: 1px solid transparent; padding: 6px; box-sizing: border-box; outline: none; background: transparent; font-family: inherit; font-size: 13px;}
@@ -199,7 +195,6 @@
 <body>
 
     <div id="taskModal" class="modal-overlay">
-        <!-- NỘI DUNG MODAL GIỮ NGUYÊN BÊN TRONG -->
         <div class="modal-content">
             <div class="modal-header">
                 <span>TRIỂN KHAI GIAO VIỆC & THEO DÕI TIẾN ĐỘ</span>
@@ -682,43 +677,64 @@
         }
 
         /* ========================================================================= */
-        /* VẮC XIN TỰ ĐỘNG CHÈN DẤU CỘNG (+) VÀO TIÊU ĐỀ KHI TẢI TỪ FIREBASE       */
+        /* VẮC XIN TỰ ĐỘNG CHÈN DẤU CỘNG (+) VÀO CẠNH PHẢI TIÊU ĐỀ                   */
         /* ========================================================================= */
-        
         function injectButtonsToHeader(tableId, tabId) {
             const table = document.getElementById(tableId);
             if(!table) return;
             let needsSave = false;
-            
+
             const ths = table.querySelectorAll('thead th');
             ths.forEach(th => {
-                // Nếu đã có nút rồi thì không gắn đè nữa
-                if (th.querySelector('.btn-add-col-inline')) return; 
-                
-                let text = th.innerText.trim();
+                // Làm sạch các nút cũ (nếu có)
+                let oldBtns = th.querySelectorAll('.btn-add-col-inline');
+                oldBtns.forEach(b => b.remove());
+
                 // Không gắn vào STT hoặc cột Thao Tác
+                let text = th.innerText.replace(/[\+\-\nx×]/g, '').trim();
                 if(!text || text === 'STT' || text === 'THAO TÁC') return; 
 
-                // Nếu cột đã từng là cột mọc thêm (dynamic-col), nó sẽ có thẻ div.cell-input
-                let cellInput = th.querySelector('.cell-input');
-                let content = cellInput ? cellInput.innerText.trim() : text;
+                // Gắn Divider (Vùng chứa dấu + nằm ở cạnh phải)
+                if (!th.querySelector('.col-divider')) {
+                    const divider = document.createElement('div');
+                    divider.className = 'col-divider';
+                    divider.title = 'Chèn thêm cột vào bên phải';
+                    divider.setAttribute('onclick', `insertColAfter(this, '${tabId}', '${tableId}')`);
+                    th.appendChild(divider);
+                    needsSave = true;
+                }
 
+                // Gắn nút Delete (-) ở góc trái nếu là cột tự mọc
                 if (th.classList.contains('dynamic-col')) {
-                    th.innerHTML = `
-                        <div style="display:flex; justify-content:center; align-items:center; gap:5px;">
-                            <div contenteditable="true" class="cell-input" style="color:white; font-weight:bold; min-width:50px; text-align:center; padding:2px;" placeholder="TÊN CỘT">${content}</div>
-                            <button class="btn-add-col-inline btn-del-col" style="background:#ef4444; border-color:#b91c1c;" onclick="deleteCol(this, '${tabId}', '${tableId}')" title="Xóa cột này">x</button>
-                            <button class="btn-add-col-inline" onclick="insertColAfter(this, '${tabId}', '${tableId}')" title="Thêm cột bên phải">+</button>
-                        </div>
-                    `;
-                    needsSave = true;
-                } else {
-                    th.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; gap:4px;">${content} <button class="btn-add-col-inline" onclick="insertColAfter(this, '${tabId}', '${tableId}')" title="Thêm cột bên phải">+</button></div>`;
-                    needsSave = true;
+                    if (!th.querySelector('.btn-del-col-abs')) {
+                        const delBtn = document.createElement('button');
+                        delBtn.className = 'btn-del-col-abs';
+                        delBtn.title = 'Xóa cột này';
+                        delBtn.innerHTML = '−'; // Dấu trừ
+                        delBtn.setAttribute('onclick', `deleteCol(this, '${tabId}', '${tableId}')`);
+                        th.appendChild(delBtn);
+                        needsSave = true;
+                    }
+                    
+                    // Bọc nội dung text vào thẻ Div để gõ được
+                    let input = th.querySelector('.cell-input');
+                    if (!input) {
+                        let content = Array.from(th.childNodes).filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
+                        th.innerHTML = '';
+                        th.appendChild(th.querySelector('.btn-del-col-abs'));
+                        
+                        let div = document.createElement('div');
+                        div.contentEditable = true;
+                        div.className = 'cell-input';
+                        div.style.cssText = 'color:white; text-align:center; padding: 2px 20px; border:none; background:transparent; font-weight:bold; outline:none;';
+                        div.innerText = content || 'TÊN CỘT';
+                        th.appendChild(div);
+                        
+                        th.appendChild(th.querySelector('.col-divider'));
+                    }
                 }
             });
 
-            // Nếu phát hiện file cũ từ Firebase và vừa tự động nâng cấp HTML, ép nó lưu ngược lên Firebase lại
             if (needsSave && !isLockedTab(tabId)) {
                 triggerSave(tabId); 
             }
@@ -739,7 +755,7 @@
                 let colIdx = 0;
                 for (let c = 0; c < currRow.cells.length; c++) {
                     let cell = currRow.cells[c];
-                    while (grid[r] && grid[r][colIdx]) colIdx++; // Tìm ô trống
+                    while (grid[r] && grid[r][colIdx]) colIdx++; 
                     for (let rs = 0; rs < (cell.rowSpan || 1); rs++) {
                         for (let cs = 0; cs < (cell.colSpan || 1); cs++) {
                             if (!grid[r + rs]) grid[r + rs] = [];
@@ -765,13 +781,11 @@
             // 1. Chèn Header (THEAD)
             const newTh = document.createElement('th');
             newTh.className = 'dynamic-col';
-            newTh.rowSpan = thead.rows.length - tr.sectionRowIndex; // Kéo dài cột phủ kín phần thead
+            newTh.rowSpan = thead.rows.length - tr.sectionRowIndex; 
             newTh.innerHTML = `
-                <div style="display:flex; justify-content:center; align-items:center; gap:5px;">
-                    <div contenteditable="true" class="cell-input" style="color:white; font-weight:bold; min-width:50px; text-align:center; padding:2px;" placeholder="TÊN CỘT"></div>
-                    <button class="btn-add-col-inline btn-del-col" style="background:#ef4444; border-color:#b91c1c;" onclick="deleteCol(this, '${tabId}', '${tableId}')" title="Xóa cột này">x</button>
-                    <button class="btn-add-col-inline" onclick="insertColAfter(this, '${tabId}', '${tableId}')" title="Thêm cột bên phải">+</button>
-                </div>
+                <button class="btn-del-col-abs" onclick="deleteCol(this, '${tabId}', '${tableId}')" title="Xóa cột này">−</button>
+                <div contenteditable="true" class="cell-input" style="color:white; font-weight:bold; min-width:60px; text-align:center; padding:2px 20px; border:none; background:transparent; outline:none;" placeholder="TÊN CỘT"></div>
+                <div class="col-divider" onclick="insertColAfter(this, '${tabId}', '${tableId}')" title="Chèn thêm cột vào bên phải"></div>
             `;
             
             if (th.nextElementSibling) tr.insertBefore(newTh, th.nextElementSibling);
@@ -875,7 +889,7 @@
                 <div style="display:flex; align-items:center; gap: 10px;">
                     <button class="btn-toggle-group" style="padding: 2px 8px; cursor: pointer; border-radius: 4px; border: 1px solid #94a3b8; background: #f8fafc; color: #1e293b;" onclick="toggleGroup(this, '${tabId}')">[-]</button>
                     <div contenteditable="true" class="cell-input group-title-input" style="flex:1; font-weight:bold; color:#1e293b; text-transform:uppercase; border:none; background:transparent;" placeholder="NHẬP TÊN NHÓM MỚI...">NHÓM MỚI</div>
-                    <button class="btn-delete" style="padding: 4px 8px;" onclick="deleteRow(this, '${tbodyId}', '${tabId}')">Xóa</button>
+                    <button class="btn-delete" style="padding: 4px 8px;" onclick="deleteRow(this, null, '${tabId}')">Xóa</button>
                 </div>
             </td>`;
             
@@ -913,7 +927,7 @@
                     if (d.thead) document.querySelector('#progressTable thead').innerHTML = d.thead;
                     ['tbody-kinhdoanh', 'tbody-kythuat', 'tbody-muahang', 'tbody-ketoan', 'tbody-nhansu'].forEach(id => { document.getElementById(id).innerHTML = d[id] || blankTemplate1[id] || ""; }); 
                     
-                    injectButtonsToHeader('progressTable', 'tab1'); // <--- VẮC XIN TỰ ĐỘNG CHÈN DẤU CỘNG
+                    injectButtonsToHeader('progressTable', 'tab1'); // <--- VẮC XIN
 
                     if (isTab1Locked) document.getElementById('export-area1').querySelectorAll('.cell-input').forEach(el => el.contentEditable = false); 
                 } 
@@ -1469,15 +1483,21 @@
         function deleteRow(btn, tbodyId, tabId) {
             if (isLockedTab(tabId)) return;
             const row = btn.closest('tr');
+            
+            // Xử lý thông minh tìm Tbody chứa nó nếu truyền vào null
+            const actualTbody = row.closest('tbody');
+            const actualTbodyId = tbodyId || (actualTbody ? actualTbody.id : null);
+
             if(row.classList.contains('emp-row')) { while(row.nextElementSibling && row.nextElementSibling.classList.contains('task-row')) row.nextElementSibling.remove(); }
             if(row.classList.contains('year-row')) { while(row.nextElementSibling && row.nextElementSibling.classList.contains('project-list-row')) row.nextElementSibling.remove(); }
             
             row.remove();
-            if(tbodyId) updateRowNumbers(tbodyId);
+            if(actualTbodyId) updateRowNumbers(actualTbodyId);
             triggerSave(tabId);
         }
 
         function updateRowNumbers(tbodyId) {
+            if(!tbodyId) return;
             if (tbodyId === 'tbody-project-list') {
                 let stt = 1;
                 document.getElementById(tbodyId).querySelectorAll('tr').forEach(row => {
