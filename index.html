@@ -80,26 +80,25 @@
         .btn-admin-lock { padding: 9px 15px; background-color: #f59e0b; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: none; }
         
         /* --------------------------------------------------- */
-        /* CẤU HÌNH KHUNG BẢNG & THANH CUỘN (SCROLLBARS) FIX LỖI */
+        /* CẤU HÌNH BẢNG (FIX LỖI KÉO CỘT VÀ XUỐNG DÒNG)       */
         /* --------------------------------------------------- */
         .export-area { 
             background-color: white; 
             padding: 10px; 
-            flex: 1; /* Cho phép khung chiếm hết không gian còn lại */
-            overflow: auto; /* BẬT THANH CUỘN NGANG VÀ DỌC */
+            flex: 1; 
+            overflow: auto; /* Bật thanh cuộn ngang dọc */
             border: 1px solid #e2e8f0;
             border-radius: 4px;
             position: relative;
         }
 
-        /* Làm đẹp thanh cuộn */
         .export-area::-webkit-scrollbar { width: 10px; height: 10px; }
         .export-area::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
         .export-area::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
         .export-area::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
         table { 
-            width: max-content; /* Cho phép bảng bung rộng ra vô hạn theo cột */
+            width: max-content; 
             min-width: 100%; 
             border-collapse: collapse; 
             margin-bottom: 10px; 
@@ -107,9 +106,15 @@
 
         th, td { 
             border: 1px solid #ddd; padding: 0; text-align: left; vertical-align: middle; 
-            box-sizing: border-box; /* Ép kích thước chuẩn xác */
+            box-sizing: border-box; 
         }
         
+        /* KỶ LUẬT THÉP: Bắt buộc TD phải tuân thủ chiều rộng của TH, buộc chữ dài phải xuống dòng */
+        td {
+            max-width: 10px; 
+            overflow: hidden;
+        }
+
         th { 
             background-color: #04AA6D; color: white; font-weight: bold; text-align: center; text-transform: uppercase; 
             position: relative; padding: 8px !important; padding-right: 25px !important; 
@@ -121,10 +126,7 @@
             cursor: col-resize; z-index: 20; user-select: none; 
             display: flex; align-items: center; justify-content: center;
         }
-        /* Vạch đứt hiển thị khi rê chuột */
-        .resizer::after {
-            content: ''; height: 50%; width: 2px; background-color: rgba(255,255,255,0.4); border-radius: 2px;
-        }
+        .resizer::after { content: ''; height: 50%; width: 2px; background-color: rgba(255,255,255,0.4); border-radius: 2px; }
         .resizer:hover, .resizing { background-color: rgba(245, 158, 11, 0.8); }
         .resizer:hover::after, .resizing::after { background-color: white; }
 
@@ -148,20 +150,18 @@
         th .btn-del-col-abs { opacity: 0; transition: opacity 0.2s; }
         th:hover .btn-del-col-abs { opacity: 1; }
 
-        /* --------------------------------------------------- */
-        /* CẤU HÌNH Ô NHẬP LIỆU (CELL INPUT) CHỐNG ÉP CỘT        */
-        /* --------------------------------------------------- */
         .cell-input { 
             width: 100%; min-height: 36px; box-sizing: border-box; padding: 8px; 
             font-family: inherit; font-size: 14px; outline: none; cursor: text; 
             border: 1px solid transparent; background: transparent;
-            word-wrap: break-word; white-space: pre-wrap; /* TỰ ĐỘNG XUỐNG DÒNG NẾU TEXT QUÁ DÀI */
+            word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; /* Bắt buộc xuống dòng */
         }
         .cell-input:focus { border-bottom: 2px solid #04AA6D; background-color: #f8fafc; }
         .cell-input[placeholder]:empty:before { content: attr(placeholder); color: #888; }
         
         /* Cấu hình cột STT không bị móp */
-        th.stt-header, td.stt-cell { width: 40px !important; min-width: 40px !important; max-width: 40px !important; text-align: center; }
+        th.stt-header { width: 50px !important; min-width: 50px !important; max-width: 50px !important; text-align: center; }
+        td.stt-cell { width: 50px !important; min-width: 50px !important; max-width: 50px !important; text-align: center; }
 
         .dept-row { background-color: #e2e8f0; font-weight: bold; color: #1e293b; }
         .total-row td { background-color: #fef08a; font-weight: bold; color: #b91c1c; border-bottom: 2px solid #04AA6D;}
@@ -208,7 +208,7 @@
         .modal-task-table { width: 100%; border-collapse: collapse; background: white;}
         .modal-task-table th, .modal-task-table td { border: 1px solid #cbd5e1; padding: 6px; padding-right: 6px !important;} 
         .modal-task-table th { background-color: #e2e8f0; color: #1e293b; text-align: center; font-size: 12px;}
-        .modal-task-table td { vertical-align: middle; }
+        .modal-task-table td { vertical-align: middle; max-width: none; } /* Reset max-width cho bảng con */
         .modal-task-table input { width: 100%; border: 1px solid transparent; padding: 6px; box-sizing: border-box; outline: none; background: transparent; font-family: inherit; font-size: 13px;}
         .modal-task-table input:focus { border-bottom: 1px solid #04AA6D; background: #f8fafc; }
         .modal-task-table input:disabled { background-color: #f1f5f9; color: #94a3b8; }
@@ -372,7 +372,7 @@
                     <table id="progressTable">
                         <thead>
                             <tr>
-                                <th class="stt-header">STT</th>
+                                <th class="stt-header" style="width: 50px;">STT</th>
                                 <th style="width: 200px;">NHÂN VIÊN</th>
                                 <th style="width: 300px;">CÔNG VIỆC</th>
                                 <th style="width: 140px;">THỜI GIAN</th>
@@ -406,7 +406,7 @@
                     <table id="projectListTable">
                         <thead>
                             <tr>
-                                <th class="stt-header">STT</th>
+                                <th class="stt-header" style="width: 50px;">STT</th>
                                 <th style="width: 250px;">TÊN DỰ ÁN</th>
                                 <th style="width: 160px;">THỜI GIAN NHẬN</th>
                                 <th style="width: 160px;">THỜI GIAN NỘP</th>
@@ -441,7 +441,7 @@
                     <table id="biddingTable">
                         <thead>
                             <tr>
-                                <th class="stt-header">STT</th>
+                                <th class="stt-header" style="width: 50px;">STT</th>
                                 <th style="width: 300px;">TÊN DỰ ÁN</th>
                                 <th style="width: 120px;">BẮT ĐẦU</th>
                                 <th style="width: 120px;">KẾT THÚC</th>
@@ -475,7 +475,7 @@
                     <table id="projectValueTable">
                         <thead>
                             <tr>
-                                <th class="stt-header">STT</th>
+                                <th class="stt-header" style="width: 50px;">STT</th>
                                 <th style="width: 250px;">TÊN DỰ ÁN</th>
                                 <th style="width: 150px;">ĐƠN GIÁ NET</th>
                                 <th style="width: 150px;">GIÁ TRỊ NỘP THẦU</th>
@@ -518,7 +518,7 @@
                     <table id="personnelTable">
                         <thead>
                             <tr>
-                                <th class="stt-header">STT</th>
+                                <th class="stt-header" style="width: 50px;">STT</th>
                                 <th style="width: 120px;">CHỨC VỤ</th>
                                 <th style="width: 160px;">TÊN NHÂN VIÊN</th>
                                 <th style="width: 110px;">NGÀY SINH</th>
@@ -558,20 +558,21 @@
                     <table id="volumeTable">
                         <thead>
                             <tr>
-                                <th rowspan="2" class="stt-header" style="vertical-align: middle;">STT</th>
-                                <th rowspan="2" style="vertical-align: middle; width: 250px;">MÔ TẢ HẠNG MỤC</th>
-                                <th rowspan="2" style="width: 80px; vertical-align: middle;">ĐƠN VỊ</th>
-                                <th rowspan="2" style="width: 120px; vertical-align: middle;">KHỐI LƯỢNG</th>
-                                <th colspan="2" style="background-color: #04AA6D;">ĐƠN GIÁ</th>
-                                <th colspan="2" style="background-color: #04AA6D;">THÀNH TIỀN</th>
-                                <th rowspan="2" style="width: 180px; vertical-align: middle;">GHI CHÚ</th>
-                                <th rowspan="2" style="width: 80px; vertical-align: middle;" class="col-action">THAO TÁC</th>
+                                <th rowspan="2" class="stt-header" style="vertical-align: middle; width: 50px;">STT</th>
+                                <!-- Ép chiều rộng cứng cho cột Mô tả xuống 300px thay vì min-width -->
+                                <th rowspan="2" style="vertical-align: middle; width: 300px;">MÔ TẢ HẠNG MỤC</th>
+                                <th rowspan="2" style="vertical-align: middle; width: 80px;">ĐƠN VỊ</th>
+                                <th rowspan="2" style="vertical-align: middle; width: 120px;">KHỐI LƯỢNG</th>
+                                <th colspan="2" style="background-color: #04AA6D; width: 260px;">ĐƠN GIÁ</th>
+                                <th colspan="2" style="background-color: #04AA6D; width: 280px;">THÀNH TIỀN</th>
+                                <th rowspan="2" style="vertical-align: middle; width: 180px;">GHI CHÚ</th>
+                                <th rowspan="2" style="vertical-align: middle; width: 80px;" class="col-action">THAO TÁC</th>
                             </tr>
                             <tr>
-                                <th style="width: 130px; font-size: 13px; background-color: #038a59;">VẬT TƯ</th>
-                                <th style="width: 130px; font-size: 13px; background-color: #038a59;">NHÂN CÔNG</th>
-                                <th style="width: 140px; font-size: 13px; background-color: #038a59;">VẬT TƯ</th>
-                                <th style="width: 140px; font-size: 13px; background-color: #038a59;">NHÂN CÔNG</th>
+                                <th style="font-size: 13px; background-color: #038a59; width: 130px;">VẬT TƯ</th>
+                                <th style="font-size: 13px; background-color: #038a59; width: 130px;">NHÂN CÔNG</th>
+                                <th style="font-size: 13px; background-color: #038a59; width: 140px;">VẬT TƯ</th>
+                                <th style="font-size: 13px; background-color: #038a59; width: 140px;">NHÂN CÔNG</th>
                             </tr>
                         </thead>
                         <tbody id="tbody-volume"></tbody>
@@ -757,7 +758,7 @@
                         let div = document.createElement('div');
                         div.contentEditable = true;
                         div.className = 'cell-input';
-                        div.style.cssText = 'color:white; text-align:center; border:none; background:transparent; font-weight:bold; outline:none; padding:2px; min-height:auto;';
+                        div.style.cssText = 'color:white; text-align:center; border:none; background:transparent; font-weight:bold; outline:none; padding:2px; min-height:auto; white-space:pre-wrap; word-break:break-word;';
                         div.innerText = content || 'TÊN CỘT';
                         
                         let resizerEl = th.querySelector('.resizer');
@@ -793,7 +794,7 @@
             if (needsSave && !isLockedTab(tabId)) { triggerSave(tabId); }
         }
 
-        // HÀM KÉO CỘT MỚI: ÉP CHẾT WIDTH CHO TH
+        // HÀM KÉO CỘT: ÉP ĐỒNG THỜI width, min-width, max-width
         function createResizableColumn(col, resizer, tabId) {
             let x = 0; let w = 0;
             const mouseDownHandler = function (e) {
@@ -808,10 +809,10 @@
             };
             const mouseMoveHandler = function (e) {
                 const dx = e.clientX - x;
-                const newWidth = Math.max(50, w + dx); // Không cho kéo nhỏ hơn 50px
+                const newWidth = Math.max(50, w + dx); 
                 col.style.width = `${newWidth}px`;
                 col.style.minWidth = `${newWidth}px`; 
-                col.style.maxWidth = `${newWidth}px`; // Ép chuẩn layout
+                col.style.maxWidth = `${newWidth}px`; 
             };
             const mouseUpHandler = function () {
                 document.removeEventListener('mousemove', mouseMoveHandler);
@@ -1292,12 +1293,12 @@
             
             const pristineThead = `
                 <tr>
-                    <th rowspan="2" class="stt-header" style="vertical-align: middle;">STT</th>
-                    <th rowspan="2" style="vertical-align: middle; min-width: 250px;">MÔ TẢ HẠNG MỤC</th>
+                    <th rowspan="2" class="stt-header" style="vertical-align: middle; width: 50px;">STT</th>
+                    <th rowspan="2" style="vertical-align: middle; width: 300px;">MÔ TẢ HẠNG MỤC</th>
                     <th rowspan="2" style="width: 80px; vertical-align: middle;">ĐƠN VỊ</th>
                     <th rowspan="2" style="width: 120px; vertical-align: middle;">KHỐI LƯỢNG</th>
-                    <th colspan="2" style="background-color: #04AA6D;">ĐƠN GIÁ</th>
-                    <th colspan="2" style="background-color: #04AA6D;">THÀNH TIỀN</th>
+                    <th colspan="2" style="background-color: #04AA6D; width: 260px;">ĐƠN GIÁ</th>
+                    <th colspan="2" style="background-color: #04AA6D; width: 280px;">THÀNH TIỀN</th>
                     <th rowspan="2" style="width: 180px; vertical-align: middle;">GHI CHÚ</th>
                     <th rowspan="2" style="width: 80px; vertical-align: middle;" class="col-action">THAO TÁC</th>
                 </tr>
@@ -1781,7 +1782,7 @@
             const lockWarning = document.getElementById('lock-warning' + tabId);
 
             if(isLocked) {
-                lockBtn.innerText = "🔓 M mở KHÓA " + textLabel; lockBtn.style.backgroundColor = "#10b981"; 
+                lockBtn.innerText = "🔓 MỞ KHÓA " + textLabel; lockBtn.style.backgroundColor = "#10b981"; 
                 exportArea.classList.add('locked-view'); if(lockWarning) lockWarning.style.display = 'block';
                 exportArea.querySelectorAll('.cell-input:not(.cell-readonly)').forEach(el => el.contentEditable = false);
                 if(tabId === '6') exportArea.querySelectorAll('.resign-checkbox').forEach(el => el.disabled = true);
