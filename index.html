@@ -87,38 +87,54 @@
         .btn-export { padding: 9px 15px; background-color: #3b82f6; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px;}
         .btn-admin-lock { padding: 9px 15px; background-color: #f59e0b; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: none; }
         
-        /* BẢNG DỮ LIỆU CHUNG */
-        .export-area { background-color: white; padding: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 10px;}
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: middle; }
+        /* BẢNG DỮ LIỆU CHUNG & RESIZE CỘT */
+        .export-area { background-color: white; padding: 10px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed; } /* Thêm table-layout fixed để kéo dễ */
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: middle; word-wrap: break-word; }
         
-        /* THIẾT LẬP TH TƯƠNG TÁC CỘT (+ VÀ -) */
-        th { background-color: #04AA6D; color: white; font-weight: bold; text-align: center; text-transform: uppercase; position: relative; padding-right: 20px; }
-        .col-divider {
-            position: absolute; top: 0; right: 0; width: 15px; height: 100%;
-            display: flex; align-items: center; justify-content: center;
-            background: transparent; cursor: pointer; z-index: 10;
-            border-left: 1px dashed rgba(255,255,255,0.2); transition: all 0.2s;
+        th { background-color: #04AA6D; color: white; font-weight: bold; text-align: center; text-transform: uppercase; position: relative; padding-right: 25px !important; }
+        
+        /* THANH KÉO ĐỘ RỘNG CỘT (RESIZER) */
+        .resizer {
+            position: absolute; right: 0; top: 0; width: 6px; height: 100%;
+            cursor: col-resize; z-index: 20; user-select: none;
+            border-right: 1px dashed rgba(255, 255, 255, 0.3);
         }
-        .col-divider:hover { background: #0ea5e9; width: 25px; border-left: none; }
-        .col-divider::after { content: '+'; color: white; font-weight: bold; font-size: 18px; opacity: 0; transition: opacity 0.2s; }
-        .col-divider:hover::after { opacity: 1; }
+        .resizer:hover, .resizing {
+            background-color: rgba(245, 158, 11, 0.5); /* Màu cam nhạt khi rê chuột/kéo */
+            border-right: 2px solid #f59e0b;
+        }
 
+        /* NÚT CỘNG (THÊM CỘT) BÊN TRONG Ô */
+        .btn-add-col-inline {
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            display: inline-flex; align-items: center; justify-content: center;
+            background-color: rgba(255,255,255,0.25); color: white;
+            border: 1px solid rgba(255,255,255,0.4); border-radius: 4px;
+            cursor: pointer; width: 20px; height: 20px;
+            font-size: 15px; font-weight: bold; line-height: 1; transition: all 0.2s; padding: 0; z-index: 10;
+        }
+        .btn-add-col-inline:hover { background-color: #fff; color: #04AA6D; }
+
+        /* NÚT TRỪ (XÓA CỘT) NẰM GÓC TRÊN TRÁI */
         .btn-del-col-abs {
             position: absolute; top: 0; left: 0;
             background: #ef4444; color: white; border: none;
-            width: 20px; height: 20px; font-size: 18px; font-weight: bold;
-            cursor: pointer; display: none; z-index: 10;
-            align-items: center; justify-content: center; line-height: 0;
-            border-bottom-right-radius: 4px;
+            width: 18px; height: 18px; font-size: 14px; font-weight: bold;
+            cursor: pointer; z-index: 10;
+            display: flex; align-items: center; justify-content: center; line-height: 0;
+            border-bottom-right-radius: 4px; border-top-left-radius: 2px;
         }
-        th.dynamic-col:hover .btn-del-col-abs { display: flex; }
         .btn-del-col-abs:hover { background: #b91c1c; }
+        
+        /* Ẩn hiện nút xóa thông minh */
+        th .btn-del-col-abs { opacity: 0; transition: opacity 0.2s; }
+        th:hover .btn-del-col-abs { opacity: 1; }
 
         .dept-row { background-color: #e2e8f0; font-weight: bold; color: #1e293b; }
         .total-row td { background-color: #fef08a; font-weight: bold; color: #b91c1c; border-bottom: 2px solid #04AA6D;}
         
-        .cell-input { width: 100%; min-height: 24px; box-sizing: border-box; padding: 6px; font-family: inherit; font-size: 14px; outline: none; cursor: text; border: 1px solid transparent;}
+        .cell-input { width: 100%; min-height: 24px; box-sizing: border-box; padding: 6px; font-family: inherit; font-size: 14px; outline: none; cursor: text; border: 1px solid transparent; background: transparent;}
         .cell-input:focus { border-bottom: 1px solid #04AA6D; background-color: #f8fafc; }
         .cell-input[placeholder]:empty:before { content: attr(placeholder); color: #888; }
         
@@ -139,36 +155,33 @@
 
         /* TRẠNG THÁI KHÓA DỮ LIỆU */
         .locked-view .cell-input { pointer-events: none; background-color: transparent !important; border: none;}
-        .locked-view .col-action, .locked-view .btn-action-main, .locked-view .action-buttons-container, .locked-view .col-divider, .locked-view .btn-del-col-abs { display: none !important; }
+        .locked-view .col-action, .locked-view .btn-action-main, .locked-view .action-buttons-container, .locked-view .resizer, .locked-view .btn-add-col-inline, .locked-view .btn-del-col-abs { display: none !important; }
         .locked-view .cell-input[placeholder]:empty:before { content: ''; }
         .locked-view .prj-name { pointer-events: auto !important; }
         .locked-view .btn-toggle-group { display: inline-block !important; pointer-events: auto !important; }
 
         /* KHI XUẤT PDF */
-        .exporting-pdf .col-action, .exporting-pdf .btn-action-main, .exporting-pdf .action-buttons-container, .exporting-pdf .col-divider, .exporting-pdf .btn-del-col-abs { display: none !important; }
-        .exporting-pdf th { padding-right: 8px; }
+        .exporting-pdf .col-action, .exporting-pdf .btn-action-main, .exporting-pdf .action-buttons-container, .exporting-pdf .resizer, .exporting-pdf .btn-add-col-inline, .exporting-pdf .btn-del-col-abs { display: none !important; }
+        .exporting-pdf th { padding-right: 8px !important; }
         .exporting-pdf .cell-input[placeholder]:empty:before { content: ''; }
         .exporting-pdf .dept-row td { border: 1px solid #ddd; }
         .exporting-pdf table { border: 1px solid #000; }
         .exporting-pdf th, .exporting-pdf td { border: 1px solid #000; color: #000;}
 
-        /* BẢNG POPUP (MODAL) TẠO DỰ ÁN & TIẾN ĐỘ */
+        /* BẢNG POPUP (MODAL) */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; justify-content: center; align-items: center; }
         .modal-content { background: white; width: 1100px; max-width: 95%; padding: 25px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 95vh; overflow-y: auto;}
-        
         .modal-header { position: sticky; top: -25px; margin: -25px -25px 15px -25px; padding: 25px 25px 15px 25px; background: white; z-index: 100; display: flex; justify-content: space-between; align-items: center; font-size: 20px; font-weight: bold; color: #1e293b; border-bottom: 2px solid #04AA6D; text-transform: uppercase; }
         .btn-close-modal { background: transparent; border: none; font-size: 28px; font-weight: bold; color: #94a3b8; cursor: pointer; transition: color 0.2s; line-height: 1; margin-top: -5px; padding: 0 10px;}
         .btn-close-modal:hover { color: #ef4444; }
-
         .modal-form-group { margin-bottom: 12px; }
         .modal-form-group label { display: block; font-weight: bold; font-size: 13px; color: #475569; margin-bottom: 4px; }
         .modal-form-group input { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-family: inherit;}
         .modal-form-group input:disabled { background-color: #f1f5f9; color: #64748b; }
-        
         .task-assign-container { border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; background: #f8fafc; margin-top: 15px;}
         .task-assign-container h4 { margin-top: 0; margin-bottom: 10px; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; color: #04AA6D;}
         .modal-task-table { width: 100%; border-collapse: collapse; background: white;}
-        .modal-task-table th, .modal-task-table td { border: 1px solid #cbd5e1; padding: 6px; padding-right: 6px;} /* Hủy bỏ padding của TH cột cộng trừ trong bảng nhỏ */
+        .modal-task-table th, .modal-task-table td { border: 1px solid #cbd5e1; padding: 6px; padding-right: 6px !important;} 
         .modal-task-table th { background-color: #e2e8f0; color: #1e293b; text-align: center; font-size: 12px;}
         .modal-task-table td { vertical-align: middle; }
         .modal-task-table input { width: 100%; border: 1px solid transparent; padding: 6px; box-sizing: border-box; outline: none; background: transparent; font-family: inherit; font-size: 13px;}
@@ -176,7 +189,7 @@
         .modal-task-table input:disabled { background-color: #f1f5f9; color: #94a3b8; }
         .m-task-prog { text-align: center; font-weight: bold; color: #04AA6D;}
 
-        /* KHUNG CHAT TRAO ĐỔI CÔNG VIỆC */
+        /* KHUNG CHAT */
         .chat-container { border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 15px; background: white; display: flex; flex-direction: column; }
         .chat-header { background: #e0f2fe; padding: 10px 15px; font-weight: bold; border-bottom: 1px solid #cbd5e1; color: #0369a1; border-radius: 6px 6px 0 0; font-size: 14px;}
         .chat-messages { height: 180px; overflow-y: auto; padding: 15px; background: #f8fafc; }
@@ -185,7 +198,6 @@
         .chat-input-area { display: flex; padding: 10px; border-top: 1px solid #cbd5e1; gap: 10px; background: white; border-radius: 0 0 6px 6px;}
         .chat-input-area input { flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 4px; outline: none; font-family: inherit; font-size: 13px;}
         .chat-input-area button { background: #0ea5e9; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-
         .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 35px;}
         .btn-modal-cancel { background: #94a3b8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
         .btn-modal-save { background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
@@ -195,6 +207,7 @@
 <body>
 
     <div id="taskModal" class="modal-overlay">
+        <!-- NỘI DUNG MODAL GIỮ NGUYÊN BÊN TRONG -->
         <div class="modal-content">
             <div class="modal-header">
                 <span>TRIỂN KHAI GIAO VIỆC & THEO DÕI TIẾN ĐỘ</span>
@@ -677,60 +690,80 @@
         }
 
         /* ========================================================================= */
-        /* VẮC XIN TỰ ĐỘNG CHÈN DẤU CỘNG (+) VÀO CẠNH PHẢI TIÊU ĐỀ                   */
+        /* TỰ ĐỘNG CHÈN NÚT [+] VÀ TÍNH NĂNG KÉO ĐỘ RỘNG CỘT (RESIZER)               */
         /* ========================================================================= */
-        function injectButtonsToHeader(tableId, tabId) {
+        
+        function injectButtonsAndResizers(tableId, tabId) {
             const table = document.getElementById(tableId);
             if(!table) return;
             let needsSave = false;
 
             const ths = table.querySelectorAll('thead th');
             ths.forEach(th => {
-                // Làm sạch các nút cũ (nếu có)
+                // Xóa nút (+) kiểu cũ nếu vô tình còn sót
                 let oldBtns = th.querySelectorAll('.btn-add-col-inline');
                 oldBtns.forEach(b => b.remove());
 
-                // Không gắn vào STT hoặc cột Thao Tác
                 let text = th.innerText.replace(/[\+\-\nx×]/g, '').trim();
-                if(!text || text === 'STT' || text === 'THAO TÁC') return; 
-
-                // Gắn Divider (Vùng chứa dấu + nằm ở cạnh phải)
-                if (!th.querySelector('.col-divider')) {
-                    const divider = document.createElement('div');
-                    divider.className = 'col-divider';
-                    divider.title = 'Chèn thêm cột vào bên phải';
-                    divider.setAttribute('onclick', `insertColAfter(this, '${tabId}', '${tableId}')`);
-                    th.appendChild(divider);
+                
+                // --- THÊM RESIZER (KÉO RỘNG CỘT) ---
+                if (!th.querySelector('.resizer') && text !== 'THAO TÁC') {
+                    const resizer = document.createElement('div');
+                    resizer.className = 'resizer';
+                    th.appendChild(resizer);
+                    createResizableColumn(th, resizer, tabId);
                     needsSave = true;
                 }
 
-                // Gắn nút Delete (-) ở góc trái nếu là cột tự mọc
+                // Không gắn nút + vào STT hoặc cột Thao Tác
+                if(!text || text === 'STT' || text === 'THAO TÁC') return; 
+
+                // --- THÊM NÚT [+] VÀ [-] ---
                 if (th.classList.contains('dynamic-col')) {
                     if (!th.querySelector('.btn-del-col-abs')) {
                         const delBtn = document.createElement('button');
                         delBtn.className = 'btn-del-col-abs';
                         delBtn.title = 'Xóa cột này';
-                        delBtn.innerHTML = '−'; // Dấu trừ
+                        delBtn.innerHTML = '−'; 
                         delBtn.setAttribute('onclick', `deleteCol(this, '${tabId}', '${tableId}')`);
                         th.appendChild(delBtn);
                         needsSave = true;
                     }
                     
-                    // Bọc nội dung text vào thẻ Div để gõ được
                     let input = th.querySelector('.cell-input');
                     if (!input) {
                         let content = Array.from(th.childNodes).filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
-                        th.innerHTML = '';
-                        th.appendChild(th.querySelector('.btn-del-col-abs'));
+                        // Dọn dẹp th, chỉ giữ lại resizer và nút xóa
+                        Array.from(th.childNodes).forEach(n => {
+                            if(!n.classList || (!n.classList.contains('resizer') && !n.classList.contains('btn-del-col-abs'))) n.remove();
+                        });
                         
                         let div = document.createElement('div');
                         div.contentEditable = true;
                         div.className = 'cell-input';
-                        div.style.cssText = 'color:white; text-align:center; padding: 2px 20px; border:none; background:transparent; font-weight:bold; outline:none;';
+                        div.style.cssText = 'color:white; text-align:center; border:none; background:transparent; font-weight:bold; outline:none;';
                         div.innerText = content || 'TÊN CỘT';
-                        th.appendChild(div);
-                        
-                        th.appendChild(th.querySelector('.col-divider'));
+                        th.insertBefore(div, th.querySelector('.resizer'));
+                    }
+                    
+                    if (!th.querySelector('.btn-add-col-inline')) {
+                        const addBtn = document.createElement('button');
+                        addBtn.className = 'btn-add-col-inline';
+                        addBtn.innerHTML = '+';
+                        addBtn.setAttribute('onclick', `insertColAfter(this, '${tabId}', '${tableId}')`);
+                        th.insertBefore(addBtn, th.querySelector('.resizer'));
+                        needsSave = true;
+                    }
+
+                } else {
+                    // Cột gốc mặc định: Chỉ có nút +
+                    if (!th.querySelector('.btn-add-col-inline')) {
+                        const addBtn = document.createElement('button');
+                        addBtn.className = 'btn-add-col-inline';
+                        addBtn.innerHTML = '+';
+                        addBtn.setAttribute('onclick', `insertColAfter(this, '${tabId}', '${tableId}')`);
+                        th.insertBefore(addBtn, th.querySelector('.resizer'));
+                        needsSave = true;
                     }
                 }
             });
@@ -738,6 +771,33 @@
             if (needsSave && !isLockedTab(tabId)) {
                 triggerSave(tabId); 
             }
+        }
+
+        // --- HÀM XỬ LÝ KÉO CỘT ---
+        function createResizableColumn(col, resizer, tabId) {
+            let x = 0; let w = 0;
+            const mouseDownHandler = function (e) {
+                if(isLockedTab(tabId)) return;
+                x = e.clientX;
+                const styles = window.getComputedStyle(col);
+                w = parseInt(styles.width, 10);
+                document.addEventListener('mousemove', mouseMoveHandler);
+                document.addEventListener('mouseup', mouseUpHandler);
+                resizer.classList.add('resizing');
+                isTyping = true; // Chặn Firebase update lúc đang kéo
+            };
+            const mouseMoveHandler = function (e) {
+                const dx = e.clientX - x;
+                col.style.width = `${w + dx}px`;
+            };
+            const mouseUpHandler = function () {
+                document.removeEventListener('mousemove', mouseMoveHandler);
+                document.removeEventListener('mouseup', mouseUpHandler);
+                resizer.classList.remove('resizing');
+                isTyping = false;
+                triggerSave(tabId); // Lưu độ rộng mới lên Firebase
+            };
+            resizer.addEventListener('mousedown', mouseDownHandler);
         }
 
         /* ========================================================================= */
@@ -781,15 +841,20 @@
             // 1. Chèn Header (THEAD)
             const newTh = document.createElement('th');
             newTh.className = 'dynamic-col';
+            newTh.style.width = '120px'; // Set width mặc định cho cột mới
             newTh.rowSpan = thead.rows.length - tr.sectionRowIndex; 
             newTh.innerHTML = `
                 <button class="btn-del-col-abs" onclick="deleteCol(this, '${tabId}', '${tableId}')" title="Xóa cột này">−</button>
-                <div contenteditable="true" class="cell-input" style="color:white; font-weight:bold; min-width:60px; text-align:center; padding:2px 20px; border:none; background:transparent; outline:none;" placeholder="TÊN CỘT"></div>
-                <div class="col-divider" onclick="insertColAfter(this, '${tabId}', '${tableId}')" title="Chèn thêm cột vào bên phải"></div>
+                <div contenteditable="true" class="cell-input" style="color:white; font-weight:bold; text-align:center; border:none; background:transparent; outline:none;" placeholder="TÊN CỘT">TÊN CỘT MỚI</div>
+                <button class="btn-add-col-inline" onclick="insertColAfter(this, '${tabId}', '${tableId}')" title="Thêm cột bên phải">+</button>
+                <div class="resizer"></div>
             `;
             
             if (th.nextElementSibling) tr.insertBefore(newTh, th.nextElementSibling);
             else tr.appendChild(newTh);
+
+            // Gắn event kéo thả cho cột mới
+            createResizableColumn(newTh, newTh.querySelector('.resizer'), tabId);
 
             // 2. Chèn Nội Dung (TBODY)
             const tbodies = table.querySelectorAll('tbody');
@@ -822,6 +887,26 @@
             triggerSave(tabId);
         }
 
+        // Xóa một ô bất kỳ theo Visual Index (An toàn cho rowspan/colspan)
+        function deleteCellByVisualIndex(row, targetIndex) {
+            let currentIndex = 0;
+            for (let i = 0; i < row.cells.length; i++) {
+                let cell = row.cells[i];
+                let colSpan = cell.colSpan || 1;
+                
+                if (currentIndex === targetIndex) {
+                    if (colSpan > 1) cell.colSpan = colSpan - 1;
+                    else cell.remove();
+                    return;
+                } else if (currentIndex < targetIndex && currentIndex + colSpan > targetIndex) {
+                    // Cột cần xóa nằm ẩn bên trong colspan của ô này
+                    cell.colSpan = colSpan - 1;
+                    return;
+                }
+                currentIndex += colSpan;
+            }
+        }
+
         function deleteCol(btn, tabId, tableId) {
             if (isLockedTab(tabId)) return;
             if(!confirm('⚠️ Xóa cột này sẽ mất toàn bộ dữ liệu bên dưới cột. Bạn có chắc chắn không?')) return;
@@ -830,25 +915,12 @@
             const colIndex = getAbsoluteColIndex(th) - (th.colSpan || 1); 
             const table = document.getElementById(tableId);
             
-            // Xóa ở Thead
             th.remove();
             
-            // Xóa ở Tbody
             const tbodies = table.querySelectorAll('tbody');
             tbodies.forEach(tbody => {
                 Array.from(tbody.rows).forEach(row => {
-                    if (row.classList.contains('group-row') || row.classList.contains('dept-row') || row.classList.contains('year-row')) {
-                        let firstCell = row.cells[0];
-                        firstCell.colSpan = Math.max(1, (firstCell.colSpan || 1) - 1);
-                    } else if (row.classList.contains('total-row')) {
-                        let currentCols = 0;
-                        for(let c = 0; c < row.cells.length; c++) {
-                            currentCols += row.cells[c].colSpan;
-                            if (currentCols > colIndex) { row.cells[c].remove(); break; }
-                        }
-                    } else {
-                        if(row.cells[colIndex]) row.cells[colIndex].remove();
-                    }
+                    deleteCellByVisualIndex(row, colIndex);
                 });
             });
 
@@ -927,7 +999,7 @@
                     if (d.thead) document.querySelector('#progressTable thead').innerHTML = d.thead;
                     ['tbody-kinhdoanh', 'tbody-kythuat', 'tbody-muahang', 'tbody-ketoan', 'tbody-nhansu'].forEach(id => { document.getElementById(id).innerHTML = d[id] || blankTemplate1[id] || ""; }); 
                     
-                    injectButtonsToHeader('progressTable', 'tab1'); // <--- VẮC XIN
+                    injectButtonsAndResizers('progressTable', 'tab1');
 
                     if (isTab1Locked) document.getElementById('export-area1').querySelectorAll('.cell-input').forEach(el => el.contentEditable = false); 
                 } 
@@ -941,8 +1013,9 @@
         }
         document.getElementById('progressTable').addEventListener('input', e => { if (e.target.classList.contains('cell-input')) saveTab1Data(); });
         document.getElementById('progressTable').addEventListener('focusin', e => { if (e.target.classList.contains('cell-input')) isTyping = true; });
-        document.getElementById('progressTable').addEventListener('focusout', e => { if (e.target.classList.contains('cell-input')) isTyping = false; });
+        document.getElementById('progressTable').addEventListener('focusout', e => { if (e.target.classList.contains('cell-input')) { isTyping = false; saveTab1Data(); } });
         function changeWeek(weekNum) { document.querySelectorAll('.week-btn').forEach(btn => btn.classList.remove('active')); document.getElementById('btn-week-' + weekNum).classList.add('active'); currentWeekKey = `y${document.getElementById('yearSelect').value}_m${document.getElementById('monthSelect').value}_w${weekNum}`; listenToLockStatus(); loadTab1Data(); }
+        
         function addEmployeeRow(tbodyId) { 
             if(isTab1Locked) return; 
             const tr = document.createElement('tr'); tr.className = 'emp-row'; 
@@ -970,7 +1043,7 @@
                             if(val.tbody) document.getElementById('tbody-project-list').innerHTML = val.tbody;
                         }
                     }
-                    injectButtonsToHeader('projectListTable', 'tab2'); // <--- VẮC XIN
+                    injectButtonsAndResizers('projectListTable', 'tab2');
 
                     if (isTab2Locked) document.getElementById('export-area2').querySelectorAll('.cell-input').forEach(el => el.contentEditable = false); 
                 } 
@@ -1024,7 +1097,7 @@
                             if(val.tbody) document.getElementById('tbody-project-value').innerHTML = val.tbody;
                         }
                     }
-                    injectButtonsToHeader('projectValueTable', 'tab5'); // <--- VẮC XIN
+                    injectButtonsAndResizers('projectValueTable', 'tab5');
 
                     calculateTotals(); 
                     if (isTab5Locked) document.getElementById('export-area5').querySelectorAll('.cell-input').forEach(el => el.contentEditable = false); 
@@ -1062,7 +1135,7 @@
                             if(val.tbody) document.getElementById('tbody-personnel').innerHTML = val.tbody;
                         }
                     }
-                    injectButtonsToHeader('personnelTable', 'tab6'); // <--- VẮC XIN
+                    injectButtonsAndResizers('personnelTable', 'tab6');
 
                     if (isTab6Locked) { 
                         document.getElementById('export-area6').querySelectorAll('.cell-input').forEach(el => el.contentEditable = false); 
@@ -1132,7 +1205,7 @@
                         }
                     }
 
-                    injectButtonsToHeader('volumeTable', 'tab7'); // <--- VẮC XIN
+                    injectButtonsAndResizers('volumeTable', 'tab7');
 
                     if (isTab7Locked) {
                         document.getElementById('export-area7').querySelectorAll('.cell-input').forEach(el => el.contentEditable = false);
@@ -1271,7 +1344,7 @@
                             if(val.tbody) document.getElementById('tbody-bidding').innerHTML = val.tbody;
                         }
                     }
-                    injectButtonsToHeader('biddingTable', 'tab3'); // <--- VẮC XIN
+                    injectButtonsAndResizers('biddingTable', 'tab3');
 
                     if (isTab3Locked) document.querySelectorAll('#export-area3 .cell-input:not(.prj-name)').forEach(el => el.contentEditable = false);
                     checkDeadlines();
@@ -1484,7 +1557,6 @@
             if (isLockedTab(tabId)) return;
             const row = btn.closest('tr');
             
-            // Xử lý thông minh tìm Tbody chứa nó nếu truyền vào null
             const actualTbody = row.closest('tbody');
             const actualTbodyId = tbodyId || (actualTbody ? actualTbody.id : null);
 
