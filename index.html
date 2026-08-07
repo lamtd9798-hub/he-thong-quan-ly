@@ -4,18 +4,18 @@
     <meta charset="UTF-8">
     <title>Hệ thống Quản lý Dự án</title>
     
+    <!-- THƯ VIỆN PDF, FIREBASE VÀ EXCEL -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script> <!-- Thư viện đọc Excel -->
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
         /* CSS GIAO DIỆN CHÍNH */
         body { margin: 0; font-family: 'Inter', Arial, sans-serif; height: 100vh; overflow: hidden; background-color: #f4f6f9; display: flex; flex-direction: column; }
-        
-        /* MÀN HÌNH ĐĂNG NHẬP */
         #login-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #2c3e50; display: flex; justify-content: center; align-items: center; z-index: 9999; }
         .login-box { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 300px; text-align: center; }
         .login-box h2 { margin-top: 0; color: #1e293b; }
@@ -24,15 +24,12 @@
         .btn-login:hover { background-color: #038a59; }
         #login-error { color: red; font-size: 12px; margin-top: 10px; display: none; }
 
-        /* KHUNG ỨNG DỤNG */
         #app-container { display: none; width: 100%; height: 100%; flex-direction: row; position: relative;}
-        
         .sidebar { width: 260px; background-color: #2c3e50; color: white; display: flex; flex-direction: column; z-index: 50; box-shadow: 2px 0 10px rgba(0,0,0,0.1); flex-shrink: 0;}
         .logo-box { text-align: center; padding: 15px; background-color: #ffffff; border-bottom: 2px solid #04AA6D; }
         .menu-btn { padding: 18px 20px; background: none; color: #b8c7ce; border: none; text-align: left; font-size: 15px; cursor: pointer; transition: 0.3s; border-left: 5px solid transparent; border-bottom: 1px solid #34495e; width: 100%; box-sizing: border-box; font-weight: 600;}
         .menu-btn:hover, .menu-btn.active { background-color: #34495e; color: white; padding-left: 30px; }
         .menu-btn.active { border-left-color: #04AA6D; }
-        
         .user-info-panel { margin-top: auto; padding: 15px; background-color: #1a252f; text-align: center; font-size: 13px; }
         .btn-logout { background-color: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-top: 5px; width: 100%; font-weight: bold;}
         
@@ -40,7 +37,6 @@
         .tab-content { display: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex: 1; overflow-y: auto;}
         .tab-content.active { display: block; }
 
-        /* TRANG CHỦ MỚI */
         #tab-home { padding: 0; overflow: hidden; position: relative; border-radius: 8px; border: none; }
         .bg-animation { position: absolute; top: -5%; left: -5%; width: 110%; height: 110%; background: url('https://images.unsplash.com/photo-1605814589252-70b9ce4f3a14?q=80&w=2070&auto=format&fit=crop') center/cover no-repeat; animation: kenBurns 25s infinite alternate linear; z-index: 0; }
         .bg-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(15,23,42,0.85) 0%, rgba(15,23,42,0.5) 100%); z-index: 1; }
@@ -55,7 +51,6 @@
         .welcome-categories-updated { font-size: 16px; color: #cbd5e1; margin-top: 15px; font-weight: 600; display: flex; gap: 15px; justify-content: center; }
         .welcome-desc-updated { color: #94a3b8; font-size: 14px; margin-top: 20px; font-style: italic; font-weight: 400; }
 
-        /* CHUÔNG THÔNG BÁO */
         #noti-container { position: absolute; top: 15px; right: 20px; z-index: 1000; }
         #noti-bell { font-size: 26px; cursor: pointer; user-select: none; position: relative; transition: transform 0.2s;}
         #noti-bell:hover { transform: scale(1.1); }
@@ -68,7 +63,6 @@
         .noti-item.read { background: white; color: #64748b; }
         .noti-time { font-size: 11px; color: #94a3b8; margin-bottom: 4px; font-weight: normal;}
 
-        /* HEADER & THANH CÔNG CỤ */
         .report-header { font-size: 22px; font-weight: bold; color: #1e293b; text-transform: uppercase; margin-bottom: 15px; border-bottom: 3px solid #04AA6D; display: inline-block; padding-bottom: 5px; }
         .report-header.centered { display: block; text-align: center; border-bottom: none; }
         .report-header.centered::after { content: ''; display: block; width: 150px; height: 3px; background: #04AA6D; margin: 10px auto 0; }
@@ -87,52 +81,21 @@
         .btn-admin-lock { padding: 9px 15px; background-color: #f59e0b; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: none; }
         
         /* BẢNG DỮ LIỆU CHUNG & RESIZE CỘT */
-        .export-area { background-color: white; padding: 10px; overflow-x: auto; /* Cho phép cuộn ngang */ }
-        table { 
-            width: max-content; /* Cho phép bảng bung rộng ra vô hạn */
-            min-width: 100%; /* Ít nhất bằng chiều rộng màn hình */
-            border-collapse: collapse; margin-bottom: 10px; 
-        }
+        .export-area { background-color: white; padding: 10px; overflow-x: auto; }
+        table { width: max-content; min-width: 100%; border-collapse: collapse; margin-bottom: 10px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: middle; word-wrap: break-word; }
         th { background-color: #04AA6D; color: white; font-weight: bold; text-align: center; text-transform: uppercase; position: relative; padding-right: 20px !important; }
         
         /* THANH KÉO ĐỘ RỘNG CỘT (RESIZER) */
-        .resizer {
-            position: absolute; right: -5px; top: 0; width: 10px; height: 100%;
-            cursor: col-resize; z-index: 20; user-select: none;
-            border-left: 4px solid transparent; border-right: 4px solid transparent;
-        }
-        .resizer::before {
-            content: ''; position: absolute; top: 0; left: 4px; right: 4px; bottom: 0;
-            border-right: 1px dashed rgba(255, 255, 255, 0.4);
-        }
-        .resizer:hover::before, .resizing::before {
-            border-right: 2px solid #f59e0b;
-        }
+        .resizer { position: absolute; right: -5px; top: 0; width: 10px; height: 100%; cursor: col-resize; z-index: 20; user-select: none; border-left: 4px solid transparent; border-right: 4px solid transparent; }
+        .resizer::before { content: ''; position: absolute; top: 0; left: 4px; right: 4px; bottom: 0; border-right: 1px dashed rgba(255, 255, 255, 0.4); }
+        .resizer:hover::before, .resizing::before { border-right: 2px solid #f59e0b; }
 
-        /* NÚT CỘNG (THÊM CỘT) BÊN TRONG Ô */
-        .btn-add-col-inline {
-            position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
-            display: inline-flex; align-items: center; justify-content: center;
-            background-color: rgba(255,255,255,0.25); color: white;
-            border: 1px solid rgba(255,255,255,0.4); border-radius: 4px;
-            cursor: pointer; width: 18px; height: 18px;
-            font-size: 14px; font-weight: bold; line-height: 1; transition: all 0.2s; padding: 0; z-index: 10;
-        }
+        /* NÚT CỘNG/TRỪ CỘT */
+        .btn-add-col-inline { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; background-color: rgba(255,255,255,0.25); color: white; border: 1px solid rgba(255,255,255,0.4); border-radius: 4px; cursor: pointer; width: 18px; height: 18px; font-size: 14px; font-weight: bold; line-height: 1; transition: all 0.2s; padding: 0; z-index: 10; }
         .btn-add-col-inline:hover { background-color: #fff; color: #04AA6D; }
-
-        /* NÚT TRỪ (XÓA CỘT) NẰM GÓC TRÊN TRÁI */
-        .btn-del-col-abs {
-            position: absolute; top: 0; left: 0;
-            background: #ef4444; color: white; border: none;
-            width: 18px; height: 18px; font-size: 14px; font-weight: bold;
-            cursor: pointer; z-index: 10;
-            display: flex; align-items: center; justify-content: center; line-height: 0;
-            border-bottom-right-radius: 4px; border-top-left-radius: 2px;
-        }
+        .btn-del-col-abs { position: absolute; top: 0; left: 0; background: #ef4444; color: white; border: none; width: 18px; height: 18px; font-size: 14px; font-weight: bold; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; line-height: 0; border-bottom-right-radius: 4px; border-top-left-radius: 2px; }
         .btn-del-col-abs:hover { background: #b91c1c; }
-        
-        /* Ẩn hiện nút xóa thông minh */
         th .btn-del-col-abs { opacity: 0; transition: opacity 0.2s; }
         th:hover .btn-del-col-abs { opacity: 1; }
 
@@ -151,7 +114,6 @@
         .group-row .cell-input { color: #0f172a !important; font-size: 15px; }
         .group-title-input:focus { border-bottom: 1px solid #04AA6D !important; background: white !important; }
         .dynamic-col-cell { background-color: #fefce8; } 
-
         .resigned-row { background-color: #f1f5f9 !important; opacity: 0.6; }
         .resigned-row .cell-input { text-decoration: line-through; color: #94a3b8; }
         .resign-checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: #ef4444; }
@@ -189,8 +151,6 @@
         .modal-task-table input:focus { border-bottom: 1px solid #04AA6D; background: #f8fafc; }
         .modal-task-table input:disabled { background-color: #f1f5f9; color: #94a3b8; }
         .m-task-prog { text-align: center; font-weight: bold; color: #04AA6D;}
-
-        /* KHUNG CHAT */
         .chat-container { border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 15px; background: white; display: flex; flex-direction: column; }
         .chat-header { background: #e0f2fe; padding: 10px 15px; font-weight: bold; border-bottom: 1px solid #cbd5e1; color: #0369a1; border-radius: 6px 6px 0 0; font-size: 14px;}
         .chat-messages { height: 180px; overflow-y: auto; padding: 15px; background: #f8fafc; }
@@ -203,25 +163,23 @@
         .btn-modal-cancel { background: #94a3b8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
         .btn-modal-save { background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;}
         .btn-modal-confirm { background: #04AA6D; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: all 0.2s;}
+
+        /* CSS CHO MODAL IMPORT EXCEL */
+        .excel-map-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .excel-map-row label { width: 200px; font-size: 13px; font-weight: 600; color: #334155; }
+        .excel-map-row input { flex: 1; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 4px; outline: none; text-transform: uppercase; font-weight: bold; color: #0f172a;}
+        .excel-map-row input:focus { border-color: #04AA6D; box-shadow: 0 0 0 2px rgba(4, 170, 109, 0.2); }
+        .excel-instruction { background: #f0fdf4; border: 1px solid #fef08a; padding: 10px; border-radius: 6px; font-size: 13px; color: #854d0e; margin-bottom: 20px;}
     </style>
 </head>
 <body>
 
+    <!-- MODAL GIAO VIỆC DỰ ÁN (Giữ nguyên) -->
     <div id="taskModal" class="modal-overlay">
-        <!-- NỘI DUNG MODAL GIỮ NGUYÊN BÊN TRONG -->
         <div class="modal-content">
-            <div class="modal-header">
-                <span>TRIỂN KHAI GIAO VIỆC & THEO DÕI TIẾN ĐỘ</span>
-                <button class="btn-close-modal" onclick="closeTaskModal()" title="Đóng bảng">×</button>
-            </div>
-            <div style="display: flex; gap: 15px;">
-                <div class="modal-form-group" style="flex: 1;"><label>1. Tên dự án:</label><input type="text" id="t_projectName" style="background-color: #e2e8f0; font-weight: bold;" readonly></div>
-                <div class="modal-form-group" style="flex: 1;"><label>2. Tên chủ đầu tư:</label><input type="text" id="t_investor" placeholder="Nhập tên chủ đầu tư..." oninput="updateModalData()"></div>
-            </div>
-            <div style="display: flex; gap: 15px;">
-                <div class="modal-form-group" style="flex: 1;"><label>3. Địa chỉ dự án:</label><input type="text" id="t_address" placeholder="Nhập địa chỉ dự án..." oninput="updateModalData()"></div>
-                <div class="modal-form-group" style="flex: 1;"><label>4. Ghi chú chung:</label><input type="text" id="t_note" placeholder="Các thông tin cần lưu ý..." oninput="updateModalData()"></div>
-            </div>
+            <div class="modal-header"><span>TRIỂN KHAI GIAO VIỆC & THEO DÕI TIẾN ĐỘ</span><button class="btn-close-modal" onclick="closeTaskModal()">×</button></div>
+            <div style="display: flex; gap: 15px;"><div class="modal-form-group" style="flex: 1;"><label>1. Tên dự án:</label><input type="text" id="t_projectName" style="background-color: #e2e8f0; font-weight: bold;" readonly></div><div class="modal-form-group" style="flex: 1;"><label>2. Tên chủ đầu tư:</label><input type="text" id="t_investor" placeholder="Nhập tên chủ đầu tư..." oninput="updateModalData()"></div></div>
+            <div style="display: flex; gap: 15px;"><div class="modal-form-group" style="flex: 1;"><label>3. Địa chỉ dự án:</label><input type="text" id="t_address" placeholder="Nhập địa chỉ dự án..." oninput="updateModalData()"></div><div class="modal-form-group" style="flex: 1;"><label>4. Ghi chú chung:</label><input type="text" id="t_note" placeholder="Các thông tin cần lưu ý..." oninput="updateModalData()"></div></div>
             <div class="task-assign-container">
                 <h4>5. BẢNG PHÂN CÔNG VÀ TIẾN ĐỘ CÁC HẠNG MỤC M&E</h4>
                 <table class="modal-task-table">
@@ -241,15 +199,46 @@
             <div class="chat-container">
                 <div class="chat-header">💬 TRAO ĐỔI CÔNG VIỆC DỰ ÁN</div>
                 <div class="chat-messages" id="chat-messages-box"></div>
-                <div class="chat-input-area">
-                    <input type="text" id="chat-input" placeholder="Nhập nội dung trao đổi... (@email để báo chuông)" onkeypress="if(event.key==='Enter') sendChatMessage()">
-                    <button onclick="sendChatMessage()">Gửi</button>
-                </div>
+                <div class="chat-input-area"><input type="text" id="chat-input" placeholder="Nhập nội dung trao đổi... (@email để báo chuông)" onkeypress="if(event.key==='Enter') sendChatMessage()"><button onclick="sendChatMessage()">Gửi</button></div>
             </div>
-            <div class="modal-footer">
-                <button class="btn-modal-cancel" onclick="closeTaskModal()">Đóng Cửa Sổ</button>
-                <button class="btn-modal-save" onclick="closeTaskModal()">Lưu Dữ Liệu</button>
-                <button class="btn-modal-confirm" id="btn-modal-send" onclick="sendTaskEmailAndNotify()">Xác nhận & Báo chuông</button>
+            <div class="modal-footer"><button class="btn-modal-cancel" onclick="closeTaskModal()">Đóng Cửa Sổ</button><button class="btn-modal-save" onclick="closeTaskModal()">Lưu Dữ Liệu</button><button class="btn-modal-confirm" id="btn-modal-send" onclick="sendTaskEmailAndNotify()">Xác nhận & Báo chuông</button></div>
+        </div>
+    </div>
+
+    <!-- MODAL IMPORT EXCEL MỚI THÊM -->
+    <div id="excelModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <span>Nhập Dữ Liệu Từ File Excel (BOQ)</span>
+                <button class="btn-close-modal" onclick="closeExcelModal()">×</button>
+            </div>
+            
+            <div class="excel-instruction">
+                <b>💡 Hướng dẫn:</b> Mở file Excel BOQ của bạn lên. Xem tiêu đề các cột nằm ở chữ cái nào (A, B, C...) và dữ liệu bắt đầu từ dòng số mấy rồi điền vào form bên dưới.
+            </div>
+
+            <div class="modal-form-group">
+                <label style="color:#b91c1c;">1. Chọn file Excel (.xlsx, .xls):</label>
+                <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="border: 2px dashed #04AA6D; padding: 15px; cursor: pointer;">
+            </div>
+
+            <div class="excel-map-row" style="margin-top: 20px;">
+                <label>2. Dòng bắt đầu chứa dữ liệu:</label>
+                <input type="number" id="ex_startRow" value="10" placeholder="VD: 10">
+            </div>
+
+            <div style="border-top: 1px solid #e2e8f0; margin: 15px 0; padding-top: 15px; font-weight: bold; color: #04AA6D;">3. KHỚP CỘT EXCEL (Gõ chữ cái A, B, C...)</div>
+            
+            <div class="excel-map-row"><label>Cột MÔ TẢ HẠNG MỤC:</label><input type="text" id="ex_desc" placeholder="VD: B" value="B"></div>
+            <div class="excel-map-row"><label>Cột ĐƠN VỊ:</label><input type="text" id="ex_unit" placeholder="VD: C" value="C"></div>
+            <div class="excel-map-row"><label>Cột KHỐI LƯỢNG:</label><input type="text" id="ex_qty" placeholder="VD: D" value="D"></div>
+            <div class="excel-map-row"><label>Cột ĐƠN GIÁ VẬT TƯ:</label><input type="text" id="ex_priceMat" placeholder="VD: E" value="E"></div>
+            <div class="excel-map-row"><label>Cột ĐƠN GIÁ NHÂN CÔNG:</label><input type="text" id="ex_priceLab" placeholder="VD: F" value="F"></div>
+            <div class="excel-map-row"><label>Cột GHI CHÚ:</label><input type="text" id="ex_note" placeholder="VD: H" value="H"></div>
+
+            <div class="modal-footer" style="margin-top: 25px;">
+                <button class="btn-modal-cancel" onclick="closeExcelModal()">Hủy</button>
+                <button class="btn-modal-confirm" onclick="processExcelImport()" style="background:#2563eb;">🚀 Xử lý & Chèn vào bảng</button>
             </div>
         </div>
     </div>
@@ -265,18 +254,10 @@
     </div>
 
     <div id="app-container">
-        
-        <div id="noti-container">
-            <div id="noti-bell" onclick="toggleNotiPanel()">🔔<span id="noti-badge">0</span></div>
-            <div id="noti-panel">
-                <div class="noti-header">THÔNG BÁO MỚI</div>
-                <div id="noti-list"><div style="padding:15px; text-align:center; color:#94a3b8; font-size:13px;">Không có thông báo mới.</div></div>
-            </div>
-        </div>
+        <div id="noti-container"><div id="noti-bell" onclick="toggleNotiPanel()">🔔<span id="noti-badge">0</span></div><div id="noti-panel"><div class="noti-header">THÔNG BÁO MỚI</div><div id="noti-list"><div style="padding:15px; text-align:center; color:#94a3b8; font-size:13px;">Không có thông báo mới.</div></div></div></div>
 
         <div class="sidebar">
             <div class="logo-box"><img src="logo.jpg" alt="Logo" style="max-width: 200px; mix-blend-mode: multiply;"></div>
-            
             <button class="menu-btn active" id="btn-tab-home" onclick="switchTab('tab-home')">🏠 TRANG CHỦ</button>
             <button class="menu-btn" id="btn-tab1" onclick="switchTab('tab1')">1. BÁO CÁO CÔNG VIỆC</button>
             <button class="menu-btn" id="btn-tab2" onclick="switchTab('tab2')">2. DANH SÁCH DỰ ÁN</button>
@@ -285,17 +266,12 @@
             <button class="menu-btn" id="btn-tab5" onclick="switchTab('tab5')">5. THỐNG KÊ GIÁ TRỊ DỰ ÁN</button>
             <button class="menu-btn" id="btn-tab6" onclick="switchTab('tab6')">6. DANH SÁCH NHÂN SỰ</button>
             <button class="menu-btn" id="btn-tab7" onclick="switchTab('tab7')">7. THEO DÕI KHỐI LƯỢNG</button>
-            
-            <div class="user-info-panel">
-                👤 <span id="current-user-email">Đang tải...</span><br>
-                <button class="btn-logout" onclick="logout()">Đăng xuất</button>
-            </div>
+            <div class="user-info-panel">👤 <span id="current-user-email">Đang tải...</span><br><button class="btn-logout" onclick="logout()">Đăng xuất</button></div>
         </div>
 
         <div class="main-content">
             <div id="tab-home" class="tab-content active">
-                <div class="bg-animation"></div>
-                <div class="bg-overlay"></div>
+                <div class="bg-animation"></div><div class="bg-overlay"></div>
                 <div class="welcome-container">
                     <div class="welcome-box">
                         <div class="animation-wrapper"><img src="PCCC.JPG.gif" alt="Phòng cháy chữa cháy animation" class="pccc-animation"></div>
@@ -331,7 +307,6 @@
                         <button class="btn-export" onclick="exportPDF('export-area1', 'Bao_Cao_Tien_Do')">🖨️ Xuất PDF</button>
                     </div>
                 </div>
-
                 <div id="export-area1" class="export-area">
                     <div class="report-header" id="pdf-title1">BÁO CÁO TIẾN ĐỘ CÔNG VIỆC</div>
                     <div id="lock-warning1" style="color:red; font-weight:bold; display:none; margin-bottom: 10px;">⚠️ BẢNG NÀY ĐÃ BỊ ADMIN KHÓA. KHÔNG THỂ CHỈNH SỬA!</div>
@@ -350,7 +325,6 @@
                         <tbody id="tbody-kinhdoanh"></tbody><tbody id="tbody-kythuat"></tbody>
                         <tbody id="tbody-muahang"></tbody><tbody id="tbody-ketoan"></tbody><tbody id="tbody-nhansu"></tbody>
                     </table>
-                    
                     <div class="action-buttons-container">
                         <button class="btn-add-row" onclick="addEmployeeRow('tbody-kinhdoanh')">+ THÊM NHÂN VIÊN</button>
                         <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('progressTable', 'tbody-kinhdoanh', 'tab1')">+ THÊM NHÓM (GROUP)</button>
@@ -367,11 +341,9 @@
                         <button class="btn-export" onclick="exportPDF('export-area2', 'Danh_Sach_Du_An')">🖨️ Xuất PDF</button>
                     </div>
                 </div>
-
                 <div id="export-area2" class="export-area">
                     <div class="report-header centered" id="pdf-title2">DANH SÁCH DỰ ÁN</div>
                     <div id="lock-warning2" style="color:red; font-weight:bold; display:none; margin-bottom: 10px; text-align:center;">⚠️ DỮ LIỆU ĐÃ BỊ ADMIN KHÓA. KHÔNG THỂ CHỈNH SỬA!</div>
-                    
                     <table id="projectListTable">
                         <thead>
                             <tr>
@@ -386,7 +358,6 @@
                         </thead>
                         <tbody id="tbody-project-list"></tbody>
                     </table>
-                    
                     <div class="action-buttons-container">
                         <button class="btn-add-row" onclick="addProjectRowTab2()">+ THÊM DỰ ÁN</button>
                         <button class="btn-add-row" style="background-color: #f59e0b;" onclick="addYearRow('tbody-project-list')">+ THÊM NĂM (ĐẦU MỤC)</button>
@@ -404,12 +375,10 @@
                         <button class="btn-export" onclick="exportPDF('export-area3', 'Du_An_Dau_Thau')">🖨️ Xuất PDF</button>
                     </div>
                 </div>
-
                 <div id="export-area3" class="export-area">
                     <div class="report-header centered" id="pdf-title3">DỰ ÁN ĐẤU THẦU</div>
                     <div id="lock-warning3" style="color:red; font-weight:bold; display:none; margin-bottom: 10px; text-align:center;">⚠️ DỮ LIỆU ĐÃ BỊ ADMIN KHÓA. Bạn chỉ có thể cập nhật % Tiến độ ở Bảng giao việc chi tiết.</div>
                     <div style="text-align: center; font-style: italic; color: #10b981; margin-bottom: 15px; font-weight: bold;">* Mẹo: Click chuột 2 lần vào tên "DỰ ÁN" để mở Bảng giao việc chi tiết & Đánh % tiến độ</div>
-                    
                     <table id="biddingTable">
                         <thead>
                             <tr>
@@ -423,7 +392,6 @@
                         </thead>
                         <tbody id="tbody-bidding"></tbody>
                     </table>
-                    
                     <div class="action-buttons-container">
                         <button class="btn-add-row" onclick="addBiddingRow()">+ THÊM DỰ ÁN ĐẤU THẦU</button>
                         <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('biddingTable', 'tbody-bidding', 'tab3')">+ THÊM NHÓM (GROUP)</button>
@@ -442,11 +410,9 @@
                         <button class="btn-export" onclick="exportPDF('export-area5', 'Thong_Ke_Gia_Tri_Du_An')">🖨️ Xuất PDF</button>
                     </div>
                 </div>
-
                 <div id="export-area5" class="export-area">
                     <div class="report-header centered" id="pdf-title5">THỐNG KÊ GIÁ TRỊ DỰ ÁN</div>
                     <div id="lock-warning5" style="color:red; font-weight:bold; display:none; margin-bottom: 10px; text-align:center;">⚠️ DỮ LIỆU ĐÃ BỊ ADMIN KHÓA. KHÔNG THỂ CHỈNH SỬA!</div>
-                    
                     <table id="projectValueTable">
                         <thead>
                             <tr>
@@ -471,7 +437,6 @@
                         </thead>
                         <tbody id="tbody-project-value"></tbody>
                     </table>
-                    
                     <div class="action-buttons-container">
                         <button class="btn-add-row" onclick="addProjectRow()">+ THÊM DỰ ÁN</button>
                         <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('projectValueTable', 'tbody-project-value', 'tab5')">+ THÊM NHÓM (GROUP)</button>
@@ -488,11 +453,9 @@
                         <button class="btn-export" onclick="exportPDF('export-area6', 'Danh_Sach_Nhan_Su')">🖨️ Xuất PDF</button>
                     </div>
                 </div>
-
                 <div id="export-area6" class="export-area">
                     <div class="report-header centered" id="pdf-title6">DANH SÁCH NHÂN SỰ</div>
                     <div id="lock-warning6" style="color:red; font-weight:bold; display:none; margin-bottom: 10px; text-align:center;">⚠️ DỮ LIỆU ĐÃ BỊ ADMIN KHÓA. KHÔNG THỂ CHỈNH SỬA!</div>
-                    
                     <table id="personnelTable">
                         <thead>
                             <tr>
@@ -512,7 +475,6 @@
                         </thead>
                         <tbody id="tbody-personnel"></tbody>
                     </table>
-                    
                     <div class="action-buttons-container">
                         <button class="btn-add-row" onclick="addPersonnelRow()">+ THÊM NHÂN SỰ</button>
                         <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('personnelTable', 'tbody-personnel', 'tab6')">+ THÊM NHÓM (GROUP)</button>
@@ -520,7 +482,7 @@
                 </div>
             </div>
 
-            <!-- TAB 7: THEO DÕI KHỐI LƯỢNG -->
+            <!-- TAB 7: THEO DÕI KHỐI LƯỢNG (CHỨA IMPORT EXCEL) -->
             <div id="tab7" class="tab-content">
                 <div class="time-filter-bar" style="justify-content: flex-end;">
                     <div class="action-group">
@@ -538,7 +500,7 @@
                         <thead>
                             <tr>
                                 <th rowspan="2" style="width: 40px; vertical-align: middle;">STT</th>
-                                <th rowspan="2" style="vertical-align: middle; min-width: 150px;">MÔ TẢ HẠNG MỤC</th>
+                                <th rowspan="2" style="vertical-align: middle; min-width: 250px;">MÔ TẢ HẠNG MỤC</th>
                                 <th rowspan="2" style="width: 80px; vertical-align: middle;">ĐƠN VỊ</th>
                                 <th rowspan="2" style="width: 120px; vertical-align: middle;">KHỐI LƯỢNG</th>
                                 <th colspan="2" style="background-color: #04AA6D;">ĐƠN GIÁ</th>
@@ -547,10 +509,10 @@
                                 <th rowspan="2" style="width: 80px; vertical-align: middle;" class="col-action">THAO TÁC</th>
                             </tr>
                             <tr>
-                                <th style="width: 120px; font-size: 13px; background-color: #038a59;">VẬT TƯ</th>
-                                <th style="width: 120px; font-size: 13px; background-color: #038a59;">NHÂN CÔNG</th>
                                 <th style="width: 130px; font-size: 13px; background-color: #038a59;">VẬT TƯ</th>
                                 <th style="width: 130px; font-size: 13px; background-color: #038a59;">NHÂN CÔNG</th>
+                                <th style="width: 140px; font-size: 13px; background-color: #038a59;">VẬT TƯ</th>
+                                <th style="width: 140px; font-size: 13px; background-color: #038a59;">NHÂN CÔNG</th>
                             </tr>
                         </thead>
                         <tbody id="tbody-volume"></tbody>
@@ -559,7 +521,7 @@
                     <div class="action-buttons-container">
                         <button class="btn-add-row" onclick="addVolumeRow()">+ THÊM HẠNG MỤC</button>
                         <button class="btn-add-row" style="background-color: #8b5cf6;" onclick="addGroupRow('volumeTable', 'tbody-volume', 'tab7')">+ THÊM NHÓM (GROUP)</button>
-                        <!-- NÚT ĐỎ VẮC XIN ĐỂ XÓA SẠCH LỖI TAB 7 -->
+                        <button class="btn-add-row" style="background-color: #10b981;" onclick="openExcelModal()">⬆️ NHẬP TỪ EXCEL</button>
                         <button class="btn-add-row" style="background-color: #ef4444; float: right;" onclick="forceResetTab7()">🔄 LÀM MỚI BẢNG (XÓA LỖI)</button>
                     </div>
                 </div>
@@ -646,9 +608,6 @@
             });
         });
 
-        /* ========================================================================= */
-        /* HỆ THỐNG CHUÔNG THÔNG BÁO                                                 */
-        /* ========================================================================= */
         function formatEmailKey(email) { return email.toLowerCase().replace(/[\.\#\$\[\]]/g, '_'); }
         function toggleNotiPanel() {
             const panel = document.getElementById('noti-panel');
@@ -693,7 +652,7 @@
         }
 
         /* ========================================================================= */
-        /* VẮC XIN TỰ ĐỘNG CHÈN NÚT [+] VÀ TÍNH NĂNG KÉO ĐỘ RỘNG CỘT (RESIZER)       */
+        /* HỆ THỐNG VẮC XIN - NÚT [+] VÀ RESIZER                                     */
         /* ========================================================================= */
         
         function injectButtonsAndResizers(tableId, tabId) {
@@ -703,14 +662,11 @@
 
             const ths = table.querySelectorAll('thead th');
             ths.forEach(th => {
-                // Làm sạch các nút cũ (tránh gắn đè nhiều lần)
                 let oldBtns = th.querySelectorAll('.btn-add-col-inline');
                 oldBtns.forEach(b => b.remove());
 
                 let text = th.innerText.replace(/[\+\-\nx×]/g, '').trim();
                 
-                // --- THÊM RESIZER (KÉO RỘNG CỘT) ---
-                // Chỉ gắn resizer cho những thẻ th không bị gộp cột (colspan = 1) để tránh lỗi giao diện
                 if (!th.querySelector('.resizer') && text !== 'THAO TÁC' && (th.colSpan || 1) === 1) {
                     const resizer = document.createElement('div');
                     resizer.className = 'resizer';
@@ -721,7 +677,6 @@
 
                 if(!text || text === 'STT' || text === 'THAO TÁC') return; 
 
-                // --- THÊM NÚT [+] VÀ [-] ---
                 if (th.classList.contains('dynamic-col')) {
                     if (!th.querySelector('.btn-del-col-abs')) {
                         const delBtn = document.createElement('button');
@@ -736,7 +691,6 @@
                     let input = th.querySelector('.cell-input');
                     if (!input) {
                         let content = Array.from(th.childNodes).filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
-                        // Dọn dẹp th, chỉ giữ lại resizer và nút xóa
                         Array.from(th.childNodes).forEach(n => {
                             if(!n.classList || (!n.classList.contains('resizer') && !n.classList.contains('btn-del-col-abs'))) n.remove();
                         });
@@ -747,7 +701,6 @@
                         div.style.cssText = 'color:white; text-align:center; border:none; background:transparent; font-weight:bold; outline:none;';
                         div.innerText = content || 'TÊN CỘT';
                         
-                        // Chèn nội dung text vào trước resizer
                         let resizerEl = th.querySelector('.resizer');
                         if (resizerEl) th.insertBefore(div, resizerEl);
                         else th.appendChild(div);
@@ -765,7 +718,6 @@
                     }
 
                 } else {
-                    // Cột gốc mặc định: Chỉ có nút +
                     if (!th.querySelector('.btn-add-col-inline')) {
                         const addBtn = document.createElement('button');
                         addBtn.className = 'btn-add-col-inline';
@@ -779,41 +731,38 @@
                 }
             });
 
-            if (needsSave && !isLockedTab(tabId)) {
-                triggerSave(tabId); 
-            }
+            if (needsSave && !isLockedTab(tabId)) { triggerSave(tabId); }
         }
 
-        // --- HÀM XỬ LÝ KÉO CỘT ---
         function createResizableColumn(col, resizer, tabId) {
             let x = 0; let w = 0;
             const mouseDownHandler = function (e) {
                 if(isLockedTab(tabId)) return;
-                e.preventDefault(); // Tránh bôi đen text khi kéo
+                e.preventDefault(); 
                 x = e.clientX;
-                w = col.getBoundingClientRect().width; // Lấy chiều rộng hiện tại thực tế
+                w = col.getBoundingClientRect().width; 
                 document.addEventListener('mousemove', mouseMoveHandler);
                 document.addEventListener('mouseup', mouseUpHandler);
                 resizer.classList.add('resizing');
-                isTyping = true; // Khóa save firebase lúc đang kéo
+                isTyping = true; 
             };
             const mouseMoveHandler = function (e) {
                 const dx = e.clientX - x;
                 col.style.width = `${w + dx}px`;
-                col.style.minWidth = `${w + dx}px`; // Ép cứng min width để table layout auto nhận diện
+                col.style.minWidth = `${w + dx}px`; 
             };
             const mouseUpHandler = function () {
                 document.removeEventListener('mousemove', mouseMoveHandler);
                 document.removeEventListener('mouseup', mouseUpHandler);
                 resizer.classList.remove('resizing');
                 isTyping = false;
-                triggerSave(tabId); // Kéo xong lưu lên Firebase
+                triggerSave(tabId); 
             };
             resizer.addEventListener('mousedown', mouseDownHandler);
         }
 
         /* ========================================================================= */
-        /* THUẬT TOÁN THÊM/XÓA CỘT ĐỘNG CHUYÊN SÂU TẠI BẤT KỲ VỊ TRÍ NÀO             */
+        /* THUẬT TOÁN THÊM/XÓA CỘT ĐỘNG CHUYÊN SÂU                                   */
         /* ========================================================================= */
         
         function getAbsoluteColIndex(th) {
@@ -850,10 +799,9 @@
             
             let insertIndex = getAbsoluteColIndex(th);
 
-            // 1. Chèn Header (THEAD)
             const newTh = document.createElement('th');
             newTh.className = 'dynamic-col';
-            newTh.style.minWidth = '120px'; // Set width mặc định cho cột mới
+            newTh.style.minWidth = '120px';
             newTh.rowSpan = thead.rows.length - tr.sectionRowIndex; 
             newTh.innerHTML = `
                 <button class="btn-del-col-abs" onclick="deleteCol(this, '${tabId}', '${tableId}')" title="Xóa cột này">−</button>
@@ -865,10 +813,8 @@
             if (th.nextElementSibling) tr.insertBefore(newTh, th.nextElementSibling);
             else tr.appendChild(newTh);
 
-            // Kích hoạt kéo cột cho cột vừa sinh ra
             createResizableColumn(newTh, newTh.querySelector('.resizer'), tabId);
 
-            // 2. Chèn Nội Dung (TBODY)
             const tbodies = table.querySelectorAll('tbody');
             tbodies.forEach(tbody => {
                 Array.from(tbody.rows).forEach(row => {
@@ -899,7 +845,6 @@
             triggerSave(tabId);
         }
 
-        // Xóa một ô bất kỳ theo Visual Index (An toàn cho rowspan/colspan lồng nhau)
         function deleteCellByVisualIndex(row, targetIndex) {
             let currentIndex = 0;
             for (let i = 0; i < row.cells.length; i++) {
@@ -911,7 +856,6 @@
                     else cell.remove();
                     return;
                 } else if (currentIndex < targetIndex && currentIndex + colSpan > targetIndex) {
-                    // Cột cần xóa nằm ẩn bên trong thẻ gộp colspan của ô này
                     cell.colSpan = colSpan - 1;
                     return;
                 }
@@ -927,10 +871,8 @@
             const colIndex = getAbsoluteColIndex(th) - (th.colSpan || 1); 
             const table = document.getElementById(tableId);
             
-            // Xóa ở Thead
             th.remove();
             
-            // Xóa ở Tbody bằng Visual Index thông minh
             const tbodies = table.querySelectorAll('tbody');
             tbodies.forEach(tbody => {
                 Array.from(tbody.rows).forEach(row => {
@@ -1012,9 +954,7 @@
                     let d = snap.val() || blankTemplate1; 
                     if (d.thead) document.querySelector('#progressTable thead').innerHTML = d.thead;
                     ['tbody-kinhdoanh', 'tbody-kythuat', 'tbody-muahang', 'tbody-ketoan', 'tbody-nhansu'].forEach(id => { document.getElementById(id).innerHTML = d[id] || blankTemplate1[id] || ""; }); 
-                    
                     injectButtonsAndResizers('progressTable', 'tab1'); 
-
                     if (isTab1Locked) document.getElementById('export-area1').querySelectorAll('.cell-input').forEach(el => el.contentEditable = false); 
                 } 
             }); 
@@ -1058,7 +998,6 @@
                         }
                     }
                     injectButtonsAndResizers('projectListTable', 'tab2');
-
                     if (isTab2Locked) document.getElementById('export-area2').querySelectorAll('.cell-input').forEach(el => el.contentEditable = false); 
                 } 
             }); 
@@ -1076,7 +1015,6 @@
             tr.innerHTML = `<td colspan="6"><div contenteditable="true" class="cell-input" style="font-size: 15px; text-transform: uppercase;" placeholder="NHẬP NĂM HOẶC GIAI ĐOẠN..."></div></td><td class="col-action" style="text-align:center;"><button class="btn-add-task" onclick="addProjectUnderYear(this)">+ Dự án</button> <button class="btn-delete" onclick="deleteRow(this, '${tbodyId}', 'tab2')">Xóa</button></td>`; 
             let colCount = 0; Array.from(document.getElementById('projectListTable').querySelector('thead').rows[0].cells).forEach(c => colCount += c.colSpan||1);
             tr.cells[0].colSpan = colCount - 1;
-            
             document.getElementById(tbodyId).appendChild(tr); saveTab2Data(); 
         }
         function addProjectUnderYear(btn) { 
@@ -1112,7 +1050,6 @@
                         }
                     }
                     injectButtonsAndResizers('projectValueTable', 'tab5');
-
                     calculateTotals(); 
                     if (isTab5Locked) document.getElementById('export-area5').querySelectorAll('.cell-input').forEach(el => el.contentEditable = false); 
                 } 
@@ -1150,7 +1087,6 @@
                         }
                     }
                     injectButtonsAndResizers('personnelTable', 'tab6');
-
                     if (isTab6Locked) { 
                         document.getElementById('export-area6').querySelectorAll('.cell-input').forEach(el => el.contentEditable = false); 
                         document.getElementById('export-area6').querySelectorAll('.resign-checkbox').forEach(el => el.disabled = true); 
@@ -1284,7 +1220,6 @@
             totalLabDiv.innerText = formatNum(qty * pLab);
         }
 
-        // HÀM RESET DỮ LIỆU ĐỂ SỬA LỖI (VẮC XIN ĐẶC TRỊ)
         function forceResetTab7() {
             if(isTab7Locked) { alert("Vui lòng mở khóa bảng trước khi reset!"); return; }
             if(!confirm("CẢNH BÁO: Hành động này sẽ XÓA SẠCH toàn bộ nội dung hiện tại của Bảng Theo Dõi Khối Lượng và trả nó về một bảng trống hoàn toàn. Bạn có chắc chắn muốn làm mới bảng?")) return;
@@ -1292,7 +1227,7 @@
             const pristineThead = `
                 <tr>
                     <th rowspan="2" style="width: 40px; vertical-align: middle;">STT</th>
-                    <th rowspan="2" style="vertical-align: middle; min-width: 150px;">MÔ TẢ HẠNG MỤC</th>
+                    <th rowspan="2" style="vertical-align: middle; min-width: 250px;">MÔ TẢ HẠNG MỤC</th>
                     <th rowspan="2" style="width: 80px; vertical-align: middle;">ĐƠN VỊ</th>
                     <th rowspan="2" style="width: 120px; vertical-align: middle;">KHỐI LƯỢNG</th>
                     <th colspan="2" style="background-color: #04AA6D;">ĐƠN GIÁ</th>
@@ -1301,10 +1236,10 @@
                     <th rowspan="2" style="width: 80px; vertical-align: middle;" class="col-action">THAO TÁC</th>
                 </tr>
                 <tr>
-                    <th style="width: 120px; font-size: 13px; background-color: #038a59;">VẬT TƯ</th>
-                    <th style="width: 120px; font-size: 13px; background-color: #038a59;">NHÂN CÔNG</th>
                     <th style="width: 130px; font-size: 13px; background-color: #038a59;">VẬT TƯ</th>
                     <th style="width: 130px; font-size: 13px; background-color: #038a59;">NHÂN CÔNG</th>
+                    <th style="width: 140px; font-size: 13px; background-color: #038a59;">VẬT TƯ</th>
+                    <th style="width: 140px; font-size: 13px; background-color: #038a59;">NHÂN CÔNG</th>
                 </tr>
             `;
             const pristineTbody = ``;
@@ -1322,9 +1257,137 @@
         }
 
         /* ========================================================================= */
-        /* KHU VỰC TAB 3: DỰ ÁN ĐẤU THẦU (MODAL VÀ GIAO VIỆC)                        */
+        /* IMPORT EXCEL VÀO TAB 7                                                    */
         /* ========================================================================= */
         
+        function openExcelModal() {
+            if(isTab7Locked) { alert("Bảng đang bị khóa. Vui lòng mở khóa trước khi Import Excel."); return; }
+            document.getElementById('excelModal').style.display = 'flex';
+        }
+        function closeExcelModal() {
+            document.getElementById('excelModal').style.display = 'none';
+        }
+
+        // Chuyển đổi ký tự cột Excel (A, B, C...) thành Index số (0, 1, 2...)
+        function colLetterToIndex(letter) {
+            if (!letter) return -1;
+            let col = 0;
+            for (let i = 0; i < letter.length; i++) {
+                col = col * 26 + (letter.charCodeAt(i) - 64);
+            }
+            return col - 1;
+        }
+
+        function processExcelImport() {
+            const fileInput = document.getElementById('excelFileInput');
+            if (!fileInput.files.length) { alert("Vui lòng chọn file Excel!"); return; }
+
+            const rStart = parseInt(document.getElementById('ex_startRow').value) - 1;
+            const cDesc = colLetterToIndex(document.getElementById('ex_desc').value.trim().toUpperCase());
+            const cUnit = colLetterToIndex(document.getElementById('ex_unit').value.trim().toUpperCase());
+            const cQty = colLetterToIndex(document.getElementById('ex_qty').value.trim().toUpperCase());
+            const cPriceMat = colLetterToIndex(document.getElementById('ex_priceMat').value.trim().toUpperCase());
+            const cPriceLab = colLetterToIndex(document.getElementById('ex_priceLab').value.trim().toUpperCase());
+            const cNote = colLetterToIndex(document.getElementById('ex_note').value.trim().toUpperCase());
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            // Đổi nút thành Đang xử lý
+            const btnConfirm = document.querySelector('#excelModal .btn-modal-confirm');
+            const originalText = btnConfirm.innerHTML;
+            btnConfirm.innerHTML = 'Đang xử lý...';
+            btnConfirm.disabled = true;
+
+            reader.onload = function(e) {
+                try {
+                    const data = e.target.result;
+                    const workbook = XLSX.read(data, {type: 'binary'});
+                    const sheetName = workbook.SheetNames[0]; // Lấy sheet đầu tiên
+                    const sheet = workbook.Sheets[sheetName];
+                    const range = XLSX.utils.decode_range(sheet['!ref']);
+
+                    const tbody = document.getElementById('tbody-volume');
+                    let newRowsCount = 0;
+
+                    for(let r = rStart; r <= range.e.r; r++) {
+                        let descCell = sheet[XLSX.utils.encode_cell({r: r, c: cDesc})];
+                        let desc = descCell ? descCell.v.toString().trim() : "";
+                        
+                        if (!desc) continue; // Bỏ qua dòng trống mô tả
+
+                        let unit = cUnit >= 0 && sheet[XLSX.utils.encode_cell({r: r, c: cUnit})] ? sheet[XLSX.utils.encode_cell({r: r, c: cUnit})].v.toString() : "";
+                        let qty = cQty >= 0 && sheet[XLSX.utils.encode_cell({r: r, c: cQty})] ? sheet[XLSX.utils.encode_cell({r: r, c: cQty})].v : 0;
+                        let pMat = cPriceMat >= 0 && sheet[XLSX.utils.encode_cell({r: r, c: cPriceMat})] ? sheet[XLSX.utils.encode_cell({r: r, c: cPriceMat})].v : 0;
+                        let pLab = cPriceLab >= 0 && sheet[XLSX.utils.encode_cell({r: r, c: cPriceLab})] ? sheet[XLSX.utils.encode_cell({r: r, c: cPriceLab})].v : 0;
+                        let note = cNote >= 0 && sheet[XLSX.utils.encode_cell({r: r, c: cNote})] ? sheet[XLSX.utils.encode_cell({r: r, c: cNote})].v.toString() : "";
+
+                        // Ép kiểu số
+                        qty = parseFloat(qty) || 0;
+                        pMat = parseFloat(pMat) || 0;
+                        pLab = parseFloat(pLab) || 0;
+
+                        const tr = document.createElement('tr');
+                        
+                        // Nếu không có Đơn vị VÀ không có Khối lượng => Hệ thống tự nhận diện đây là Dòng Nhóm (Group Row)
+                        if (!unit && qty === 0) {
+                            tr.className = 'group-row dept-row';
+                            let colCount = 0;
+                            Array.from(document.querySelector('#volumeTable thead').rows[0].cells).forEach(cell => { colCount += cell.colSpan || 1; });
+                            
+                            tr.innerHTML = `<td colspan="${colCount}">
+                                <div style="display:flex; align-items:center; gap: 10px;">
+                                    <button class="btn-toggle-group" style="padding: 2px 8px; cursor: pointer; border-radius: 4px; border: 1px solid #94a3b8; background: #f8fafc; color: #1e293b;" onclick="toggleGroup(this, 'tab7')">[-]</button>
+                                    <div contenteditable="true" class="cell-input group-title-input" style="flex:1; font-weight:bold; color:#1e293b; text-transform:uppercase; border:none; background:transparent;" placeholder="NHẬP TÊN NHÓM MỚI...">${desc}</div>
+                                    <button class="btn-delete" style="padding: 4px 8px;" onclick="deleteRow(this, null, 'tab7')">Xóa</button>
+                                </div>
+                            </td>`;
+                        } else {
+                            // Dòng hạng mục bình thường
+                            tr.className = 'volume-row';
+                            tr.innerHTML = `
+                                <td class="stt-cell" style="text-align:center;"></td>
+                                <td><div contenteditable="true" class="cell-input" placeholder="Mô tả hạng mục...">${desc}</div></td>
+                                <td><div contenteditable="true" class="cell-input" style="text-align:center;" placeholder="ĐVT">${unit}</div></td>
+                                <td><div contenteditable="true" class="cell-input col-calc-vol col-qty" style="text-align:right;" placeholder="0">${qty ? formatNum(qty) : 0}</div></td>
+                                <td><div contenteditable="true" class="cell-input col-calc-vol col-price-mat" style="text-align:right;" placeholder="0">${pMat ? formatNum(pMat) : 0}</div></td>
+                                <td><div contenteditable="true" class="cell-input col-calc-vol col-price-lab" style="text-align:right;" placeholder="0">${pLab ? formatNum(pLab) : 0}</div></td>
+                                <td><div class="cell-input cell-readonly col-total-mat" style="text-align:right; color:#04AA6D;">${formatNum(qty * pMat)}</div></td>
+                                <td><div class="cell-input cell-readonly col-total-lab" style="text-align:right; color:#04AA6D;">${formatNum(qty * pLab)}</div></td>
+                                <td><div contenteditable="true" class="cell-input" placeholder="Ghi chú...">${note}</div></td>
+                                <td class="col-action" style="text-align:center;"><button class="btn-delete" onclick="deleteRow(this, 'tbody-volume', 'tab7')">Xóa</button></td>
+                            `;
+                            syncRowColumns(tr, 'volumeTable');
+                        }
+                        
+                        tbody.appendChild(tr);
+                        newRowsCount++;
+                    }
+
+                    if(newRowsCount > 0) {
+                        updateRowNumbers('tbody-volume');
+                        saveTab7Data();
+                        alert(`Nhập thành công ${newRowsCount} dòng dữ liệu!`);
+                        closeExcelModal();
+                    } else {
+                        alert("Không tìm thấy dữ liệu nào. Vui lòng kiểm tra lại Dòng bắt đầu hoặc Khớp cột.");
+                    }
+
+                } catch (error) {
+                    console.error(error);
+                    alert("Có lỗi xảy ra khi đọc file Excel. Vui lòng kiểm tra lại định dạng file.");
+                } finally {
+                    btnConfirm.innerHTML = originalText;
+                    btnConfirm.disabled = false;
+                }
+            };
+            
+            reader.readAsBinaryString(file);
+        }
+
+        /* ========================================================================= */
+        /* KHU VỰC TAB 3: DỰ ÁN ĐẤU THẦU (MODAL VÀ GIAO VIỆC)                        */
+        /* ========================================================================= */
         function checkDeadlines() {
             let today = new Date(); today.setHours(0,0,0,0); let timeToday = today.getTime();
             let needSave = false;
