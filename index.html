@@ -80,16 +80,16 @@
         .btn-admin-lock { padding: 9px 15px; background-color: #f59e0b; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: none; }
         
         /* --------------------------------------------------- */
-        /* CẤU HÌNH BẢNG (FIX LỖI KÉO CỘT VÀ XUỐNG DÒNG)       */
+        /* CẤU HÌNH KHUNG BẢNG & THANH CUỘN                      */
         /* --------------------------------------------------- */
         .export-area { 
             background-color: white; 
-            padding: 10px; 
             flex: 1; 
-            overflow: auto; /* Bật thanh cuộn ngang dọc */
-            border: 1px solid #e2e8f0;
+            overflow: auto; /* THANH CUỘN NGANG DỌC NẰM Ở ĐÂY */
+            border: 10px solid white; /* Thay padding bằng border để không bị lỗi sticky */
             border-radius: 4px;
             position: relative;
+            box-shadow: 0 0 0 1px #e2e8f0;
         }
 
         .export-area::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -100,30 +100,93 @@
         table { 
             width: max-content; 
             min-width: 100%; 
-            border-collapse: collapse; 
+            border-collapse: separate; /* TÁCH RỜI VIỀN ĐỂ FIX LỖI STICKY */
+            border-spacing: 0;
             margin-bottom: 10px; 
         }
 
         th, td { 
-            border: 1px solid #ddd; padding: 0; text-align: left; vertical-align: middle; 
+            border-bottom: 1px solid #cbd5e1; 
+            border-right: 1px solid #cbd5e1; 
+            padding: 0; text-align: left; vertical-align: middle; 
             box-sizing: border-box; 
-        }
-        
-        /* KỶ LUẬT THÉP: Bắt buộc TD phải tuân thủ chiều rộng của TH, buộc chữ dài phải xuống dòng */
-        td {
-            max-width: 10px; 
+            max-width: 10px; /* Ép chữ phải xuống dòng */
             overflow: hidden;
         }
-
-        th { 
-            background-color: #04AA6D; color: white; font-weight: bold; text-align: center; text-transform: uppercase; 
-            position: relative; padding: 8px !important; padding-right: 25px !important; 
-        }
+        th { border-top: 1px solid #cbd5e1; }
+        td:first-child, th:first-child { border-left: 1px solid #cbd5e1; }
         
+        /* --------------------------------------------------- */
+        /* TÍNH NĂNG CỐ ĐỊNH HÀNG CỘT (FREEZE PANES)             */
+        /* --------------------------------------------------- */
+        
+        /* Cố định Header */
+        table thead tr:nth-child(1) th { 
+            position: sticky; top: 0; z-index: 40; 
+            background-color: #04AA6D; color: white; 
+            font-weight: bold; text-align: center; text-transform: uppercase;
+            background-clip: padding-box; padding: 8px !important; padding-right: 25px !important; 
+        }
+        /* Dòng Header thứ 2 (dùng cho Tab 7) */
+        table thead tr:nth-child(2) th { 
+            position: sticky; top: 53px; /* Sẽ được update lại bằng JS */
+            z-index: 40; background-color: #038a59; color: white; 
+            font-weight: bold; text-align: center; text-transform: uppercase;
+            background-clip: padding-box; padding: 8px !important; padding-right: 25px !important; 
+        }
+
+        /* Cố định Cột STT (Cột 1) */
+        table tbody tr td:nth-child(1),
+        table thead tr:nth-child(1) th:nth-child(1) {
+            position: sticky; left: 0; z-index: 30; 
+            background-color: #fff; background-clip: padding-box;
+        }
+        table thead tr:nth-child(1) th:nth-child(1) { z-index: 50; background-color: #04AA6D; }
+
+        /* Cố định Cột MÔ TẢ (Cột 2) - Kèm hiệu ứng đổ bóng viền xanh */
+        table tbody tr:not(.group-row):not(.dept-row):not(.year-row):not(.total-row) td:nth-child(2),
+        table thead tr:nth-child(1) th:nth-child(2) {
+            position: sticky; left: 50px; z-index: 30; 
+            background-color: #fff; background-clip: padding-box;
+            box-shadow: inset -2px 0 0 #04AA6D, 3px 0 5px rgba(0,0,0,0.05); 
+        }
+        table thead tr:nth-child(1) th:nth-child(2) { z-index: 50; background-color: #04AA6D; }
+
+        /* Hiệu ứng rê chuột giữ nguyên nền */
+        table tbody tr:hover td { background-color: #f1f5f9; }
+        table tbody tr:hover td:nth-child(1), table tbody tr:hover td:nth-child(2) { background-color: #f1f5f9; }
+
+        /* Fix cố định Group Rows / Total Rows */
+        table tbody tr.group-row td, table tbody tr.dept-row td, table tbody tr.year-row td {
+            position: sticky; left: 0; z-index: 30; background-color: #cbd5e1 !important;
+            box-shadow: inset -2px 0 0 #04AA6D, 3px 0 5px rgba(0,0,0,0.05); 
+        }
+        table tbody tr.total-row td:nth-child(1) {
+            position: sticky; left: 0; z-index: 30; background-color: #fef08a !important;
+            box-shadow: inset -2px 0 0 #04AA6D, 3px 0 5px rgba(0,0,0,0.05); 
+        }
+
+
+        /* --------------------------------------------------- */
+        /* CẤU HÌNH Ô NHẬP LIỆU VÀ KÉO CỘT                       */
+        /* --------------------------------------------------- */
+        .cell-input { 
+            width: 100%; min-height: 36px; box-sizing: border-box; padding: 8px; 
+            font-family: inherit; font-size: 14px; outline: none; cursor: text; 
+            border: 1px solid transparent; background: transparent;
+            word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;
+        }
+        .cell-input:focus { border-bottom: 2px solid #04AA6D; background-color: #f8fafc; }
+        .cell-input[placeholder]:empty:before { content: attr(placeholder); color: #888; }
+        
+        /* Khóa cứng kích thước cột STT ở mức 50px */
+        th.stt-header { width: 50px !important; min-width: 50px !important; max-width: 50px !important; text-align: center; }
+        td.stt-cell { width: 50px !important; min-width: 50px !important; max-width: 50px !important; text-align: center; }
+
         /* THANH KÉO ĐỘ RỘNG CỘT (RESIZER) */
         .resizer { 
-            position: absolute; right: 0; top: 0; width: 12px; height: 100%; 
-            cursor: col-resize; z-index: 20; user-select: none; 
+            position: absolute; right: -5px; top: 0; width: 15px; height: 100%; 
+            cursor: col-resize; z-index: 60; user-select: none; 
             display: flex; align-items: center; justify-content: center;
         }
         .resizer::after { content: ''; height: 50%; width: 2px; background-color: rgba(255,255,255,0.4); border-radius: 2px; }
@@ -136,13 +199,13 @@
             display: inline-flex; align-items: center; justify-content: center; 
             background-color: rgba(255,255,255,0.25); color: white; 
             border: 1px solid rgba(255,255,255,0.4); border-radius: 4px; 
-            cursor: pointer; width: 18px; height: 18px; font-size: 14px; font-weight: bold; line-height: 1; transition: all 0.2s; padding: 0; z-index: 10; 
+            cursor: pointer; width: 18px; height: 18px; font-size: 14px; font-weight: bold; line-height: 1; transition: all 0.2s; padding: 0; z-index: 60; 
         }
         .btn-add-col-inline:hover { background-color: #fff; color: #04AA6D; }
         
         .btn-del-col-abs { 
             position: absolute; top: 0; left: 0; background: #ef4444; color: white; border: none; 
-            width: 18px; height: 18px; font-size: 14px; font-weight: bold; cursor: pointer; z-index: 10; 
+            width: 18px; height: 18px; font-size: 14px; font-weight: bold; cursor: pointer; z-index: 60; 
             display: flex; align-items: center; justify-content: center; line-height: 0; 
             border-bottom-right-radius: 4px; border-top-left-radius: 2px; 
         }
@@ -150,27 +213,10 @@
         th .btn-del-col-abs { opacity: 0; transition: opacity 0.2s; }
         th:hover .btn-del-col-abs { opacity: 1; }
 
-        .cell-input { 
-            width: 100%; min-height: 36px; box-sizing: border-box; padding: 8px; 
-            font-family: inherit; font-size: 14px; outline: none; cursor: text; 
-            border: 1px solid transparent; background: transparent;
-            word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; /* Bắt buộc xuống dòng */
-        }
-        .cell-input:focus { border-bottom: 2px solid #04AA6D; background-color: #f8fafc; }
-        .cell-input[placeholder]:empty:before { content: attr(placeholder); color: #888; }
-        
-        /* Cấu hình cột STT không bị móp */
-        th.stt-header { width: 50px !important; min-width: 50px !important; max-width: 50px !important; text-align: center; }
-        td.stt-cell { width: 50px !important; min-width: 50px !important; max-width: 50px !important; text-align: center; }
-
-        .dept-row { background-color: #e2e8f0; font-weight: bold; color: #1e293b; }
-        .total-row td { background-color: #fef08a; font-weight: bold; color: #b91c1c; border-bottom: 2px solid #04AA6D;}
-        
         .btn-add-row, .btn-add-task, .btn-delete, .btn-toggle-group { cursor: pointer; border-radius: 4px; font-size: 12px; color: white; border: none; padding: 5px 8px; font-weight: bold;}
         .btn-add-row { background-color: #2563eb; padding: 8px 15px;} .btn-add-task { background-color: #10b981; margin-right: 2px;} .btn-delete { background-color: #ef4444; }
         .cell-readonly { background-color: #f8fafc; font-weight: bold; color: #b91c1c; text-align: right; }
 
-        .group-row { background-color: #cbd5e1 !important; }
         .group-row .cell-input { color: #0f172a !important; font-size: 15px; }
         .group-title-input:focus { border-bottom: 1px solid #04AA6D !important; background: white !important; }
         .dynamic-col-cell { background-color: #fefce8; } 
@@ -184,10 +230,12 @@
         .locked-view .prj-name { pointer-events: auto !important; }
         .locked-view .btn-toggle-group { display: inline-block !important; pointer-events: auto !important; }
 
+        /* TẮT FREEZE PANES KHI XUẤT PDF */
+        .exporting-pdf table thead tr th { position: static !important; }
+        .exporting-pdf table tbody tr td { position: static !important; box-shadow: none !important; }
         .exporting-pdf .col-action, .exporting-pdf .btn-action-main, .exporting-pdf .action-buttons-container, .exporting-pdf .resizer, .exporting-pdf .btn-add-col-inline, .exporting-pdf .btn-del-col-abs { display: none !important; }
         .exporting-pdf th { padding-right: 8px !important; }
         .exporting-pdf .cell-input[placeholder]:empty:before { content: ''; }
-        .exporting-pdf .dept-row td { border: 1px solid #ddd; }
         .exporting-pdf table { border: 1px solid #000; width: 100%; min-width: 100%;}
         .exporting-pdf th, .exporting-pdf td { border: 1px solid #000; color: #000;}
         
@@ -206,9 +254,9 @@
         .task-assign-container { border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; background: #f8fafc; margin-top: 15px;}
         .task-assign-container h4 { margin-top: 0; margin-bottom: 10px; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px; color: #04AA6D;}
         .modal-task-table { width: 100%; border-collapse: collapse; background: white;}
-        .modal-task-table th, .modal-task-table td { border: 1px solid #cbd5e1; padding: 6px; padding-right: 6px !important;} 
+        .modal-task-table th, .modal-task-table td { border: 1px solid #cbd5e1; padding: 6px; padding-right: 6px !important; position: static !important; left: auto !important; box-shadow: none !important;} 
         .modal-task-table th { background-color: #e2e8f0; color: #1e293b; text-align: center; font-size: 12px;}
-        .modal-task-table td { vertical-align: middle; max-width: none; } /* Reset max-width cho bảng con */
+        .modal-task-table td { vertical-align: middle; max-width: none; } 
         .modal-task-table input { width: 100%; border: 1px solid transparent; padding: 6px; box-sizing: border-box; outline: none; background: transparent; font-family: inherit; font-size: 13px;}
         .modal-task-table input:focus { border-bottom: 1px solid #04AA6D; background: #f8fafc; }
         .modal-task-table input:disabled { background-color: #f1f5f9; color: #94a3b8; }
@@ -558,8 +606,8 @@
                     <table id="volumeTable">
                         <thead>
                             <tr>
-                                <th rowspan="2" class="stt-header" style="vertical-align: middle; width: 50px;">STT</th>
-                                <!-- Ép chiều rộng cứng cho cột Mô tả xuống 300px thay vì min-width -->
+                                <th rowspan="2" class="stt-header" style="vertical-align: middle;">STT</th>
+                                <!-- ĐÃ ÉP WIDTH CHO CỘT MÔ TẢ ĐỂ KHÔNG BỊ PHÌNH TO -->
                                 <th rowspan="2" style="vertical-align: middle; width: 300px;">MÔ TẢ HẠNG MỤC</th>
                                 <th rowspan="2" style="vertical-align: middle; width: 80px;">ĐƠN VỊ</th>
                                 <th rowspan="2" style="vertical-align: middle; width: 120px;">KHỐI LƯỢNG</th>
@@ -715,6 +763,19 @@
         /* HỆ THỐNG VẮC XIN - NÚT [+] VÀ RESIZER ĐƯỢC CHUẨN HÓA LẠI                  */
         /* ========================================================================= */
         
+        // HÀM ĐỒNG BỘ CHIỀU CAO HEADER (HỖ TRỢ STICKY 2 DÒNG)
+        function syncHeaderHeight() {
+            document.querySelectorAll('.tab-content.active table thead').forEach(thead => {
+                if (thead.rows.length > 1) {
+                    let h = thead.rows[0].getBoundingClientRect().height;
+                    Array.from(thead.rows[1].cells).forEach(th => {
+                        th.style.top = h + 'px';
+                    });
+                }
+            });
+        }
+        setInterval(syncHeaderHeight, 500);
+
         function injectButtonsAndResizers(tableId, tabId) {
             const table = document.getElementById(tableId);
             if(!table) return;
