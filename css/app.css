@@ -26,3 +26,14 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
 @media(max-width:1200px){.g5{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:900px){.login-wrap{grid-template-columns:1fr;max-width:520px}.login-brand{justify-content:center}.login-brand b{font-size:24px}.sidebar{transform:translateX(-100%);width:264px!important}.sidebar.mobile-open{transform:translateX(0)}.main,.sidebar.collapsed~.mobile-overlay~.main{margin-left:0;width:100%}.mobile-only{display:grid}.collapse-btn{display:none}.mobile-overlay.show{display:block}.topbar{padding:0 15px}.content{padding:20px 15px 40px}.today{display:none}.g3{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.login-screen{padding:14px}.login-brand img{width:60px;height:60px}.login-brand b{font-size:19px}.login-brand span{font-size:11px}.login-card{padding:23px 17px}.form-grid,.g2,.g3,.g4,.g5{grid-template-columns:1fr}.span2{grid-column:auto}.checks{grid-template-columns:repeat(2,minmax(0,1fr))}.page-head{flex-direction:column}.actions{width:100%}.search{min-width:100%}.modal-root{padding:8px}.modal-panel,.modal-panel.lg,.modal-panel.sm{width:100%;max-height:calc(100vh - 16px)}.user-info{display:none}.topbar{height:68px}.top-left h1{font-size:18px}}
+
+/* V2.1 - BOQ & LẬP GIÁ */
+.boq-table{min-width:1900px}
+.boq-table tfoot th{background:#f8fafc;border-top:2px solid #cbd5e1;font-size:10px;padding:11px;white-space:nowrap}
+.quote-table{min-width:1150px}
+.selected-quote{background:#f0fdf4!important}
+.selected-quote td:first-child{box-shadow:inset 3px 0 0 #16a34a}
+.approval-boq-summary{background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px}
+@media(max-width:640px){
+  .approval-boq-summary .g4{grid-template-columns:1fr 1fr}
+}

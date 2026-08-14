@@ -1,6 +1,32 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.1
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
+
+
+## Nâng cấp V2.1
+
+Đã bổ sung module **BOQ & Lập giá**:
+
+- Chọn dự án và quản lý BOQ theo từng dòng.
+- Các trường: hệ thống, nhóm, mô tả, spec, ĐVT, khối lượng.
+- Chi phí: vật tư, nhân công, thầu phụ, chi phí khác.
+- Hao hụt %.
+- Markup %.
+- Tự tính NET/ĐVT, giá chào/ĐVT, thành tiền NET, thành tiền chào.
+- Tổng giá NET, tổng giá chào, lợi nhuận gộp và tỷ lệ lợi nhuận.
+- So sánh nhiều báo giá nhà cung cấp cho từng dòng BOQ.
+- Lưu hãng, lead time, điều khoản thanh toán, hiệu lực báo giá.
+- Chọn một báo giá → tự cập nhật giá vật tư vào dòng BOQ.
+- Xuất BOQ CSV.
+- Tải mẫu CSV và nhập BOQ hàng loạt từ CSV.
+- Khi trình duyệt giá, hệ thống tự lấy tổng từ BOQ.
+- Hồ sơ trình giá lưu snapshot BOQ tại thời điểm trình để về sau đối chiếu.
+- Siết Database Rules: Đấu thầu/Trưởng phòng không thể tự đổi trạng thái hồ sơ sang APPROVED/REJECTED; quyền quyết định thuộc Giám đốc/Admin.
+
+Dữ liệu mới:
+
+- `/v2/boq/{projectId}/{itemId}`
+- `/v2/supplierQuotes/{projectId}/{itemId}/{quoteId}`
 
 ## Chức năng đã có
 
@@ -8,6 +34,8 @@
 - Dashboard quản trị.
 - Danh mục dự án.
 - Pipeline đấu thầu.
+- BOQ & Lập giá chi tiết.
+- So sánh báo giá nhiều nhà cung cấp.
 - RFQ / Hỏi giá nhà cung cấp.
 - Trình giá nhiều phiên bản.
 - Giám đốc duyệt / từ chối giá.
@@ -25,6 +53,8 @@ Dữ liệu mới lưu riêng dưới:
 - `/v2/users`
 - `/v2/projects`
 - `/v2/rfqs`
+- `/v2/boq`
+- `/v2/supplierQuotes`
 - `/v2/approvals`
 - `/v2/execution`
 - `/v2/reports`
@@ -78,8 +108,6 @@ Dùng VS Code Live Server hoặc GitHub Pages.
 
 ## Hướng phát triển tiếp theo
 
-- BOQ line-item chi tiết.
-- So sánh 3–5 báo giá NCC.
 - File upload báo giá/hồ sơ.
 - Material/Shopdrawing register.
 - Task & Gantt.

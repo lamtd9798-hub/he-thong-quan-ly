@@ -31,7 +31,7 @@
       "approvals": {
         ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
         "$id": {
-          ".write": "auth != null && (((auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN') || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR') || ((root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER') && ((!data.exists() && newData.child('status').val() === 'PENDING') || (data.exists() && data.child('status').val() === 'PENDING' && newData.child('status').val() === 'PENDING'))))"
+          ".write": "auth != null && ((auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR') || ((root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER') && ((!data.exists() && newData.child('status').val() === 'PENDING') || (data.exists() && data.child('status').val() === 'PENDING' && newData.child('status').val() === 'PENDING'))))"
         }
       },
       "execution": {
@@ -50,6 +50,24 @@
         ".read": "auth != null",
         "$id": {
           ".write": "auth != null"
+        }
+      },
+      "boq": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$projectId": {
+          "$itemId": {
+            ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')"
+          }
+        }
+      },
+      "supplierQuotes": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' || root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT')",
+        "$projectId": {
+          "$itemId": {
+            "$quoteId": {
+              ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' || root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT')"
+            }
+          }
         }
       }
     }

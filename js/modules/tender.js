@@ -1,6 +1,6 @@
 import {refs,arr,ts,logActivity,can,getProfile,esc,money,fmtDate,daysUntil,TENDER_STAGES,stageInfo,setPage,loading,empty,badge,modal,toast,confirmBox} from "../core.js";
 
-let projects=[],rfqs=[],approvals=[],tab="pipeline";
+let projects=[],rfqs=[],approvals=[],boqData={},tab="pipeline";
 
 export async function renderTender(container){
   setPage("Đấu thầu","Công việc / Đấu thầu");container.innerHTML=loading();
@@ -76,16 +76,63 @@ function approvalRow(a){
   const p=projects.find(x=>x.id===a.projectId),status={PENDING:["Chờ duyệt","orange"],APPROVED:["Đã duyệt","green"],REJECTED:["Từ chối","red"]}[a.status]||[a.status||"—","gray"],profit=Number(a.bidPrice||0)-Number(a.netPrice||0),margin=a.bidPrice?profit/Number(a.bidPrice)*100:0;
   return `<tr><td><div class="primary-text">${esc(p?.code||"—")}</div><div class="secondary-text">${esc(p?.name||"")}</div></td><td>V${String(a.version||1).padStart(2,"0")}</td><td>${money(a.netPrice)}</td><td>${money(a.bidPrice)}</td><td>${money(profit)} <span class="secondary-text">(${margin.toFixed(1)}%)</span></td><td>${badge(status[0],status[1])}</td><td>${esc(a.submittedByName||a.submittedByEmail||"—")}</td><td>${fmtDate(a.submittedDate)}</td><td><div class="row-actions"><button class="btn sm" data-approval="${a.id}">Xem</button></div></td></tr>`;
 }
+function boqTotals(projectId){
+  const val=boqData[projectId]||{};
+  const lines=Object.values(val);
+  let net=0,bid=0;
+  lines.forEach(x=>{
+    const qty=Number(x.qty||0);
+    const base=Number(x.materialUnit||0)+Number(x.laborUnit||0)+Number(x.subcontractUnit||0)+Number(x.otherUnit||0);
+    const netUnit=base*(1+Number(x.wastePct||0)/100);
+    const bidUnit=netUnit*(1+Number(x.markupPct||0)/100);
+    net+=qty*netUnit;bid+=qty*bidUnit;
+  });
+  return {net,bid,count:lines.length,profit:bid-net,margin:bid?(bid-net)/bid*100:0};
+}
 function newApproval(c){
   const tender=projects.filter(x=>x.phase==="TENDER");
   modal({title:"Trình duyệt giá",eyebrow:"PHÊ DUYỆT",size:"lg",submitText:"Gửi duyệt",body:`<div class="form-grid">
-    <label class="field span2"><span>Dự án *</span><select required name="projectId"><option value="">-- Chọn dự án --</option>${tender.map(p=>`<option value="${p.id}">${esc(p.code)} - ${esc(p.name)}</option>`).join("")}</select></label>
-    <label class="field"><span>Giá NET *</span><input required type="number" min="0" name="netPrice"></label><label class="field"><span>Giá chào *</span><input required type="number" min="0" name="bidPrice"></label>
-    <label class="field span2"><span>Rủi ro / Ngoại lệ / Exclusion</span><textarea name="risks"></textarea></label><label class="field span2"><span>Ghi chú trình duyệt</span><textarea name="notes"></textarea></label></div>`,onSubmit:async fd=>{
-      const d=Object.fromEntries(fd.entries());d.netPrice=Number(d.netPrice||0);d.bidPrice=Number(d.bidPrice||0);const versions=approvals.filter(x=>x.projectId===d.projectId).map(x=>Number(x.version||0));d.version=(versions.length?Math.max(...versions):0)+1;
+    <label class="field span2"><span>Dự án *</span><select required name="projectId" id="approvalProject"><option value="">-- Chọn dự án --</option>${tender.map(p=>`<option value="${p.id}">${esc(p.code)} - ${esc(p.name)}</option>`).join("")}</select></label>
+
+    <div class="span2 approval-boq-summary" id="approvalBoqSummary">
+      <div class="empty" style="padding:20px"><b>▧</b><h3>Chọn dự án</h3><p>Hệ thống sẽ tự lấy tổng giá từ BOQ & Lập giá.</p></div>
+    </div>
+
+    <label class="field"><span>Giá NET trình duyệt *</span><input required type="number" min="0" step="any" name="netPrice" id="approvalNet"></label>
+    <label class="field"><span>Giá chào trình duyệt *</span><input required type="number" min="0" step="any" name="bidPrice" id="approvalBid"></label>
+    <label class="field span2"><span>Rủi ro / Ngoại lệ / Exclusion</span><textarea name="risks"></textarea></label>
+    <label class="field span2"><span>Ghi chú trình duyệt</span><textarea name="notes" placeholder="Nếu chỉnh giá khác với tổng BOQ, ghi rõ lý do tại đây."></textarea></label>
+  </div>`,onSubmit:async fd=>{
+      const d=Object.fromEntries(fd.entries());
+      d.netPrice=Number(d.netPrice||0);d.bidPrice=Number(d.bidPrice||0);
+      const b=boqTotals(d.projectId);
+      if(!b.count){toast("Dự án chưa có BOQ. Hãy lập BOQ trước khi trình giá.","error");return false}
+      d.boqNetPrice=b.net;d.boqBidPrice=b.bid;d.boqLineCount=b.count;
+      const versions=approvals.filter(x=>x.projectId===d.projectId).map(x=>Number(x.version||0));d.version=(versions.length?Math.max(...versions):0)+1;
       const p=getProfile();d.status="PENDING";d.submittedBy=p.uid;d.submittedByName=p.displayName||"";d.submittedByEmail=p.email||"";d.submittedDate=new Date().toISOString().slice(0,10);d.createdAt=ts();d.updatedAt=ts();
-      const key=refs.approvals().push().key;await refs.approval(key).set(d);await refs.project(d.projectId).update({tenderStatus:"APPROVAL",approvalStatus:"PENDING",updatedAt:ts()});await logActivity("APPROVAL_SUBMITTED",`Trình duyệt giá V${d.version}`,{projectId:d.projectId});toast("Đã gửi hồ sơ trình duyệt.");tab="approval";await renderTender(c);return true;
+      const key=refs.approvals().push().key;await refs.approval(key).set(d);
+      await refs.project(d.projectId).update({tenderStatus:"APPROVAL",approvalStatus:"PENDING",updatedAt:ts()});
+      await logActivity("APPROVAL_SUBMITTED",`Trình duyệt giá V${d.version} từ ${d.boqLineCount} dòng BOQ`,{projectId:d.projectId});
+      toast("Đã gửi hồ sơ trình duyệt.");tab="approval";await renderTender(c);return true;
     }});
+  const select=document.querySelector("#approvalProject");
+  const summary=document.querySelector("#approvalBoqSummary");
+  const netInput=document.querySelector("#approvalNet");
+  const bidInput=document.querySelector("#approvalBid");
+  select?.addEventListener("change",()=>{
+    const t=boqTotals(select.value);
+    if(!t.count){
+      summary.innerHTML=`<div class="alert error">Dự án này chưa có BOQ. Vào <b>BOQ & Lập giá</b> để nhập khối lượng và giá trước.</div>`;
+      netInput.value="";bidInput.value="";return;
+    }
+    netInput.value=Math.round(t.net);bidInput.value=Math.round(t.bid);
+    summary.innerHTML=`<div class="grid g4">
+      <div class="metric" style="--c:#64748b"><div class="metric-head"><span>DÒNG BOQ</span></div><div class="metric-value" style="font-size:18px">${t.count}</div></div>
+      <div class="metric" style="--c:#64748b"><div class="metric-head"><span>NET TỪ BOQ</span></div><div class="metric-value" style="font-size:17px">${money(t.net)}</div></div>
+      <div class="metric" style="--c:#2563eb"><div class="metric-head"><span>GIÁ CHÀO TỪ BOQ</span></div><div class="metric-value" style="font-size:17px">${money(t.bid)}</div></div>
+      <div class="metric" style="--c:#16a34a"><div class="metric-head"><span>LN GỘP</span></div><div class="metric-value" style="font-size:18px">${t.margin.toFixed(1)}%</div><div class="metric-foot">${money(t.profit)}</div></div>
+    </div>`;
+  });
 }
 function viewApproval(id,c){
   const a=approvals.find(x=>x.id===id);if(!a)return;const p=projects.find(x=>x.id===a.projectId),profit=Number(a.bidPrice||0)-Number(a.netPrice||0),margin=a.bidPrice?profit/Number(a.bidPrice)*100:0,decide=can("approvalDecide")&&a.status==="PENDING";
@@ -93,6 +140,12 @@ function viewApproval(id,c){
     <div class="metric" style="--c:#64748b"><div class="metric-head"><span>GIÁ NET</span></div><div class="metric-value" style="font-size:19px">${money(a.netPrice)}</div></div>
     <div class="metric" style="--c:#2563eb"><div class="metric-head"><span>GIÁ CHÀO</span></div><div class="metric-value" style="font-size:19px">${money(a.bidPrice)}</div></div>
     <div class="metric" style="--c:#16a34a"><div class="metric-head"><span>LỢI NHUẬN GỘP</span></div><div class="metric-value" style="font-size:19px">${margin.toFixed(1)}%</div><div class="metric-foot">${money(profit)}</div></div></div>
+    ${a.boqLineCount?`<div class="card mt"><div class="card-head"><h3>Dữ liệu BOQ tại thời điểm trình</h3>${badge(`${a.boqLineCount} dòng BOQ`,"blue")}</div><div class="card-body"><div class="grid g4">
+      <div><div class="secondary-text">NET từ BOQ</div><div class="primary-text">${money(a.boqNetPrice)}</div></div>
+      <div><div class="secondary-text">Giá chào từ BOQ</div><div class="primary-text">${money(a.boqBidPrice)}</div></div>
+      <div><div class="secondary-text">Điều chỉnh NET</div><div class="primary-text">${money(Number(a.netPrice||0)-Number(a.boqNetPrice||0))}</div></div>
+      <div><div class="secondary-text">Điều chỉnh giá chào</div><div class="primary-text">${money(Number(a.bidPrice||0)-Number(a.boqBidPrice||0))}</div></div>
+    </div></div></div>`:""}
     <div class="grid g2 mt"><div class="card"><div class="card-head"><h3>Rủi ro / Exclusion</h3></div><div class="card-body" style="font-size:11px;white-space:pre-wrap">${esc(a.risks||"—")}</div></div><div class="card"><div class="card-head"><h3>Ghi chú</h3></div><div class="card-body" style="font-size:11px;white-space:pre-wrap">${esc(a.notes||"—")}</div></div></div>
     ${a.decisionNote?`<div class="card mt"><div class="card-head"><h3>Ý kiến phê duyệt</h3></div><div class="card-body" style="font-size:11px">${esc(a.decisionNote)}</div></div>`:""}
     ${decide?`<div class="actions mt"><button type="button" id="approvePrice" class="btn green">✓ Duyệt giá</button><button type="button" id="rejectPrice" class="btn red">✕ Từ chối</button></div>`:""}`});

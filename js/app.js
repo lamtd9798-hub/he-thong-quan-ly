@@ -2,12 +2,13 @@ import {auth,db,listenAuth,getProfile,ROLES,can,initials,initModal,loading} from
 import {renderDashboard} from "./modules/dashboard.js";
 import {renderProjects} from "./modules/projects.js";
 import {renderTender} from "./modules/tender.js";
+import {renderBOQ} from "./modules/boq.js";
 import {renderExecution} from "./modules/execution.js";
 import {renderReports} from "./modules/reports.js";
 import {renderUsers} from "./modules/users.js";
 
 const $=s=>document.querySelector(s);
-const routes={dashboard:renderDashboard,projects:renderProjects,tender:renderTender,execution:renderExecution,reports:renderReports,users:renderUsers};
+const routes={dashboard:renderDashboard,projects:renderProjects,tender:renderTender,boq:renderBOQ,execution:renderExecution,reports:renderReports,users:renderUsers};
 let routerStarted=false;
 
 initModal();
@@ -49,6 +50,7 @@ async function route(){
   let name=(location.hash||"#/dashboard").replace(/^#\/?/,"").split("/")[0]||"dashboard";
   if(!routes[name])name="dashboard";
   if(name==="users"&&!can("usersManage"))name="dashboard";
+  if(name==="boq"&&!can("finance"))name="dashboard";
   document.querySelectorAll(".nav-item").forEach(a=>a.classList.toggle("active",a.dataset.route===name));
   const c=$("#content");c.innerHTML=loading();
   try{await routes[name](c)}catch(err){console.error(err);c.innerHTML=`<div class="empty"><b>!</b><h3>Không tải được trang</h3><p>${String(err.message||err)}</p></div>`}
@@ -57,6 +59,7 @@ async function route(){
 function applyProfile(p){
   $("#userName").textContent=p.displayName||p.email||"Người dùng";$("#userRole").textContent=ROLES[p.role]||p.role||"Chưa phân quyền";$("#userEmail").textContent=p.email||"";$("#avatar").textContent=initials(p.displayName,p.email);
   document.querySelectorAll(".admin-only").forEach(x=>x.classList.toggle("hidden",!can("usersManage")));
+  document.querySelectorAll(".finance-only").forEach(x=>x.classList.toggle("hidden",!can("finance")));
 }
 function closeMobile(){$("#sidebar").classList.remove("mobile-open");$("#mobileOverlay").classList.remove("show")}
 function listenConnection(){
