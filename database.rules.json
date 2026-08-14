@@ -1,0 +1,57 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "v2": {
+      "users": {
+        "$uid": {
+          ".read": "auth != null",
+          ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || (auth.uid === $uid && !data.exists() && newData.child('email').val() === auth.token.email && newData.child('role').val() === 'EMPLOYEE'))"
+        }
+      },
+      "projects": {
+        ".read": "auth != null",
+        ".indexOn": [
+          "code",
+          "phase",
+          "tenderStatus",
+          "tenderDeadline",
+          "updatedAt"
+        ],
+        "$id": {
+          ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TECHNICAL')"
+        }
+      },
+      "rfqs": {
+        ".read": "auth != null",
+        "$id": {
+          ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' || root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT')"
+        }
+      },
+      "approvals": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$id": {
+          ".write": "auth != null && (((auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN') || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR') || ((root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER') && ((!data.exists() && newData.child('status').val() === 'PENDING') || (data.exists() && data.child('status').val() === 'PENDING' && newData.child('status').val() === 'PENDING'))))"
+        }
+      },
+      "execution": {
+        ".read": "auth != null",
+        "$id": {
+          ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TECHNICAL' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')"
+        }
+      },
+      "reports": {
+        ".read": "auth != null",
+        "$id": {
+          ".write": "auth != null && ((auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN') || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' || root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT' || root.child('v2/users').child(auth.uid).child('role').val() === 'TECHNICAL' || root.child('v2/users').child(auth.uid).child('role').val() === 'EMPLOYEE')"
+        }
+      },
+      "activities": {
+        ".read": "auth != null",
+        "$id": {
+          ".write": "auth != null"
+        }
+      }
+    }
+  }
+}
