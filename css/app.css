@@ -37,3 +37,18 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
 @media(max-width:640px){
   .approval-boq-summary .g4{grid-template-columns:1fr 1fr}
 }
+
+/* V2.2 - LẬP GIÁ NÂNG CAO / VERSION / MA TRẬN NCC */
+.modal-panel.xl{width:min(1500px,calc(100vw - 24px))}
+.pricing-card{overflow:hidden}
+.pricing-summary{display:grid;gap:0}
+.pricing-line{display:flex;justify-content:space-between;gap:20px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--border);font-size:11px}
+.pricing-line:last-child{border-bottom:0}.pricing-line span{color:#64748b}.pricing-line b{font-size:12px;white-space:nowrap}.pricing-line.pricing-bold{font-weight:800}.pricing-line.pricing-bold span{color:#172033}.pricing-line.grand{background:#eff6ff;margin:6px -17px -17px;padding:12px 17px;border-top:1px solid #dbeafe;border-bottom:0}.pricing-line.grand span,.pricing-line.grand b{color:#1d4ed8;font-size:13px}.pricing-sep{height:1px;background:#cbd5e1;margin:5px 0}
+.matrix-note{font-size:11px;color:#64748b;background:#f8fafc;border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:12px}.matrix-wrap{max-height:65vh}.matrix-table{min-width:max-content}.matrix-table th,.matrix-table td{min-width:150px}.matrix-table .matrix-sticky{position:sticky;left:0;z-index:3;min-width:320px;max-width:320px;background:#fff;box-shadow:1px 0 0 var(--border)}.matrix-table thead .matrix-sticky{z-index:5;background:#f8fafc}.matrix-cell{vertical-align:top!important;text-align:center}.matrix-empty{color:#94a3b8;text-align:center}.matrix-low{background:#eff6ff!important}.matrix-selected{background:#f0fdf4!important;box-shadow:inset 0 0 0 2px #86efac}.matrix-badges{min-height:20px;margin-top:5px}.matrix-pick{margin-top:6px}
+.version-table{min-width:1250px}.version-items{min-width:1200px}.approval-boq-summary .metric-value{line-height:1.2}
+
+@media(max-width:640px){
+  .modal-panel.xl{width:100%;max-height:calc(100vh - 16px)}
+  .matrix-table .matrix-sticky{min-width:220px;max-width:220px}
+  .pricing-line{gap:10px}.pricing-line b{font-size:11px}
+}

@@ -1,4 +1,4 @@
-import { firebaseConfig, APP_ROOT, ADMIN_EMAIL } from "./config.js";
+import { firebaseConfig, APP_ROOT, ADMIN_EMAIL } from "./config.js?v=2.2.0";
 
 if (!window.firebase) throw new Error("Không tải được Firebase SDK.");
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
@@ -19,6 +19,11 @@ export const refs = {
   supplierQuotesProject:projectId=>root.child(`supplierQuotes/${projectId}`),
   supplierQuotesItem:(projectId,itemId)=>root.child(`supplierQuotes/${projectId}/${itemId}`),
   supplierQuote:(projectId,itemId,quoteId)=>root.child(`supplierQuotes/${projectId}/${itemId}/${quoteId}`),
+  pricingSettingsRoot:()=>root.child("pricingSettings"),
+  pricingSettings:projectId=>root.child(`pricingSettings/${projectId}`),
+  boqVersionsRoot:()=>root.child("boqVersions"),
+  boqVersionsProject:projectId=>root.child(`boqVersions/${projectId}`),
+  boqVersion:(projectId,versionId)=>root.child(`boqVersions/${projectId}/${versionId}`),
   approvals:()=>root.child("approvals"), approval:id=>root.child(`approvals/${id}`),
   execution:()=>root.child("execution"), executionProject:id=>root.child(`execution/${id}`),
   reports:()=>root.child("reports"), report:id=>root.child(`reports/${id}`),
@@ -128,6 +133,7 @@ export const stageInfo=k=>{const x=TENDER_STAGES.find(s=>s[0]===k)||TENDER_STAGE
 export const execInfo=k=>{const x=EXEC_STAGES.find(s=>s[0]===k)||EXEC_STAGES[0];return{key:x[0],label:x[1]}};
 export const DISCIPLINES=["PCCC","HVAC","CẤP THOÁT NƯỚC","ĐIỆN","ĐIỆN NHẸ","KHÁC"];
 export const projectCode=n=>`DA-${new Date().getFullYear()}-${String(n).padStart(3,"0")}`;
+export const appVersion="2.2.0";
 export const weekKey=()=>{
   const d=new Date(), t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())), day=t.getUTCDay()||7;
   t.setUTCDate(t.getUTCDate()+4-day);const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1));
@@ -150,7 +156,7 @@ export function toast(message,type="success"){
 }
 export function modal({title,eyebrow="",body="",size="md",submitText="Lưu",showSubmit=true,onSubmit=null}){
   $("#modalTitle").textContent=title;$("#modalEyebrow").textContent=eyebrow;$("#modalBody").innerHTML=body;
-  $("#modalPanel").className=`modal-panel ${size==="lg"?"lg":size==="sm"?"sm":""}`;
+  $("#modalPanel").className=`modal-panel ${size==="xl"?"xl":size==="lg"?"lg":size==="sm"?"sm":""}`;
   $("#modalFooter").innerHTML=`<button type="button" class="btn" data-modal-close>Hủy</button>${showSubmit?`<button type="submit" class="btn primary">${submitText}</button>`:""}`;
   submitHandler=onSubmit;$("#modalRoot").classList.remove("hidden");document.body.style.overflow="hidden";
 }

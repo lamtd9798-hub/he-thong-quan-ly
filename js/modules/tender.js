@@ -1,11 +1,17 @@
-import {refs,arr,ts,logActivity,can,getProfile,esc,money,fmtDate,daysUntil,TENDER_STAGES,stageInfo,setPage,loading,empty,badge,modal,toast,confirmBox} from "../core.js";
+import {refs,arr,ts,logActivity,can,getProfile,esc,money,fmtDate,daysUntil,TENDER_STAGES,stageInfo,setPage,loading,empty,badge,modal,toast,confirmBox} from "../core.js?v=2.2.0";
 
-let projects=[],rfqs=[],approvals=[],boqData={},tab="pipeline";
+let projects=[],rfqs=[],approvals=[],boqData={},pricingData={},tab="pipeline";
 
 export async function renderTender(container){
   setPage("Đấu thầu","Công việc / Đấu thầu");container.innerHTML=loading();
-  [projects,rfqs,approvals]=await Promise.all([arr(refs.projects()),arr(refs.rfqs()),can("finance")?arr(refs.approvals()):Promise.resolve([])]);
-  projects=projects.filter(x=>x.phase!=="CLOSED");paint(container);
+  const [projectList,rfqList,approvalList,boqSnap,pricingSnap]=await Promise.all([
+    arr(refs.projects()),
+    arr(refs.rfqs()),
+    can("finance")?arr(refs.approvals()):Promise.resolve([]),
+    can("finance")?refs.boqRoot().once("value"):Promise.resolve({val:()=>({})}),
+    can("finance")?refs.pricingSettingsRoot().once("value"):Promise.resolve({val:()=>({})})
+  ]);
+  projects=projectList.filter(x=>x.phase!=="CLOSED");rfqs=rfqList;approvals=approvalList;boqData=boqSnap.val()||{};pricingData=pricingSnap.val()||{};paint(container);
 }
 function paint(c){
   if(tab==="approval"&&!can("finance"))tab="pipeline";
@@ -77,59 +83,51 @@ function approvalRow(a){
   return `<tr><td><div class="primary-text">${esc(p?.code||"—")}</div><div class="secondary-text">${esc(p?.name||"")}</div></td><td>V${String(a.version||1).padStart(2,"0")}</td><td>${money(a.netPrice)}</td><td>${money(a.bidPrice)}</td><td>${money(profit)} <span class="secondary-text">(${margin.toFixed(1)}%)</span></td><td>${badge(status[0],status[1])}</td><td>${esc(a.submittedByName||a.submittedByEmail||"—")}</td><td>${fmtDate(a.submittedDate)}</td><td><div class="row-actions"><button class="btn sm" data-approval="${a.id}">Xem</button></div></td></tr>`;
 }
 function boqTotals(projectId){
-  const val=boqData[projectId]||{};
-  const lines=Object.values(val);
-  let net=0,bid=0;
+  const val=boqData[projectId]||{}, lines=Object.values(val), settings={overheadPct:0,contingencyPct:0,discountPct:0,vatPct:10,...(pricingData[projectId]||{})};
+  let directNet=0,lineBid=0;
   lines.forEach(x=>{
-    const qty=Number(x.qty||0);
-    const base=Number(x.materialUnit||0)+Number(x.laborUnit||0)+Number(x.subcontractUnit||0)+Number(x.otherUnit||0);
-    const netUnit=base*(1+Number(x.wastePct||0)/100);
-    const bidUnit=netUnit*(1+Number(x.markupPct||0)/100);
-    net+=qty*netUnit;bid+=qty*bidUnit;
+    const qty=Number(x.qty||0),base=Number(x.materialUnit||0)+Number(x.laborUnit||0)+Number(x.subcontractUnit||0)+Number(x.otherUnit||0),netUnit=base*(1+Number(x.wastePct||0)/100),bidUnit=netUnit*(1+Number(x.markupPct||0)/100);
+    directNet+=qty*netUnit;lineBid+=qty*bidUnit;
   });
-  return {net,bid,count:lines.length,profit:bid-net,margin:bid?(bid-net)/bid*100:0};
+  const overhead=directNet*Number(settings.overheadPct||0)/100,contingency=directNet*Number(settings.contingencyPct||0)/100,projectCost=directNet+overhead+contingency,beforeDiscount=lineBid+overhead+contingency,discount=beforeDiscount*Number(settings.discountPct||0)/100,bidExVat=Math.max(0,beforeDiscount-discount),vat=bidExVat*Number(settings.vatPct||0)/100,grandTotal=bidExVat+vat,profit=bidExVat-projectCost,margin=bidExVat?profit/bidExVat*100:0;
+  return {count:lines.length,directNet,lineBid,overhead,contingency,projectCost,beforeDiscount,discount,bidExVat,vat,grandTotal,profit,margin,settings};
 }
 function newApproval(c){
   const tender=projects.filter(x=>x.phase==="TENDER");
   modal({title:"Trình duyệt giá",eyebrow:"PHÊ DUYỆT",size:"lg",submitText:"Gửi duyệt",body:`<div class="form-grid">
     <label class="field span2"><span>Dự án *</span><select required name="projectId" id="approvalProject"><option value="">-- Chọn dự án --</option>${tender.map(p=>`<option value="${p.id}">${esc(p.code)} - ${esc(p.name)}</option>`).join("")}</select></label>
-
-    <div class="span2 approval-boq-summary" id="approvalBoqSummary">
-      <div class="empty" style="padding:20px"><b>▧</b><h3>Chọn dự án</h3><p>Hệ thống sẽ tự lấy tổng giá từ BOQ & Lập giá.</p></div>
-    </div>
-
-    <label class="field"><span>Giá NET trình duyệt *</span><input required type="number" min="0" step="any" name="netPrice" id="approvalNet"></label>
-    <label class="field"><span>Giá chào trình duyệt *</span><input required type="number" min="0" step="any" name="bidPrice" id="approvalBid"></label>
+    <div class="span2 approval-boq-summary" id="approvalBoqSummary"><div class="empty" style="padding:20px"><b>▧</b><h3>Chọn dự án</h3><p>Hệ thống sẽ tự lấy tổng giá từ BOQ & Lập giá V2.2.</p></div></div>
+    <label class="field"><span>Tổng chi phí dự án (NET) *</span><input required type="number" min="0" step="any" name="netPrice" id="approvalNet"></label>
+    <label class="field"><span>Giá chào trước VAT *</span><input required type="number" min="0" step="any" name="bidPrice" id="approvalBid"></label>
+    <label class="field"><span>VAT</span><input type="number" min="0" step="any" name="vatAmount" id="approvalVat" readonly></label>
+    <label class="field"><span>Tổng sau VAT</span><input type="number" min="0" step="any" name="grandTotal" id="approvalGrand" readonly></label>
     <label class="field span2"><span>Rủi ro / Ngoại lệ / Exclusion</span><textarea name="risks"></textarea></label>
     <label class="field span2"><span>Ghi chú trình duyệt</span><textarea name="notes" placeholder="Nếu chỉnh giá khác với tổng BOQ, ghi rõ lý do tại đây."></textarea></label>
   </div>`,onSubmit:async fd=>{
-      const d=Object.fromEntries(fd.entries());
-      d.netPrice=Number(d.netPrice||0);d.bidPrice=Number(d.bidPrice||0);
-      const b=boqTotals(d.projectId);
+      const d=Object.fromEntries(fd.entries()),b=boqTotals(d.projectId);d.netPrice=Number(d.netPrice||0);d.bidPrice=Number(d.bidPrice||0);
       if(!b.count){toast("Dự án chưa có BOQ. Hãy lập BOQ trước khi trình giá.","error");return false}
-      d.boqNetPrice=b.net;d.boqBidPrice=b.bid;d.boqLineCount=b.count;
-      const versions=approvals.filter(x=>x.projectId===d.projectId).map(x=>Number(x.version||0));d.version=(versions.length?Math.max(...versions):0)+1;
+      d.boqDirectNet=b.directNet;d.boqNetPrice=b.projectCost;d.boqBidPrice=b.bidExVat;d.boqVat=b.vat;d.boqGrandTotal=b.grandTotal;d.boqLineCount=b.count;d.pricingSettings=b.settings;
+      d.vatAmount=b.vat;d.grandTotal=b.grandTotal;
+      const approvalVersions=approvals.filter(x=>x.projectId===d.projectId).map(x=>Number(x.version||0));d.version=(approvalVersions.length?Math.max(...approvalVersions):0)+1;
       const p=getProfile();d.status="PENDING";d.submittedBy=p.uid;d.submittedByName=p.displayName||"";d.submittedByEmail=p.email||"";d.submittedDate=new Date().toISOString().slice(0,10);d.createdAt=ts();d.updatedAt=ts();
+      const snapshotKey=refs.boqVersionsProject(d.projectId).push().key;
+      const existingVersionsSnap=await refs.boqVersionsProject(d.projectId).once("value"),existingVersions=Object.values(existingVersionsSnap.val()||{}),nextBoqVersion=existingVersions.reduce((m,v)=>Math.max(m,Number(v.versionNo||0)),0)+1;
+      await refs.boqVersion(d.projectId,snapshotKey).set({versionNo:nextBoqVersion,versionLabel:`V${String(nextBoqVersion).padStart(2,"0")}`,name:`Trình duyệt giá V${String(d.version).padStart(2,"0")}`,note:"Snapshot tự động khi trình Giám đốc",source:"APPROVAL",locked:true,projectId:d.projectId,itemCount:b.count,items:boqData[d.projectId]||{},pricing:b.settings,totals:b,createdBy:p.uid,createdByName:p.displayName||p.email||"",createdAt:Date.now()});
+      d.boqVersionId=snapshotKey;d.boqVersionLabel=`V${String(nextBoqVersion).padStart(2,"0")}`;
       const key=refs.approvals().push().key;await refs.approval(key).set(d);
       await refs.project(d.projectId).update({tenderStatus:"APPROVAL",approvalStatus:"PENDING",updatedAt:ts()});
-      await logActivity("APPROVAL_SUBMITTED",`Trình duyệt giá V${d.version} từ ${d.boqLineCount} dòng BOQ`,{projectId:d.projectId});
-      toast("Đã gửi hồ sơ trình duyệt.");tab="approval";await renderTender(c);return true;
+      await logActivity("APPROVAL_SUBMITTED",`Trình duyệt giá V${d.version} từ ${d.boqLineCount} dòng BOQ · snapshot ${d.boqVersionLabel}`,{projectId:d.projectId,boqVersionId:snapshotKey});
+      toast("Đã gửi hồ sơ trình duyệt và khóa một snapshot BOQ.");tab="approval";await renderTender(c);return true;
     }});
-  const select=document.querySelector("#approvalProject");
-  const summary=document.querySelector("#approvalBoqSummary");
-  const netInput=document.querySelector("#approvalNet");
-  const bidInput=document.querySelector("#approvalBid");
+  const select=document.querySelector("#approvalProject"),summary=document.querySelector("#approvalBoqSummary"),netInput=document.querySelector("#approvalNet"),bidInput=document.querySelector("#approvalBid"),vatInput=document.querySelector("#approvalVat"),grandInput=document.querySelector("#approvalGrand");
   select?.addEventListener("change",()=>{
     const t=boqTotals(select.value);
-    if(!t.count){
-      summary.innerHTML=`<div class="alert error">Dự án này chưa có BOQ. Vào <b>BOQ & Lập giá</b> để nhập khối lượng và giá trước.</div>`;
-      netInput.value="";bidInput.value="";return;
-    }
-    netInput.value=Math.round(t.net);bidInput.value=Math.round(t.bid);
+    if(!t.count){summary.innerHTML=`<div class="alert error">Dự án này chưa có BOQ. Vào <b>BOQ & Lập giá</b> để nhập khối lượng và giá trước.</div>`;netInput.value="";bidInput.value="";vatInput.value="";grandInput.value="";return}
+    netInput.value=Math.round(t.projectCost);bidInput.value=Math.round(t.bidExVat);vatInput.value=Math.round(t.vat);grandInput.value=Math.round(t.grandTotal);
     summary.innerHTML=`<div class="grid g4">
-      <div class="metric" style="--c:#64748b"><div class="metric-head"><span>DÒNG BOQ</span></div><div class="metric-value" style="font-size:18px">${t.count}</div></div>
-      <div class="metric" style="--c:#64748b"><div class="metric-head"><span>NET TỪ BOQ</span></div><div class="metric-value" style="font-size:17px">${money(t.net)}</div></div>
-      <div class="metric" style="--c:#2563eb"><div class="metric-head"><span>GIÁ CHÀO TỪ BOQ</span></div><div class="metric-value" style="font-size:17px">${money(t.bid)}</div></div>
+      <div class="metric" style="--c:#64748b"><div class="metric-head"><span>CHI PHÍ DỰ ÁN</span></div><div class="metric-value" style="font-size:17px">${money(t.projectCost)}</div><div class="metric-foot">NET trực tiếp ${money(t.directNet)}</div></div>
+      <div class="metric" style="--c:#2563eb"><div class="metric-head"><span>CHÀO TRƯỚC VAT</span></div><div class="metric-value" style="font-size:17px">${money(t.bidExVat)}</div><div class="metric-foot">CK ${Number(t.settings.discountPct||0).toFixed(1)}%</div></div>
+      <div class="metric" style="--c:#0284c7"><div class="metric-head"><span>SAU VAT</span></div><div class="metric-value" style="font-size:17px">${money(t.grandTotal)}</div><div class="metric-foot">VAT ${Number(t.settings.vatPct||0).toFixed(1)}%</div></div>
       <div class="metric" style="--c:#16a34a"><div class="metric-head"><span>LN GỘP</span></div><div class="metric-value" style="font-size:18px">${t.margin.toFixed(1)}%</div><div class="metric-foot">${money(t.profit)}</div></div>
     </div>`;
   });
@@ -141,8 +139,8 @@ function viewApproval(id,c){
     <div class="metric" style="--c:#2563eb"><div class="metric-head"><span>GIÁ CHÀO</span></div><div class="metric-value" style="font-size:19px">${money(a.bidPrice)}</div></div>
     <div class="metric" style="--c:#16a34a"><div class="metric-head"><span>LỢI NHUẬN GỘP</span></div><div class="metric-value" style="font-size:19px">${margin.toFixed(1)}%</div><div class="metric-foot">${money(profit)}</div></div></div>
     ${a.boqLineCount?`<div class="card mt"><div class="card-head"><h3>Dữ liệu BOQ tại thời điểm trình</h3>${badge(`${a.boqLineCount} dòng BOQ`,"blue")}</div><div class="card-body"><div class="grid g4">
-      <div><div class="secondary-text">NET từ BOQ</div><div class="primary-text">${money(a.boqNetPrice)}</div></div>
-      <div><div class="secondary-text">Giá chào từ BOQ</div><div class="primary-text">${money(a.boqBidPrice)}</div></div>
+      <div><div class="secondary-text">Chi phí dự án từ BOQ</div><div class="primary-text">${money(a.boqNetPrice)}</div></div>
+      <div><div class="secondary-text">Chào trước VAT từ BOQ</div><div class="primary-text">${money(a.boqBidPrice)}</div></div>
       <div><div class="secondary-text">Điều chỉnh NET</div><div class="primary-text">${money(Number(a.netPrice||0)-Number(a.boqNetPrice||0))}</div></div>
       <div><div class="secondary-text">Điều chỉnh giá chào</div><div class="primary-text">${money(Number(a.bidPrice||0)-Number(a.boqBidPrice||0))}</div></div>
     </div></div></div>`:""}
@@ -153,6 +151,6 @@ function viewApproval(id,c){
 }
 function decideApproval(a,yes,c){
   modal({title:yes?"Duyệt giá chào":"Từ chối hồ sơ",eyebrow:"GIÁM ĐỐC",size:"sm",submitText:yes?"Xác nhận duyệt":"Xác nhận từ chối",body:`<label class="field"><span>Ý kiến phê duyệt</span><textarea name="decisionNote" placeholder="${yes?"Có thể để trống.":"Nhập lý do cần chỉnh sửa..."}"></textarea></label>`,onSubmit:async fd=>{
-    const p=getProfile(),status=yes?"APPROVED":"REJECTED";await refs.approval(a.id).update({status,decisionNote:fd.get("decisionNote")||"",decidedBy:p.uid,decidedByName:p.displayName||"",decidedAt:ts(),updatedAt:ts()});await refs.project(a.projectId).update({approvalStatus:status,...(yes?{approvedBidPrice:a.bidPrice,approvedNetPrice:a.netPrice}:{}),updatedAt:ts()});await logActivity(yes?"APPROVAL_APPROVED":"APPROVAL_REJECTED",`${yes?"Duyệt":"Từ chối"} giá V${a.version}`,{projectId:a.projectId});toast(yes?"Đã duyệt giá chào.":"Đã từ chối hồ sơ.",yes?"success":"warning");tab="approval";await renderTender(c);return true;
+    const p=getProfile(),status=yes?"APPROVED":"REJECTED";await refs.approval(a.id).update({status,decisionNote:fd.get("decisionNote")||"",decidedBy:p.uid,decidedByName:p.displayName||"",decidedAt:ts(),updatedAt:ts()});await refs.project(a.projectId).update({approvalStatus:status,...(yes?{approvedBidPrice:a.bidPrice,approvedNetPrice:a.netPrice,approvedVat:a.vatAmount||0,approvedGrandTotal:a.grandTotal||a.bidPrice}:{}),updatedAt:ts()});await logActivity(yes?"APPROVAL_APPROVED":"APPROVAL_REJECTED",`${yes?"Duyệt":"Từ chối"} giá V${a.version}`,{projectId:a.projectId});toast(yes?"Đã duyệt giá chào.":"Đã từ chối hồ sơ.",yes?"success":"warning");tab="approval";await renderTender(c);return true;
   }});
 }

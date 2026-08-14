@@ -1,11 +1,11 @@
-import {auth,db,listenAuth,getProfile,ROLES,can,initials,initModal,loading} from "./core.js";
-import {renderDashboard} from "./modules/dashboard.js";
-import {renderProjects} from "./modules/projects.js";
-import {renderTender} from "./modules/tender.js";
-import {renderBOQ} from "./modules/boq.js";
-import {renderExecution} from "./modules/execution.js";
-import {renderReports} from "./modules/reports.js";
-import {renderUsers} from "./modules/users.js";
+import {auth,db,listenAuth,getProfile,ROLES,can,initials,initModal,loading} from "./core.js?v=2.2.0";
+import {renderDashboard} from "./modules/dashboard.js?v=2.2.0";
+import {renderProjects} from "./modules/projects.js?v=2.2.0";
+import {renderTender} from "./modules/tender.js?v=2.2.0";
+import {renderBOQ} from "./modules/boq.js?v=2.2.0";
+import {renderExecution} from "./modules/execution.js?v=2.2.0";
+import {renderReports} from "./modules/reports.js?v=2.2.0";
+import {renderUsers} from "./modules/users.js?v=2.2.0";
 
 const $=s=>document.querySelector(s);
 const routes={dashboard:renderDashboard,projects:renderProjects,tender:renderTender,boq:renderBOQ,execution:renderExecution,reports:renderReports,users:renderUsers};
@@ -50,7 +50,7 @@ async function route(){
   let name=(location.hash||"#/dashboard").replace(/^#\/?/,"").split("/")[0]||"dashboard";
   if(!routes[name])name="dashboard";
   if(name==="users"&&!can("usersManage"))name="dashboard";
-  if(name==="boq"&&!can("finance"))name="dashboard";
+  if(name==="boq"&&!can("finance")){ location.hash="#/dashboard"; return; }
   document.querySelectorAll(".nav-item").forEach(a=>a.classList.toggle("active",a.dataset.route===name));
   const c=$("#content");c.innerHTML=loading();
   try{await routes[name](c)}catch(err){console.error(err);c.innerHTML=`<div class="empty"><b>!</b><h3>Không tải được trang</h3><p>${String(err.message||err)}</p></div>`}

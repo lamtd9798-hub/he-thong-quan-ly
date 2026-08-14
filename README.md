@@ -1,9 +1,9 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.1
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.2
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
 
-## Nâng cấp V2.1
+## Nâng cấp V2.2
 
 Đã bổ sung module **BOQ & Lập giá**:
 
@@ -27,6 +27,25 @@ Dữ liệu mới:
 
 - `/v2/boq/{projectId}/{itemId}`
 - `/v2/supplierQuotes/{projectId}/{itemId}/{quoteId}`
+
+
+### Nâng cấp mới V2.2
+
+- Sửa cache/route: bấm **BOQ & Lập giá** sẽ mở đúng module, kể cả sau khi GitHub Pages vừa cập nhật.
+- Chi phí chung dự án %.
+- Dự phòng / Contingency %.
+- Chiết khấu giá chào %.
+- VAT %.
+- Tách rõ NET trực tiếp, tổng chi phí dự án, giá chào trước VAT và tổng sau VAT.
+- Ma trận so sánh NCC: vật tư theo hàng, nhà cung cấp theo cột, đánh dấu giá thấp nhất và giá đang chọn.
+- Lưu nhiều phiên bản BOQ dạng snapshot bất biến.
+- Xem chi tiết từng phiên bản và khôi phục phiên bản cũ.
+- Khi trình Giám đốc, hệ thống tự tạo một snapshot BOQ và gắn vào hồ sơ phê duyệt.
+- Hồ sơ duyệt lưu thêm VAT và tổng giá sau VAT.
+
+Dữ liệu mới:
+- `/v2/pricingSettings/{projectId}`
+- `/v2/boqVersions/{projectId}/{versionId}`
 
 ## Chức năng đã có
 
@@ -55,6 +74,8 @@ Dữ liệu mới lưu riêng dưới:
 - `/v2/rfqs`
 - `/v2/boq`
 - `/v2/supplierQuotes`
+- `/v2/pricingSettings`
+- `/v2/boqVersions`
 - `/v2/approvals`
 - `/v2/execution`
 - `/v2/reports`

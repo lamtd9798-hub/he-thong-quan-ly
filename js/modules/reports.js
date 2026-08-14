@@ -1,4 +1,4 @@
-import {refs,arr,ts,logActivity,getProfile,can,esc,norm,fmtDateTime,weekKey,monthKey,setPage,loading,empty,badge,modal,toast,confirmBox} from "../core.js";
+import {refs,arr,ts,logActivity,getProfile,can,esc,norm,fmtDateTime,weekKey,monthKey,setPage,loading,empty,badge,modal,toast,confirmBox} from "../core.js?v=2.2.0";
 
 let reports=[],projects=[],type="WEEK",q="";
 export async function renderReports(container){
