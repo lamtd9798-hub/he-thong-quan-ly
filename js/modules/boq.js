@@ -1,7 +1,7 @@
 import {
   refs, arr, ts, logActivity, can, getProfile, esc, norm, money, fmtDateTime,
   setPage, loading, empty, badge, modal, toast, confirmBox
-} from "../core.js?v=2.18.0";
+} from "../core.js?v=2.18.1";
 
 let projects=[];
 let selectedProjectId="";
@@ -56,8 +56,8 @@ async function loadProjectData(){
 
   const [boqSnap,metaSnap,priceSnap]=await Promise.all([
     refs.boqProject(selectedProjectId).once("value"),
-    refs.boqImportMeta(selectedProjectId).once("value"),
-    refs.materialPriceImportsProject(selectedProjectId).once("value")
+    optionalPricingRead(refs.boqImportMeta(selectedProjectId),"metadata BOQ"),
+    optionalPricingRead(refs.materialPriceImportsProject(selectedProjectId),"kho báo giá vật tư")
   ]);
 
   const b=boqSnap.val()||{};
@@ -78,6 +78,14 @@ async function loadProjectData(){
     }
   }
   rebuildMatchCache();
+}
+
+async function optionalPricingRead(ref,label){
+  try{return await ref.once("value")}
+  catch(e){
+    console.warn(`[V2.18.1] Không đọc được ${label}:`,e);
+    return {val:()=>({}),exists:()=>false};
+  }
 }
 
 function paint(container){
@@ -354,8 +362,17 @@ async function saveBoqImport(parsed,meta){
   }
   if(meta.mode==="REPLACE")await refs.boqProject(selectedProjectId).set(updates);
   else await refs.boqProject(selectedProjectId).update(updates);
-  await refs.boqImportMeta(selectedProjectId).set({...meta,rowCount:parsed.length,itemCount:parsed.filter(isPriceableItem).length,updatedAt:Date.now(),updatedByName:getProfile()?.displayName||getProfile()?.email||""});
-  await refs.project(selectedProjectId).update({tenderStatus:"PRICING",updatedAt:ts()});
+
+  try{
+    await refs.boqImportMeta(selectedProjectId).set({...meta,rowCount:parsed.length,itemCount:parsed.filter(isPriceableItem).length,updatedAt:Date.now(),updatedByName:getProfile()?.displayName||getProfile()?.email||""});
+  }catch(e){
+    console.error("[V2.18.1] Lỗi lưu metadata BOQ",e);
+    throw new Error(`Không lưu được metadata BOQ. ${firebaseErrorText(e)}`);
+  }
+
+  // Trạng thái dự án chỉ là thông tin phụ; không để nó làm hỏng cả quá trình import BOQ.
+  try{await refs.project(selectedProjectId).update({tenderStatus:"PRICING",updatedAt:ts()})}
+  catch(e){console.warn("[V2.18.1] Không cập nhật được tenderStatus:",e)}
   try{await logActivity("TENDER_BOQ_IMPORTED",`Nhập BOQ ${meta.fileName} / ${meta.sheetName}`,{projectId:selectedProjectId,itemCount:parsed.filter(isPriceableItem).length})}catch{}
 }
 
@@ -390,10 +407,15 @@ function openMaterialUpload(container){
         if(!rows.length)continue;
         const importId=refs.materialPriceImportsProject(selectedProjectId).push().key;
         const rowObj={};rows.forEach((r,i)=>rowObj[`r${String(i+1).padStart(5,"0")}`]=r);
-        await refs.materialPriceImport(selectedProjectId,importId).set({
-          fileName:file.name,sheetName,supplier:defaultSupplier||baseFileName(file.name),rowCount:rows.length,
-          headerRow:m.headerRow,headerDepth:m.headerDepth,createdAt:Date.now(),createdByName:getProfile()?.displayName||getProfile()?.email||"",rows:rowObj
-        });
+        try{
+          await refs.materialPriceImport(selectedProjectId,importId).set({
+            fileName:file.name,sheetName,supplier:defaultSupplier||baseFileName(file.name),rowCount:rows.length,
+            headerRow:m.headerRow,headerDepth:m.headerDepth,createdAt:Date.now(),createdByName:getProfile()?.displayName||getProfile()?.email||"",rows:rowObj
+          });
+        }catch(e){
+          console.error("[V2.18.1] Lỗi lưu file giá",e);
+          throw new Error(`Không lưu được file giá ${file.name}. ${firebaseErrorText(e)}`);
+        }
         total+=rows.length;
       }
       if(!total){toast("Không file nào có dữ liệu giá hợp lệ. Cần tối thiểu Mô tả + Đơn giá.","error");return false}
@@ -426,6 +448,13 @@ async function deleteMaterialImport(importId,container){
   if(!await confirmBox("Xóa file giá",`Xóa dữ liệu giá đã đọc từ ${imp.fileName||"file này"}? Giá đã ráp vào BOQ sẽ không tự xóa.`,"Xóa"))return;
   await refs.materialPriceImport(selectedProjectId,importId).remove();
   toast("Đã xóa file giá khỏi kho dữ liệu.","warning");await loadProjectData();paint(container);
+}
+
+function firebaseErrorText(e){
+  const code=String(e?.code||"");
+  if(code.toLowerCase().includes("permission")||String(e?.message||"").toLowerCase().includes("permission"))
+    return "Firebase đang từ chối quyền ghi tại vùng dữ liệu lập giá.";
+  return e?.message||code||"Lỗi Firebase";
 }
 
 function rebuildMatchCache(){

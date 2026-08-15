@@ -1,4 +1,4 @@
-import { firebaseConfig, APP_ROOT, ADMIN_EMAIL } from "./config.js?v=2.18.0";
+import { firebaseConfig, APP_ROOT, ADMIN_EMAIL } from "./config.js?v=2.18.1";
 
 if (!window.firebase) throw new Error("Không tải được Firebase SDK.");
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
@@ -15,11 +15,13 @@ export const refs = {
   boqRoot:()=>root.child("boq"),
   boqProject:projectId=>root.child(`boq/${projectId}`),
   boqItem:(projectId,itemId)=>root.child(`boq/${projectId}/${itemId}`),
-  boqImportMetaRoot:()=>root.child("boqImportMeta"),
-  boqImportMeta:projectId=>root.child(`boqImportMeta/${projectId}`),
-  materialPriceImportsRoot:()=>root.child("materialPriceImports"),
-  materialPriceImportsProject:projectId=>root.child(`materialPriceImports/${projectId}`),
-  materialPriceImport:(projectId,importId)=>root.child(`materialPriceImports/${projectId}/${importId}`),
+  // V2.18.1: lưu metadata/import giá bên dưới pricingSettings để tái sử dụng
+  // rule đã có từ các phiên bản cũ, tránh PERMISSION_DENIED do node mới chưa được publish Rules.
+  boqImportMetaRoot:()=>root.child("pricingSettings"),
+  boqImportMeta:projectId=>root.child(`pricingSettings/${projectId}/boqImportMeta`),
+  materialPriceImportsRoot:()=>root.child("pricingSettings"),
+  materialPriceImportsProject:projectId=>root.child(`pricingSettings/${projectId}/materialPriceImports`),
+  materialPriceImport:(projectId,importId)=>root.child(`pricingSettings/${projectId}/materialPriceImports/${importId}`),
   supplierQuotesRoot:()=>root.child("supplierQuotes"),
   supplierQuotesProject:projectId=>root.child(`supplierQuotes/${projectId}`),
   supplierQuotesItem:(projectId,itemId)=>root.child(`supplierQuotes/${projectId}/${itemId}`),
@@ -254,7 +256,7 @@ export const TASK_TYPES=[
 
 export const DISCIPLINES=["PCCC","HVAC","CẤP THOÁT NƯỚC","ĐIỆN","ĐIỆN NHẸ","KHÁC"];
 export const projectCode=n=>`DA-${new Date().getFullYear()}-${String(n).padStart(3,"0")}`;
-export const appVersion="2.18.0";
+export const appVersion="2.18.1";
 export const weekKey=()=>{
   const d=new Date(), t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())), day=t.getUTCDay()||7;
   t.setUTCDate(t.getUTCDate()+4-day);const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1));
