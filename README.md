@@ -1,4 +1,4 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.7
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.8
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
@@ -7,6 +7,151 @@
 
 
 
+
+
+## Nâng cấp V2.8 — BOQ Revision & Baseline hợp đồng
+
+V2.8 giải quyết trường hợp BOQ thay đổi sau khi trúng thầu/ký hợp đồng.
+
+Luồng mới:
+
+`R0 Tender → R1 Hợp đồng → R2 Phụ lục → R3... → chọn Revision đang áp dụng → Phiếu đặt hàng`
+
+### 1. R0 luôn được giữ
+
+R0 là BOQ đấu thầu/trúng thầu ban đầu.
+
+- Không bị ghi đè khi có BOQ hợp đồng mới.
+- Dùng làm mốc lịch sử để biết khối lượng/giá trị đã thay đổi bao nhiêu sau đấu thầu.
+- Dự án mới: R0 được tạo tự động khi bấm Bàn giao.
+- Dự án cũ V2.7: hệ thống tự chuyển Baseline cũ thành R0 khi tài khoản quản lý mở trang.
+- Có thể tải R0 trực tiếp từ CSV nếu dự án chưa có BOQ trong hệ thống.
+
+### 2. Tải R1/R2/R3 từ CSV
+
+Trong:
+
+`Triển khai → Kiểm soát khối lượng`
+
+có nút:
+
+`＋ Tải BOQ Revision`
+
+Mỗi file được lưu thành một phiên bản riêng:
+
+- Mã Revision.
+- Loại: Hợp đồng / Phụ lục / Revision khác.
+- Tên.
+- Ngày hiệu lực.
+- File nguồn.
+- Người tạo.
+- Số dòng.
+- Tổng giá trị.
+
+Revision mới ở trạng thái **Chờ áp dụng** và chưa làm thay đổi khối lượng kiểm soát.
+
+### 3. Mapping đầu mục
+
+Hệ thống tự ghép đầu mục theo:
+
+1. Mã/STT nếu duy nhất.
+2. Mô tả + Spec + ĐVT.
+3. Nếu không chắc chắn → đánh dấu `CHƯA MAP`.
+
+Có nút **Map lại** để người dùng chọn thủ công đầu mục lịch sử tương ứng.
+
+Mục tiêu là giữ một `stable item id` xuyên suốt các Revision, để phiếu đặt hàng cũ không bị mất liên kết khi BOQ đổi mã hoặc mô tả.
+
+### 4. So sánh Revision
+
+Mỗi Revision có nút **So sánh**.
+
+Hiển thị:
+
+- Thêm mới.
+- Tăng khối lượng.
+- Giảm khối lượng.
+- Loại bỏ.
+- Thay đổi đơn giá.
+- Δ giá trị.
+- Mapping tự động/thủ công.
+
+Ngoài so với Revision trước, hệ thống luôn tính chênh so với Tender R0.
+
+### 5. Chỉ một Revision là Baseline đang áp dụng
+
+Khi quản lý bấm:
+
+`Áp dụng Baseline`
+
+hệ thống mới chuyển Revision đó thành Baseline dùng để kiểm soát phiếu đặt hàng.
+
+Phiếu đặt hàng cũ không bị xóa.
+
+Toàn bộ khối lượng đã duyệt/đặt được tính lại theo Baseline mới.
+
+Đầu mục bị loại khỏi BOQ mới:
+- Baseline hiện hành = 0.
+- Nếu trước đó công trường đã đặt → toàn bộ phần đã đặt sẽ trở thành vượt Baseline và cảnh báo.
+
+### 6. Tách hai loại chênh lệch
+
+Bảng kiểm soát V2.8 tách rõ:
+
+**Chênh Hợp đồng so với Tender**
+`= Baseline Revision hiện hành − Tender R0`
+
+và:
+
+**Vượt do công trường**
+`= Tổng phiếu đã duyệt/đặt − Baseline Revision hiện hành`
+
+Ví dụ:
+
+- R0 Tender = 1.000 m.
+- R1 Hợp đồng = 1.200 m.
+- Công trường đã đặt = 1.260 m.
+
+Hệ thống báo:
+
+- Δ HĐ so Tender = +200 m.
+- Vượt công trường = +60 m.
+
+Không báo sai thành +260 m.
+
+### 7. Giá trị tiền
+
+Hệ thống tính riêng:
+
+- Giá trị thay đổi hợp đồng so Tender.
+- Giá trị vượt công trường theo đơn giá HĐ/Baseline.
+- Chi phí vượt dự kiến theo giá mua.
+- Variation/VO chỉ tạo từ phần vượt công trường khi người dùng yêu cầu.
+
+### 8. Export CSV
+
+File xuất kiểm soát có:
+
+- Tender R0.
+- Baseline Revision hiện hành.
+- Δ HĐ.
+- Đã đặt.
+- Vượt công trường.
+- Giá trị Δ HĐ.
+- Giá trị vượt.
+- Chi phí vượt.
+- Danh sách Revision.
+- Danh sách phiếu đặt hàng.
+
+### Firebase mới
+
+- `/v2/quantityBoqRevisions/{projectId}/{revisionId}`
+
+Các node V2.7 vẫn được giữ:
+- `/v2/quantityBaseline`
+- `/v2/quantityBaselineMeta`
+- `/v2/orderRequests`
+- `/v2/quantityAudit`
 
 ## Nâng cấp V2.7 — Kiểm soát khối lượng đặt hàng công trường
 

@@ -1,4 +1,4 @@
-import { firebaseConfig, APP_ROOT, ADMIN_EMAIL } from "./config.js?v=2.7.0";
+import { firebaseConfig, APP_ROOT, ADMIN_EMAIL } from "./config.js?v=2.8.0";
 
 if (!window.firebase) throw new Error("Không tải được Firebase SDK.");
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
@@ -42,6 +42,12 @@ export const refs = {
   quantityBaselineItem:(projectId,itemId)=>root.child(`quantityBaseline/${projectId}/${itemId}`),
   quantityBaselineMetaRoot:()=>root.child("quantityBaselineMeta"),
   quantityBaselineMeta:projectId=>root.child(`quantityBaselineMeta/${projectId}`),
+
+  quantityBoqRevisionsRoot:()=>root.child("quantityBoqRevisions"),
+  quantityBoqRevisionsProject:projectId=>root.child(`quantityBoqRevisions/${projectId}`),
+  quantityBoqRevision:(projectId,revisionId)=>root.child(`quantityBoqRevisions/${projectId}/${revisionId}`),
+  quantityBoqRevisionItems:(projectId,revisionId)=>root.child(`quantityBoqRevisions/${projectId}/${revisionId}/items`),
+  quantityBoqRevisionItem:(projectId,revisionId,itemId)=>root.child(`quantityBoqRevisions/${projectId}/${revisionId}/items/${itemId}`),
 
   orderRequestsRoot:()=>root.child("orderRequests"),
   orderRequestsProject:projectId=>root.child(`orderRequests/${projectId}`),
@@ -115,6 +121,8 @@ const PERMS = {
   procurementEdit:["ADMIN","DIRECTOR","MANAGER","PROCUREMENT","TECHNICAL"],
   milestoneEdit:["ADMIN","DIRECTOR","MANAGER","TECHNICAL"],
   quantityBaselineCreate:["ADMIN","DIRECTOR","MANAGER","TENDER"],
+  quantityRevisionManage:["ADMIN","DIRECTOR","MANAGER","TENDER"],
+  quantityRevisionActivate:["ADMIN","DIRECTOR","MANAGER"],
   quantityRequestCreate:["ADMIN","DIRECTOR","MANAGER","TECHNICAL","PROCUREMENT","EMPLOYEE"],
   quantityRequestApprove:["ADMIN","DIRECTOR","MANAGER"],
   quantityRequestOrder:["ADMIN","DIRECTOR","MANAGER","PROCUREMENT"],
@@ -241,7 +249,7 @@ export const TASK_TYPES=[
 
 export const DISCIPLINES=["PCCC","HVAC","CẤP THOÁT NƯỚC","ĐIỆN","ĐIỆN NHẸ","KHÁC"];
 export const projectCode=n=>`DA-${new Date().getFullYear()}-${String(n).padStart(3,"0")}`;
-export const appVersion="2.7.0";
+export const appVersion="2.8.0";
 export const weekKey=()=>{
   const d=new Date(), t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())), day=t.getUTCDay()||7;
   t.setUTCDate(t.getUTCDate()+4-day);const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1));

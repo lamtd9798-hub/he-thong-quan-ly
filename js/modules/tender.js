@@ -1,4 +1,4 @@
-import {refs,arr,ts,logActivity,can,getProfile,esc,money,fmtDate,daysUntil,TENDER_STAGES,stageInfo,setPage,loading,empty,badge,modal,toast,confirmBox} from "../core.js?v=2.7.0";
+import {refs,arr,ts,logActivity,can,getProfile,esc,money,fmtDate,daysUntil,TENDER_STAGES,stageInfo,setPage,loading,empty,badge,modal,toast,confirmBox} from "../core.js?v=2.8.0";
 
 let projects=[],rfqs=[],approvals=[],boqData={},pricingData={},tab="pipeline";
 
@@ -68,27 +68,39 @@ async function freezeQuantityBaseline(projectId){
     items[x.id]={
       sourceBoqId:x.id,itemNo:x.itemNo||"",discipline:x.discipline||"KHÁC",category:x.category||"",
       description:x.description||"",specification:x.specification||"",unit:x.unit||"",
-      qty:Number(x.qty||0),materialUnit:Number(x.materialUnit||0),netUnit,bidUnit,
-      selectedSupplier:x.selectedSupplier||"",brand:x.brand||"",createdAt:Date.now()
+      qty:Number(x.qty||0),materialUnit:Number(x.materialUnit||0),laborUnit:Number(x.laborUnit||0),
+      subcontractUnit:Number(x.subcontractUnit||0),otherUnit:Number(x.otherUnit||0),
+      wastePct:Number(x.wastePct||0),markupPct:Number(x.markupPct||0),
+      netUnit,bidUnit,selectedSupplier:x.selectedSupplier||"",brand:x.brand||"",lineStatus:"ACTIVE",createdAt:Date.now()
     };
     totalBidValue+=Number(x.qty||0)*bidUnit;
   });
 
-  const u=getProfile()||{};
+  const u=getProfile()||{},revisionId=refs.quantityBoqRevisionsProject(projectId).push().key,now=Date.now();
+  const revision={
+    code:"R0",revisionNo:0,name:"BOQ đấu thầu / Trúng thầu",type:"TENDER",effectiveDate:new Date(now-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10),
+    status:"ACTIVE",source:"BOQ_AT_HANDOVER",sourceFileName:"",lineCount:boq.length,totalBidValue,
+    createdAt:now,createdByUid:u.uid||"",createdByName:u.displayName||u.email||"",
+    activatedAt:now,activatedByUid:u.uid||"",activatedByName:u.displayName||u.email||"",items
+  };
   const meta={
-    source:"BOQ_AT_HANDOVER",frozenAt:Date.now(),frozenByUid:u.uid||"",frozenByName:u.displayName||"",frozenByEmail:u.email||"",
-    lineCount:boq.length,totalBidValue
+    source:"BOQ_AT_HANDOVER",frozenAt:now,frozenByUid:u.uid||"",frozenByName:u.displayName||"",frozenByEmail:u.email||"",
+    lineCount:boq.length,totalBidValue,
+    tenderRevisionId:revisionId,tenderRevisionCode:"R0",
+    activeRevisionId:revisionId,activeRevisionCode:"R0",activeRevisionName:revision.name,
+    activeEffectiveDate:revision.effectiveDate,activatedAt:now,activatedByUid:u.uid||"",activatedByName:u.displayName||u.email||""
   };
 
   await Promise.all([
+    refs.quantityBoqRevision(projectId,revisionId).set(revision),
     refs.quantityBaselineProject(projectId).set(items),
     refs.quantityBaselineMeta(projectId).set(meta)
   ]);
 
   const auditKey=refs.quantityAuditProject(projectId).push().key;
   await refs.quantityAuditItem(projectId,auditKey).set({
-    action:"BASELINE_CREATED",message:`Tự khóa Baseline BOQ khi bàn giao · ${boq.length} đầu mục · ${money(totalBidValue)}`,
-    userUid:u.uid||"",userName:u.displayName||"",userEmail:u.email||"",createdAt:ts()
+    action:"BASELINE_CREATED",message:`Tự khóa Tender R0 khi bàn giao · ${boq.length} đầu mục · ${money(totalBidValue)}`,
+    revisionId,revisionCode:"R0",userUid:u.uid||"",userName:u.displayName||"",userEmail:u.email||"",createdAt:ts()
   });
 
   return {count:boq.length,existing:false};

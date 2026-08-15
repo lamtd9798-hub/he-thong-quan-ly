@@ -1,7 +1,7 @@
 import {
   refs,arr,ts,logActivity,getProfile,can,esc,norm,money,fmtDate,fmtDateTime,
   loading,empty,badge,modal,toast,confirmBox
-} from "../core.js?v=2.7.0";
+} from "../core.js?v=2.8.0";
 
 let projectId="";
 let mountEl=null;
@@ -10,6 +10,9 @@ let baselineMeta={};
 let requests=[];
 let audits=[];
 let variations=[];
+let revisions=[];
+let tenderRevision=null;
+let activeRevision=null;
 let view="SUMMARY";
 let q="";
 
@@ -41,22 +44,31 @@ export async function renderQuantityControl(el,selectedProjectId){
 }
 
 async function loadData(){
-  if(!projectId){baseline=[];baselineMeta={};requests=[];audits=[];variations=[];return}
+  if(!projectId){baseline=[];baselineMeta={};requests=[];audits=[];variations=[];revisions=[];tenderRevision=null;activeRevision=null;return}
   const reads=[
     refs.quantityBaselineProject(projectId).once("value"),
     refs.quantityBaselineMeta(projectId).once("value"),
     refs.orderRequestsProject(projectId).once("value"),
-    refs.quantityAuditProject(projectId).once("value")
+    refs.quantityAuditProject(projectId).once("value"),
+    refs.quantityBoqRevisionsProject(projectId).once("value")
   ];
   if(can("quantityVariationCreate"))reads.push(refs.variationsProject(projectId).once("value"));
   else reads.push(Promise.resolve({val:()=>({})}));
 
-  const [b,m,r,a,v]=await Promise.all(reads);
+  const [b,m,r,a,rev,v]=await Promise.all(reads);
   baseline=toArray(b.val()).sort(itemSort);
   baselineMeta=m.val()||{};
   requests=toArray(r.val()).sort((x,y)=>String(y.requestDate||"").localeCompare(String(x.requestDate||""))||(y.createdAt||0)-(x.createdAt||0));
   audits=toArray(a.val()).sort((x,y)=>(y.createdAt||0)-(x.createdAt||0));
+  revisions=toArray(rev.val()).sort(revisionSort);
   variations=toArray(v.val());
+
+  tenderRevision=revisions.find(x=>x.id===baselineMeta.tenderRevisionId)||revisions.find(x=>x.revisionNo===0)||null;
+  activeRevision=revisions.find(x=>x.id===baselineMeta.activeRevisionId)||revisions.find(x=>x.status==="ACTIVE")||null;
+
+  if(baseline.length&&!revisions.length&&can("quantityRevisionActivate")){
+    await migrateLegacyBaselineToR0();
+  }
 }
 
 function paint(){
@@ -64,6 +76,7 @@ function paint(){
   if(!baseline.length){
     mountEl.innerHTML=baselineEmptyHtml();
     mountEl.querySelector("#initQuantityBaselineBtn")?.addEventListener("click",initializeBaseline);
+    mountEl.querySelector("#uploadTenderR0Btn")?.addEventListener("click",()=>uploadRevisionDialog(true));
     return;
   }
 
@@ -79,21 +92,28 @@ function paint(){
       </div>
       <div class="actions">
         <button class="btn" id="exportQtyCsvBtn">Xuất CSV</button>
+        ${can("quantityRevisionManage")?`<button class="btn" id="uploadRevisionBtn">＋ Tải BOQ Revision</button>`:""}
         ${can("quantityRequestCreate")?`<button class="btn primary" id="newOrderRequestBtn">＋ Tạo phiếu đặt hàng</button>`:""}
       </div>
     </div>
 
     <div class="quantity-baseline-note">
-      <div><b>Baseline BOQ đã khóa</b><span>${baseline.length} đầu mục · ${fmtDateTime(baselineMeta.frozenAt)} · ${esc(baselineMeta.frozenByName||baselineMeta.frozenByEmail||"Hệ thống")}</span></div>
-      <div>${badge("Không thay đổi theo BOQ đấu thầu sau bàn giao","blue")}</div>
+      <div>
+        <b>Baseline đang áp dụng: ${esc(activeRevision?.code||baselineMeta.activeRevisionCode||"R0")} · ${esc(activeRevision?.name||baselineMeta.activeRevisionName||"BOQ trúng thầu")}</b>
+        <span>${baseline.length} đầu mục · hiệu lực ${fmtDate(activeRevision?.effectiveDate||baselineMeta.activeEffectiveDate)} · kích hoạt ${fmtDateTime(baselineMeta.activatedAt||baselineMeta.frozenAt)}</span>
+      </div>
+      <div class="baseline-badges">
+        ${badge(`Tender: ${tenderRevision?.code||"R0"}`,"blue")}
+        ${badge(`${revisions.length} phiên bản BOQ`,"gray")}
+      </div>
     </div>
 
     <div class="grid g6 mt">
-      ${metric("Giá trị BOQ",money(totals.baselineValue,true),"BOQ","#2563eb","#eff6ff",`${baseline.length} đầu mục baseline`)}
+      ${metric("Baseline hiện hành",money(totals.baselineValue,true),activeRevision?.code||"BOQ","#2563eb","#eff6ff",`${baseline.length} đầu mục`)}
+      ${metric("Δ HĐ so Tender",signedMoney(totals.contractDeltaValue),"Δ",totals.contractDeltaValue>=0?"#7c3aed":"#16a34a",totals.contractDeltaValue>=0?"#f5f3ff":"#f0fdf4",`${totals.contractChangedCount} đầu mục thay đổi`)}
       ${metric("Giá trị đã đặt",money(totals.orderedValue,true),"ĐH","#7c3aed","#f5f3ff",`${totals.confirmedRequests} phiếu được tính`)}
-      ${metric("Đầu mục vượt",totals.overCount,"!","#dc2626","#fef2f2",`${totals.outsideCount} đầu mục ngoài BOQ`)}
-      ${metric("GT vượt theo giá chào",money(totals.excessBidValue,true),"↑","#dc2626","#fef2f2","Cơ sở xem xét Variation / VO")}
-      ${metric("Chi phí vượt dự kiến",money(totals.excessCost,true),"C","#d97706","#fff7ed","Theo giá mua dự kiến đã nhập")}
+      ${metric("Vượt do công trường",money(totals.excessBidValue,true),"!","#dc2626","#fef2f2",`${totals.overCount} đầu mục vượt/ngoài BOQ`)}
+      ${metric("Chi phí vượt dự kiến",money(totals.excessCost,true),"C","#d97706","#fff7ed","Theo giá mua dự kiến")}
       ${metric("Gần hết BOQ",totals.nearCount,"⚠","#d97706","#fff7ed","Từ 90% đến 100%")}
     </div>
 
@@ -101,6 +121,7 @@ function paint(){
       <div class="subtabs" style="margin:0">
         ${[
           ["SUMMARY","Tổng hợp BOQ"],
+          ["REVISIONS","BOQ Revision"],
           ["REQUESTS","Phiếu đặt hàng"],
           ["OUTSIDE","Ngoài BOQ"],
           ["HISTORY","Lịch sử"]
@@ -111,6 +132,7 @@ function paint(){
 
     <div id="quantityViewBody">
       ${view==="SUMMARY"?summaryHtml(filtered):
+        view==="REVISIONS"?revisionsHtml():
         view==="REQUESTS"?requestsHtml():
         view==="OUTSIDE"?outsideHtml(rows):
         historyHtml()}
@@ -122,41 +144,53 @@ function paint(){
 
 function baselineEmptyHtml(){
   return `<div class="quantity-empty">
-    ${empty("Chưa có Baseline BOQ","Khối lượng kiểm soát phải được khóa từ BOQ trúng thầu trước khi công trường bắt đầu đặt hàng.","▦")}
-    ${can("quantityBaselineCreate")?`<div style="text-align:center;margin-top:12px"><button class="btn primary" id="initQuantityBaselineBtn">Khởi tạo Baseline từ BOQ hiện tại</button><div class="secondary-text" style="margin-top:7px">Chỉ nên thực hiện một lần sau khi đã chốt/trúng thầu.</div></div>`:""}
+    ${empty("Chưa có BOQ Baseline","Cần tạo R0 từ BOQ trúng thầu trước. Sau đó mới tải R1/R2/R3 và chọn Revision áp dụng.","▦")}
+    ${can("quantityBaselineCreate")?`<div class="baseline-empty-actions">
+      <button class="btn primary" id="initQuantityBaselineBtn">Khởi tạo R0 từ BOQ hiện tại</button>
+      <button class="btn" id="uploadTenderR0Btn">Tải BOQ R0 từ CSV</button>
+      <div class="secondary-text">R0 là BOQ đấu thầu/trúng thầu gốc và được giữ vĩnh viễn để so sánh.</div>
+    </div>`:""}
   </div>`;
 }
 
 function summaryHtml(rows){
-  return `<div class="qty-info-strip">Chênh lệch âm hiện tại là phần BOQ <b>chưa được đặt</b>; chỉ nên xem là khối lượng giảm thực tế khi dự án đã chốt khối lượng cuối cùng.</div>
+  return `<div class="qty-info-strip">
+    <b>Tách 2 loại chênh:</b> Δ HĐ = Baseline Revision hiện hành − Tender R0. 
+    Vượt công trường = Tổng phiếu đã duyệt/đặt − Baseline hiện hành. Hai số này không cộng lẫn nhau.
+  </div>
   <div class="table-wrap"><table class="table quantity-summary-table"><thead><tr>
     <th>MÃ BOQ</th><th>HỆ</th><th>VẬT TƯ / CÔNG VIỆC</th><th>ĐVT</th>
-    <th>KL BOQ</th><th>ĐÃ DUYỆT/ĐẶT</th><th>CHỜ DUYỆT</th><th>CÒN LẠI</th>
-    <th>TĂNG/GIẢM</th><th>% SỬ DỤNG</th><th>GIÁ CHÀO/ĐVT</th><th>GT CHÊNH</th>
+    <th>TENDER R0</th><th>BASELINE ${esc(activeRevision?.code||"HIỆN HÀNH")}</th><th>Δ HĐ</th>
+    <th>ĐÃ DUYỆT/ĐẶT</th><th>CHỜ DUYỆT</th><th>CÒN LẠI</th><th>VƯỢT CT</th>
+    <th>% SỬ DỤNG</th><th>GIÁ HĐ/ĐVT</th><th>GT Δ HĐ</th><th>GT VƯỢT CT</th>
     <th>CHI PHÍ VƯỢT</th><th>TRẠNG THÁI</th><th style="text-align:right">THAO TÁC</th>
   </tr></thead><tbody>
-    ${rows.length?rows.map(summaryRow).join(""):`<tr><td colspan="15">${empty("Không có dữ liệu","Không có đầu mục phù hợp bộ lọc.","▦")}</td></tr>`}
+    ${rows.length?rows.map(summaryRow).join(""):`<tr><td colspan="18">${empty("Không có dữ liệu","Không có đầu mục phù hợp bộ lọc.","▦")}</td></tr>`}
   </tbody></table></div>`;
 }
 
 function summaryRow(r){
   const state=rowState(r);
-  const diff=r.confirmedQty-r.baselineQty;
   const remaining=r.baselineQty-r.confirmedQty;
+  const siteExcess=Math.max(0,r.confirmedQty-r.baselineQty);
+  const contractClass=r.contractDeltaQty>0?"danger-text":r.contractDeltaQty<0?"positive-text":"";
   return `<tr class="qty-row-${state.key.toLowerCase()}">
-    <td><b>${esc(r.itemNo||"—")}</b></td>
+    <td><b>${esc(r.itemNo||"—")}</b>${r.lineStatus==="REMOVED"?`<div>${badge("Loại khỏi Revision","red")}</div>`:""}</td>
     <td>${badge(r.discipline||"KHÁC","gray")}</td>
     <td><div class="primary-text">${esc(r.description||"—")}</div><div class="secondary-text">${esc(r.specification||"")}</div></td>
     <td>${esc(r.unit||"—")}</td>
-    <td>${num(r.baselineQty,3)}</td>
+    <td>${num(r.tenderQty,3)}</td>
+    <td><b>${num(r.baselineQty,3)}</b></td>
+    <td class="${contractClass}"><b>${signedQty(r.contractDeltaQty)}</b></td>
     <td><b>${num(r.confirmedQty,3)}</b></td>
     <td>${r.pendingQty?`<span class="qty-pending">${num(r.pendingQty,3)}</span>`:"0"}</td>
     <td class="${remaining<0?"danger-text":""}">${num(remaining,3)}</td>
-    <td class="${diff>0?"danger-text":diff<0?"positive-text":""}"><b>${signedQty(diff)}</b></td>
+    <td class="${siteExcess>0?"danger-text":""}"><b>${siteExcess?`+${num(siteExcess,3)}`:"0"}</b></td>
     <td>${usageHtml(r)}</td>
     <td>${money(r.bidUnit)}</td>
-    <td class="${r.diffBidValue>0?"danger-text":r.diffBidValue<0?"positive-text":""}"><b>${signedMoney(r.diffBidValue)}</b></td>
-    <td class="${r.excessCost>0?"danger-text":""}><b>${money(r.excessCost)}</b></td>
+    <td class="${r.contractDeltaValue>0?"danger-text":r.contractDeltaValue<0?"positive-text":""}"><b>${signedMoney(r.contractDeltaValue)}</b></td>
+    <td class="${r.excessBidValue>0?"danger-text":""}"><b>${money(r.excessBidValue)}</b></td>
+    <td class="${r.excessCost>0?"danger-text":""}"><b>${money(r.excessCost)}</b></td>
     <td>${badge(state.label,state.color)}</td>
     <td><div class="row-actions">
       <button class="btn sm" data-qty-history="${esc(r.key)}">Lịch sử</button>
@@ -231,44 +265,554 @@ function bind(){
     q=e.target.value;paint();requestAnimationFrame(()=>{const i=mountEl.querySelector("#qtySearch");i?.focus();i?.setSelectionRange(i.value.length,i.value.length)});
   });
   mountEl.querySelector("#newOrderRequestBtn")?.addEventListener("click",()=>editRequest(null));
+  mountEl.querySelector("#uploadRevisionBtn")?.addEventListener("click",()=>uploadRevisionDialog(false));
+  mountEl.querySelector("#uploadRevisionInlineBtn")?.addEventListener("click",()=>uploadRevisionDialog(false));
   mountEl.querySelector("#exportQtyCsvBtn")?.addEventListener("click",exportCsv);
   mountEl.querySelectorAll("[data-request-view]").forEach(b=>b.addEventListener("click",()=>viewRequest(b.dataset.requestView)));
   mountEl.querySelectorAll("[data-request-edit]").forEach(b=>b.addEventListener("click",()=>editRequest(b.dataset.requestEdit)));
   mountEl.querySelectorAll("[data-qty-history]").forEach(b=>b.addEventListener("click",()=>itemHistory(b.dataset.qtyHistory)));
   mountEl.querySelectorAll("[data-qty-vo]").forEach(b=>b.addEventListener("click",()=>createVariationFromRow(b.dataset.qtyVo)));
+  mountEl.querySelectorAll("[data-revision-compare]").forEach(b=>b.addEventListener("click",()=>compareRevisionDialog(b.dataset.revisionCompare)));
+  mountEl.querySelectorAll("[data-revision-activate]").forEach(b=>b.addEventListener("click",()=>activateRevision(b.dataset.revisionActivate)));
+  mountEl.querySelectorAll("[data-revision-delete]").forEach(b=>b.addEventListener("click",()=>deleteDraftRevision(b.dataset.revisionDelete)));
 }
 
 async function initializeBaseline(){
   if(!can("quantityBaselineCreate"))return;
   const existing=await refs.quantityBaselineProject(projectId).once("value");
-  if(existing.exists()){toast("Baseline đã tồn tại và đang được khóa.","warning");await reload();return}
+  if(existing.exists()){toast("Baseline đã tồn tại. Hãy quản lý bằng BOQ Revision.","warning");await reload();return}
 
   const boq=await arr(refs.boqProject(projectId));
-  if(!boq.length){toast("Dự án chưa có BOQ để tạo Baseline.","error");return}
-  if(!await confirmBox("Khóa Baseline BOQ",`Khóa ${boq.length} đầu mục BOQ hiện tại làm cơ sở kiểm soát khối lượng? Sau khi tạo, Baseline không tự thay đổi theo BOQ đấu thầu.`,"Khóa Baseline"))return;
+  if(!boq.length){toast("Dự án chưa có BOQ để tạo R0.","error");return}
+  if(!await confirmBox("Khóa Tender R0",`Khóa ${boq.length} đầu mục BOQ hiện tại thành R0 – BOQ đấu thầu/trúng thầu? R0 sẽ được giữ để so sánh vĩnh viễn.`,"Khóa R0"))return;
 
-  const data={};
+  const items={};
   let total=0;
   boq.forEach(x=>{
     const c=calcBoq(x);
-    data[x.id]={
+    items[x.id]={
       sourceBoqId:x.id,itemNo:x.itemNo||"",discipline:x.discipline||"KHÁC",category:x.category||"",
       description:x.description||"",specification:x.specification||"",unit:x.unit||"",
-      qty:Number(x.qty||0),materialUnit:Number(x.materialUnit||0),netUnit:c.netUnit,bidUnit:c.bidUnit,
-      selectedSupplier:x.selectedSupplier||"",brand:x.brand||"",createdAt:Date.now()
+      qty:Number(x.qty||0),materialUnit:Number(x.materialUnit||0),laborUnit:Number(x.laborUnit||0),
+      subcontractUnit:Number(x.subcontractUnit||0),otherUnit:Number(x.otherUnit||0),
+      wastePct:Number(x.wastePct||0),markupPct:Number(x.markupPct||0),
+      netUnit:c.netUnit,bidUnit:c.bidUnit,selectedSupplier:x.selectedSupplier||"",brand:x.brand||"",
+      lineStatus:"ACTIVE",createdAt:Date.now()
     };
     total+=Number(x.qty||0)*c.bidUnit;
   });
 
   const u=getProfile()||{};
+  const revisionId=refs.quantityBoqRevisionsProject(projectId).push().key;
+  const revision={
+    code:"R0",revisionNo:0,name:"BOQ đấu thầu / Trúng thầu",type:"TENDER",effectiveDate:todayIso(),
+    status:"ACTIVE",source:"CURRENT_BOQ",sourceFileName:"",lineCount:Object.keys(items).length,totalBidValue:total,
+    createdAt:Date.now(),createdByUid:u.uid||"",createdByName:u.displayName||u.email||"",
+    activatedAt:Date.now(),activatedByUid:u.uid||"",activatedByName:u.displayName||u.email||"",
+    items
+  };
+
   const meta={
     source:"BOQ_AT_EXECUTION",frozenAt:Date.now(),frozenByUid:u.uid||"",frozenByName:u.displayName||"",frozenByEmail:u.email||"",
-    lineCount:boq.length,totalBidValue:total
+    lineCount:Object.keys(items).length,totalBidValue:total,
+    tenderRevisionId:revisionId,tenderRevisionCode:"R0",
+    activeRevisionId:revisionId,activeRevisionCode:"R0",activeRevisionName:revision.name,
+    activeEffectiveDate:revision.effectiveDate,activatedAt:Date.now(),activatedByName:u.displayName||u.email||""
   };
-  await Promise.all([refs.quantityBaselineProject(projectId).set(data),refs.quantityBaselineMeta(projectId).set(meta)]);
-  await audit("BASELINE_CREATED",`Khóa Baseline BOQ ${boq.length} đầu mục · ${money(total)}`,{});
-  await logActivity("QTY_BASELINE_CREATED",`Khóa Baseline BOQ ${boq.length} đầu mục`,{projectId});
-  toast("Đã khóa Baseline BOQ.");await reload();
+
+  await Promise.all([
+    refs.quantityBoqRevision(projectId,revisionId).set(revision),
+    refs.quantityBaselineProject(projectId).set(items),
+    refs.quantityBaselineMeta(projectId).set(meta)
+  ]);
+  await audit("BASELINE_CREATED",`Khóa Tender R0 · ${Object.keys(items).length} đầu mục · ${money(total)}`,{revisionId,revisionCode:"R0"});
+  await logActivity("QTY_BASELINE_CREATED",`Khóa Tender R0 ${Object.keys(items).length} đầu mục`,{projectId,revisionId});
+  toast("Đã khóa R0 và kích hoạt làm Baseline.");await reload();
+}
+
+async function migrateLegacyBaselineToR0(){
+  if(!baseline.length||revisions.length||!can("quantityRevisionActivate"))return;
+  const u=getProfile()||{},items={};
+  baseline.forEach(b=>{const {id,...rest}=b;items[id]={...rest,lineStatus:rest.lineStatus||"ACTIVE"}});
+  const total=Object.values(items).reduce((sum,x)=>sum+Number(x.qty||0)*Number(x.bidUnit||0),0);
+  const revisionId=refs.quantityBoqRevisionsProject(projectId).push().key;
+  const revision={
+    code:"R0",revisionNo:0,name:"BOQ đấu thầu / Trúng thầu",type:"TENDER",
+    effectiveDate:baselineMeta.activeEffectiveDate||todayIso(),status:"ACTIVE",source:"MIGRATED_V2_7",
+    lineCount:Object.keys(items).length,totalBidValue:total,items,
+    createdAt:baselineMeta.frozenAt||Date.now(),createdByUid:baselineMeta.frozenByUid||u.uid||"",
+    createdByName:baselineMeta.frozenByName||u.displayName||u.email||"",
+    activatedAt:baselineMeta.frozenAt||Date.now(),activatedByUid:u.uid||"",activatedByName:u.displayName||u.email||""
+  };
+  await refs.quantityBoqRevision(projectId,revisionId).set(revision);
+  await refs.quantityBaselineMeta(projectId).update({
+    tenderRevisionId:revisionId,tenderRevisionCode:"R0",
+    activeRevisionId:revisionId,activeRevisionCode:"R0",activeRevisionName:revision.name,
+    activeEffectiveDate:revision.effectiveDate,activatedAt:baselineMeta.frozenAt||Date.now()
+  });
+  revisions=[{id:revisionId,...revision}];
+  tenderRevision=revisions[0];activeRevision=revisions[0];
+  baselineMeta={...baselineMeta,tenderRevisionId:revisionId,activeRevisionId:revisionId,activeRevisionCode:"R0",activeRevisionName:revision.name};
+  await audit("REVISION_MIGRATED",`Nâng Baseline V2.7 thành Tender R0 · ${baseline.length} đầu mục`,{revisionId});
+}
+
+function revisionsHtml(){
+  const ordered=[...revisions].sort((a,b)=>Number(a.revisionNo||0)-Number(b.revisionNo||0));
+  return `<div class="page-head" style="margin-bottom:12px">
+    <div><h2 style="font-size:17px">BOQ Revision & Baseline hợp đồng</h2><p>R0 luôn giữ BOQ đấu thầu. R1/R2/R3 là BOQ hợp đồng/phụ lục; chỉ một Revision được dùng làm Baseline đặt hàng.</p></div>
+    ${can("quantityRevisionManage")?`<button class="btn primary" id="uploadRevisionInlineBtn">＋ Tải BOQ Revision</button>`:""}
+  </div>
+
+  <div class="revision-flow">
+    <div><b>R0 Tender</b><span>Giữ nguyên lịch sử đấu thầu</span></div><i>→</i>
+    <div><b>R1/R2/R3...</b><span>Hợp đồng / Phụ lục</span></div><i>→</i>
+    <div><b>Baseline đang áp dụng</b><span>${esc(activeRevision?.code||"R0")} · dùng để so phiếu đặt hàng</span></div>
+  </div>
+
+  <div class="table-wrap mt"><table class="table revision-table"><thead><tr>
+    <th>REV</th><th>LOẠI</th><th>TÊN PHIÊN BẢN</th><th>NGÀY HIỆU LỰC</th><th>SỐ DÒNG</th>
+    <th>GIÁ TRỊ BOQ</th><th>Δ SO TENDER R0</th><th>TRẠNG THÁI</th><th>NGUỒN</th><th>NGƯỜI TẠO</th><th style="text-align:right">THAO TÁC</th>
+  </tr></thead><tbody>
+    ${ordered.length?ordered.map(revisionRow).join(""):`<tr><td colspan="11">${empty("Chưa có Revision","Khởi tạo R0 trước khi tải BOQ hợp đồng.","R")}</td></tr>`}
+  </tbody></table></div>
+
+  <div class="revision-help mt">
+    <b>Nguyên tắc:</b> kích hoạt Revision mới không xóa phiếu đặt hàng cũ. Hệ thống giữ cùng mã định danh cho các đầu mục được map,
+    vì vậy toàn bộ khối lượng đã đặt sẽ được tính lại trên Baseline mới. Đầu mục bị loại khỏi Revision mới có Baseline = 0 và mọi khối lượng đã đặt của đầu mục đó sẽ trở thành vượt công trường.
+  </div>`;
+}
+
+function revisionRow(r){
+  const tenderItems=tenderRevision?.items||{};
+  const currentItems=r.items||{};
+  const tenderValue=revisionTotal(tenderItems),value=revisionTotal(currentItems),delta=value-tenderValue;
+  const st=r.status==="ACTIVE"?["Đang áp dụng","green"]:r.status==="DRAFT"?["Chờ áp dụng","orange"]:["Lịch sử","gray"];
+  const typeLabel={TENDER:"Tender R0",CONTRACT:"BOQ Hợp đồng",ADDENDUM:"Phụ lục",OTHER:"Revision khác"}[r.type]||r.type||"Revision";
+  return `<tr class="${r.status==="ACTIVE"?"revision-active-row":""}">
+    <td><b>${esc(r.code||`R${r.revisionNo||0}`)}</b></td><td>${badge(typeLabel,r.type==="TENDER"?"blue":r.type==="CONTRACT"?"purple":"gray")}</td>
+    <td><div class="primary-text">${esc(r.name||"—")}</div></td><td>${fmtDate(r.effectiveDate)}</td>
+    <td>${Number(r.lineCount||Object.keys(currentItems).length)}</td><td>${money(value)}</td>
+    <td class="${delta>0?"danger-text":delta<0?"positive-text":""}"><b>${signedMoney(delta)}</b></td>
+    <td>${badge(st[0],st[1])}</td><td>${esc(r.sourceFileName||r.source||"—")}</td><td>${esc(r.createdByName||"—")}</td>
+    <td><div class="row-actions">
+      <button class="btn sm" data-revision-compare="${r.id}">So sánh</button>
+      ${r.status==="DRAFT"&&can("quantityRevisionActivate")?`<button class="btn green sm" data-revision-activate="${r.id}">Áp dụng Baseline</button>`:""}
+      ${r.status==="DRAFT"&&can("quantityRevisionManage")?`<button class="btn red sm" data-revision-delete="${r.id}">Xóa</button>`:""}
+    </div></td>
+  </tr>`;
+}
+
+function uploadRevisionDialog(isTenderR0=false){
+  if(!can("quantityRevisionManage"))return;
+  if(isTenderR0&&baseline.length){toast("Dự án đã có R0/Baseline.","warning");return}
+  if(!isTenderR0&&!tenderRevision){toast("Cần tạo Tender R0 trước khi tải Revision hợp đồng.","error");return}
+  if(!isTenderR0&&revisions.some(x=>x.status==="DRAFT")){toast("Đang có một Revision Chờ áp dụng. Hãy kiểm tra/kích hoạt hoặc xóa Revision đó trước khi tải phiên bản tiếp theo.","warning");view="REVISIONS";paint();return}
+
+  const nextNo=isTenderR0?0:nextRevisionNo();
+  const code=`R${nextNo}`;
+  modal({
+    title:isTenderR0?"Tải Tender R0 từ CSV":`Tải BOQ ${code}`,
+    eyebrow:isTenderR0?"BOQ ĐẤU THẦU / TRÚNG THẦU":"BOQ HỢP ĐỒNG / PHỤ LỤC",
+    size:"lg",submitText:isTenderR0?"Tạo R0":"Tải & So sánh",
+    body:`<div class="revision-upload-note">
+      ${isTenderR0
+        ?"<b>R0 sẽ là mốc gốc.</b> File CSV cần có tối thiểu Mô tả và Khối lượng."
+        :`File mới sẽ được lưu thành <b>${code} – Chờ áp dụng</b>. Khối lượng đặt hàng chưa thay đổi cho tới khi bấm “Áp dụng Baseline”.`}
+    </div>
+    <div class="form-grid mt">
+      <label class="field"><span>Mã Revision</span><input name="code" value="${code}" readonly></label>
+      <label class="field"><span>Loại Revision</span><select name="type">
+        ${isTenderR0?`<option value="TENDER">Tender R0</option>`:`<option value="CONTRACT">BOQ Hợp đồng</option><option value="ADDENDUM">Phụ lục hợp đồng</option><option value="OTHER">Revision khác</option>`}
+      </select></label>
+      <label class="field span2"><span>Tên phiên bản *</span><input required name="name" value="${isTenderR0?"BOQ đấu thầu / Trúng thầu":code+" - BOQ Hợp đồng"}"></label>
+      <label class="field"><span>Ngày hiệu lực *</span><input required type="date" name="effectiveDate" value="${todayIso()}"></label>
+      <label class="field"><span>File BOQ CSV *</span><input required type="file" name="revisionFile" id="revisionFile" accept=".csv,text/csv"></label>
+      <label class="field span2"><span>Ghi chú</span><textarea name="notes" placeholder="Ví dụ: BOQ theo HĐ số..., Phụ lục 01..."></textarea></label>
+    </div>
+    <div class="revision-template-box">
+      <span>Hỗ trợ cột: STT/Mã, Hệ, Nhóm, Mô tả, Thông số, ĐVT, Khối lượng, Giá chào/ĐVT hoặc các cột Giá vật tư/Nhân công/Thầu phụ/Khác.</span>
+      <button type="button" class="btn sm" id="downloadRevisionTemplateBtn">Tải mẫu CSV</button>
+    </div>`,
+    onSubmit:async fd=>{
+      try{
+        const file=fd.get("revisionFile");
+        if(!(file instanceof File)||!file.size){toast("Vui lòng chọn file CSV.","error");return false}
+        const parsed=await parseRevisionCsv(file);
+        if(!parsed.length){toast("Không có dòng BOQ hợp lệ trong file.","error");return false}
+
+        const items=mapRevisionItems(parsed);
+        const u=getProfile()||{},revisionId=refs.quantityBoqRevisionsProject(projectId).push().key;
+        const total=revisionTotal(items);
+        const revision={
+          code:String(fd.get("code")||code),revisionNo:nextNo,type:String(fd.get("type")||"CONTRACT"),
+          name:String(fd.get("name")||code),effectiveDate:String(fd.get("effectiveDate")||todayIso()),
+          notes:String(fd.get("notes")||""),status:isTenderR0?"ACTIVE":"DRAFT",
+          source:"CSV_UPLOAD",sourceFileName:file.name,lineCount:Object.keys(items).length,totalBidValue:total,
+          createdAt:Date.now(),createdByUid:u.uid||"",createdByName:u.displayName||u.email||"",items
+        };
+
+        if(isTenderR0){
+          revision.activatedAt=Date.now();revision.activatedByUid=u.uid||"";revision.activatedByName=u.displayName||u.email||"";
+          const baselineItems=materializeBaseline(items);
+          const meta={
+            source:"CSV_R0",frozenAt:Date.now(),frozenByUid:u.uid||"",frozenByName:u.displayName||"",frozenByEmail:u.email||"",
+            lineCount:Object.keys(baselineItems).length,totalBidValue:total,
+            tenderRevisionId:revisionId,tenderRevisionCode:"R0",
+            activeRevisionId:revisionId,activeRevisionCode:"R0",activeRevisionName:revision.name,
+            activeEffectiveDate:revision.effectiveDate,activatedAt:Date.now(),activatedByName:u.displayName||u.email||""
+          };
+          await Promise.all([
+            refs.quantityBoqRevision(projectId,revisionId).set(revision),
+            refs.quantityBaselineProject(projectId).set(baselineItems),
+            refs.quantityBaselineMeta(projectId).set(meta)
+          ]);
+          await audit("R0_UPLOADED",`Tải Tender R0 từ ${file.name} · ${Object.keys(items).length} đầu mục`,{revisionId,revisionCode:"R0"});
+          toast("Đã tạo Tender R0 và kích hoạt Baseline.");
+          await reload();return true;
+        }
+
+        await refs.quantityBoqRevision(projectId,revisionId).set(revision);
+        await audit("REVISION_UPLOADED",`Tải ${revision.code} từ ${file.name} · ${Object.keys(items).length} đầu mục`,{revisionId,revisionCode:revision.code});
+        await logActivity("QTY_REVISION_UPLOADED",`Tải ${revision.code} - ${revision.name}`,{projectId,revisionId});
+        toast(`Đã tải ${revision.code}. Hãy kiểm tra so sánh trước khi áp dụng.`);
+        await reload();view="REVISIONS";paint();compareRevisionDialog(revisionId);return false;
+      }catch(e){
+        console.error(e);toast(e.message||"Không thể đọc BOQ Revision.","error");return false;
+      }
+    }
+  });
+
+  document.querySelector("#downloadRevisionTemplateBtn")?.addEventListener("click",downloadRevisionTemplate);
+}
+
+async function parseRevisionCsv(file){
+  const text=await file.text(),rows=parseCsv(text);
+  if(rows.length<2)throw new Error("File CSV không có dữ liệu.");
+  const headers=rows[0].map(x=>norm(x).replace(/\s+/g," "));
+  const idx=(...names)=>headers.findIndex(h=>names.some(n=>h===norm(n)));
+  const map={
+    itemNo:idx("stt","ma","mã","item no","item"),
+    discipline:idx("he","hệ","system"),
+    category:idx("nhom","nhóm","category"),
+    description:idx("mo ta","mô tả","description"),
+    specification:idx("thong so","thông số","spec","specification"),
+    unit:idx("dvt","đvt","unit"),
+    qty:idx("khoi luong","khối lượng","qty","quantity"),
+    bidUnit:idx("gia chao/dvt","giá chào/đvt","gia chao","giá chào","don gia hd","đơn giá hđ","don gia","đơn giá","unit price"),
+    materialUnit:idx("gia vat tu","giá vật tư"),
+    laborUnit:idx("nhan cong","nhân công"),
+    subcontractUnit:idx("thau phu","thầu phụ"),
+    otherUnit:idx("khac","khác"),
+    wastePct:idx("hao hut %","hao hụt %"),
+    markupPct:idx("markup %","loi nhuan %","lợi nhuận %")
+  };
+  if(map.description<0||map.qty<0)throw new Error("File phải có ít nhất cột Mô tả và Khối lượng.");
+
+  const out=[];
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i];if(!r.some(x=>String(x).trim()))continue;
+    const get=k=>map[k]>=0?(r[map[k]]??""):"";
+    const d={
+      itemNo:String(get("itemNo")||i).trim(),discipline:String(get("discipline")||"KHÁC").trim().toUpperCase(),
+      category:String(get("category")||"").trim(),description:String(get("description")||"").trim(),
+      specification:String(get("specification")||"").trim(),unit:String(get("unit")||"").trim(),
+      qty:toNumber(get("qty")),bidUnit:toNumber(get("bidUnit")),materialUnit:toNumber(get("materialUnit")),
+      laborUnit:toNumber(get("laborUnit")),subcontractUnit:toNumber(get("subcontractUnit")),otherUnit:toNumber(get("otherUnit")),
+      wastePct:toNumber(get("wastePct")),markupPct:toNumber(get("markupPct"))
+    };
+    if(!d.description)continue;
+    out.push(d);
+  }
+  return out;
+}
+
+function mapRevisionItems(parsed){
+  const historyItems=historicalItemRegistry();
+  const noIndex=new Map(),sigIndex=new Map();
+  Object.entries(historyItems).forEach(([id,x])=>{
+    const n=norm(x.itemNo||"");
+    if(n){if(!noIndex.has(n))noIndex.set(n,[]);noIndex.get(n).push(id)}
+    const sig=itemSignature(x);if(sig){if(!sigIndex.has(sig))sigIndex.set(sig,[]);sigIndex.get(sig).push(id)}
+  });
+
+  const result={},usedIds=new Set();
+  parsed.forEach((d,i)=>{
+    let id="",method="NEW";
+    const n=norm(d.itemNo||"");
+    if(n&&noIndex.get(n)?.length===1&&!usedIds.has(noIndex.get(n)[0])){id=noIndex.get(n)[0];method="ITEM_NO"}
+    if(!id){
+      const sig=itemSignature(d);
+      if(sig&&sigIndex.get(sig)?.length===1&&!usedIds.has(sigIndex.get(sig)[0])){id=sigIndex.get(sig)[0];method="DESCRIPTION_SPEC_UNIT"}
+    }
+    if(!id)id=refs.quantityBoqRevisionItems(projectId,"_temp").push().key;
+    usedIds.add(id);
+
+    const old=historyItems[id]||{};
+    const hasNewCost=[d.materialUnit,d.laborUnit,d.subcontractUnit,d.otherUnit,d.bidUnit].some(x=>Number(x||0)!==0);
+    let bidUnit=Number(d.bidUnit||0);
+    let materialUnit=Number(d.materialUnit||0),laborUnit=Number(d.laborUnit||0),
+      subcontractUnit=Number(d.subcontractUnit||0),otherUnit=Number(d.otherUnit||0),
+      wastePct=Number(d.wastePct||0),markupPct=Number(d.markupPct||0);
+
+    if(!hasNewCost&&old){
+      bidUnit=Number(old.bidUnit||0);materialUnit=Number(old.materialUnit||0);laborUnit=Number(old.laborUnit||0);
+      subcontractUnit=Number(old.subcontractUnit||0);otherUnit=Number(old.otherUnit||0);
+      wastePct=Number(old.wastePct||0);markupPct=Number(old.markupPct||0);
+    }else if(!bidUnit){
+      const base=materialUnit+laborUnit+subcontractUnit+otherUnit;
+      const net=base*(1+wastePct/100);bidUnit=net*(1+markupPct/100);
+    }
+
+    result[id]={
+      stableItemId:id,itemNo:d.itemNo||old.itemNo||String(i+1),discipline:d.discipline||old.discipline||"KHÁC",
+      category:d.category||old.category||"",description:d.description||old.description||"",
+      specification:d.specification||old.specification||"",unit:d.unit||old.unit||"",
+      qty:Number(d.qty||0),materialUnit,laborUnit,subcontractUnit,otherUnit,wastePct,markupPct,
+      netUnit:(materialUnit+laborUnit+subcontractUnit+otherUnit)*(1+wastePct/100),bidUnit,
+      selectedSupplier:old.selectedSupplier||"",brand:old.brand||"",matchMethod:method,lineStatus:"ACTIVE",updatedAt:Date.now()
+    };
+  });
+  return result;
+}
+
+function historicalItemRegistry(){
+  const out={};
+  if(tenderRevision?.items)Object.entries(tenderRevision.items).forEach(([id,x])=>out[id]={...x});
+  revisions.forEach(r=>Object.entries(r.items||{}).forEach(([id,x])=>{if(!out[id])out[id]={...x}}));
+  baseline.forEach(b=>{if(!out[b.id]){const {id,...rest}=b;out[b.id]={...rest}}});
+  return out;
+}
+
+function compareRevisionDialog(revisionId){
+  const r=revisions.find(x=>x.id===revisionId);if(!r)return;
+  const previous=previousRevision(r);
+  const base=previous||tenderRevision;
+  const changes=compareRevisionItems(base?.items||{},r.items||{});
+  const tenderChanges=compareRevisionItems(tenderRevision?.items||{},r.items||{});
+  const sum=compareSummary(changes),tenderSum=compareSummary(tenderChanges);
+
+  modal({
+    title:`So sánh ${r.code} · ${r.name}`,
+    eyebrow:`So với ${base?.code||"R0"} · Tender Δ ${signedMoney(tenderSum.deltaValue)}`,
+    size:"xl",showSubmit:false,
+    body:`<div class="grid g5">
+      ${smallMetric("Thêm mới",sum.added,sum.added?"red":"green")}
+      ${smallMetric("Tăng KL",sum.increased,sum.increased?"orange":"green")}
+      ${smallMetric("Giảm KL",sum.decreased,sum.decreased?"blue":"green")}
+      ${smallMetric("Loại bỏ",sum.removed,sum.removed?"orange":"green")}
+      ${smallMetric("Δ giá trị",signedMoney(sum.deltaValue),sum.deltaValue>0?"red":"green")}
+    </div>
+    <div class="revision-compare-note mt">
+      <b>So với Tender R0:</b> ${tenderSum.changed} đầu mục thay đổi · Giá trị BOQ ${money(revisionTotal(r.items||{}))} · Δ ${signedMoney(tenderSum.deltaValue)}.
+      ${r.status==="DRAFT"?"Revision này chưa ảnh hưởng kiểm soát đặt hàng cho tới khi kích hoạt.":""}
+    </div>
+    <div class="table-wrap mt"><table class="table revision-compare-table"><thead><tr>
+      <th>TRẠNG THÁI</th><th>MÃ</th><th>VẬT TƯ</th><th>ĐVT</th><th>${esc(base?.code||"TRƯỚC")}</th><th>${esc(r.code)}</th><th>Δ KL</th>
+      <th>ĐƠN GIÁ CŨ</th><th>ĐƠN GIÁ MỚI</th><th>Δ GIÁ TRỊ</th><th>MAP</th><th>KIỂM TRA MAP</th>
+    </tr></thead><tbody>
+      ${changes.filter(x=>x.change!=="UNCHANGED").length?changes.filter(x=>x.change!=="UNCHANGED").map(x=>changeRow(x,r.id)).join(""):`<tr><td colspan="12">${empty("Không có thay đổi","Khối lượng và giá trị giống phiên bản trước.","✓")}</td></tr>`}
+    </tbody></table></div>
+    ${r.status==="DRAFT"&&can("quantityRevisionActivate")?`<div class="actions mt" style="justify-content:flex-end"><button type="button" class="btn green" id="activateRevisionFromCompare">✓ Xác nhận dùng ${esc(r.code)} làm Baseline</button></div>`:""}`
+  });
+  document.querySelector("#activateRevisionFromCompare")?.addEventListener("click",()=>activateRevision(revisionId));
+  document.querySelectorAll("[data-revision-remap]").forEach(b=>b.addEventListener("click",()=>remapRevisionItem(b.dataset.revisionRemap,b.dataset.itemId)));
+}
+
+function changeRow(x,revisionId){
+  const info={
+    ADDED:["THÊM MỚI","green"],REMOVED:["LOẠI BỎ","red"],INCREASE:["TĂNG","orange"],
+    DECREASE:["GIẢM","blue"],PRICE:["ĐỔI GIÁ","purple"],MIXED:["KL + GIÁ","orange"]
+  }[x.change]||[x.change,"gray"];
+  return `<tr class="revision-change-${String(x.change).toLowerCase()}">
+    <td>${badge(info[0],info[1])}</td><td><b>${esc(x.itemNo||"—")}</b></td>
+    <td><div class="primary-text">${esc(x.description||"—")}</div><div class="secondary-text">${esc(x.specification||"")}</div></td>
+    <td>${esc(x.unit||"—")}</td><td>${num(x.oldQty,3)}</td><td><b>${num(x.newQty,3)}</b></td>
+    <td class="${x.deltaQty>0?"danger-text":x.deltaQty<0?"positive-text":""}"><b>${signedQty(x.deltaQty)}</b></td>
+    <td>${money(x.oldBid)}</td><td>${money(x.newBid)}</td>
+    <td class="${x.deltaValue>0?"danger-text":x.deltaValue<0?"positive-text":""}"><b>${signedMoney(x.deltaValue)}</b></td>
+    <td>${x.matchMethod==="NEW"?badge("CHƯA MAP","orange"):esc(x.matchMethod||"—")}</td>
+    <td>${x.change==="ADDED"&&x.matchMethod==="NEW"&&can("quantityRevisionManage")?`<button type="button" class="btn sm" data-revision-remap="${revisionId}" data-item-id="${x.id}">Map lại</button>`:"—"}</td>
+  </tr>`;
+}
+
+function remapRevisionItem(revisionId,itemId){
+  const r=revisions.find(x=>x.id===revisionId),item=r?.items?.[itemId];
+  if(!r||r.status!=="DRAFT"||!item)return;
+
+  const currentIds=new Set(Object.keys(r.items||{}));
+  const history=historicalItemRegistry();
+  const candidates=Object.entries(history).filter(([id])=>!currentIds.has(id));
+  if(!candidates.length){toast("Không còn đầu mục phiên bản trước để map.","warning");return}
+
+  modal({
+    title:"Map đầu mục Revision",
+    eyebrow:`${r.code} · ${item.itemNo||""}`,
+    size:"lg",submitText:"Xác nhận Mapping",
+    body:`<div class="revision-map-source">
+      <span>Đầu mục mới</span><b>${esc(item.description||"")}</b><small>${esc(item.specification||"")} · ${esc(item.unit||"")}</small>
+    </div>
+    <div class="form-grid mt">
+      <label class="field span2"><span>Map với đầu mục phiên bản trước *</span><select required name="targetId">
+        <option value="">-- Chọn đầu mục --</option>
+        ${candidates.map(([id,x])=>`<option value="${id}">${esc(x.itemNo||"")} · ${esc(x.description||"")} · ${esc(x.specification||"")} · ${esc(x.unit||"")} · KL ${num(x.qty,3)}</option>`).join("")}
+      </select></label>
+    </div>
+    <div class="revision-help mt">Dùng khi hệ thống không nhận ra cùng một đầu mục do mã/mô tả đã đổi. Mapping thủ công sẽ giữ lịch sử đặt hàng của đầu mục cũ.</div>`,
+    onSubmit:async fd=>{
+      const targetId=String(fd.get("targetId")||"");if(!targetId)return false;
+      if(r.items?.[targetId]){toast("Đầu mục đích đã tồn tại trong Revision này.","error");return false}
+      const mapped={...item,stableItemId:targetId,matchMethod:"MANUAL_MAP",updatedAt:Date.now()};
+      const updates={};updates[`items/${targetId}`]=mapped;updates[`items/${itemId}`]=null;
+      await refs.quantityBoqRevision(projectId,revisionId).update(updates);
+      await audit("REVISION_REMAP",`Map thủ công ${item.description} vào đầu mục lịch sử ${targetId}`,{revisionId,itemId,targetId});
+      toast("Đã cập nhật mapping.");await reload();compareRevisionDialog(revisionId);return false;
+    }
+  });
+}
+
+function compareRevisionItems(oldItems,newItems){
+  const keys=new Set([...Object.keys(oldItems||{}),...Object.keys(newItems||{})]),out=[];
+  keys.forEach(id=>{
+    const a=oldItems?.[id],b=newItems?.[id];
+    const oldQty=Number(a?.qty||0),newQty=Number(b?.qty||0),oldBid=Number(a?.bidUnit||0),newBid=Number(b?.bidUnit||0);
+    const deltaQty=newQty-oldQty,deltaValue=newQty*newBid-oldQty*oldBid;
+    let change="UNCHANGED";
+    if(!a&&b)change="ADDED";
+    else if(a&&!b)change="REMOVED";
+    else{
+      const qtyChanged=Math.abs(deltaQty)>1e-9,priceChanged=Math.abs(newBid-oldBid)>0.5;
+      if(qtyChanged&&priceChanged)change="MIXED";
+      else if(deltaQty>0)change="INCREASE";
+      else if(deltaQty<0)change="DECREASE";
+      else if(priceChanged)change="PRICE";
+    }
+    out.push({
+      id,itemNo:b?.itemNo||a?.itemNo||"",description:b?.description||a?.description||"",
+      specification:b?.specification||a?.specification||"",unit:b?.unit||a?.unit||"",
+      oldQty,newQty,deltaQty,oldBid,newBid,deltaValue,change,matchMethod:b?.matchMethod||""
+    });
+  });
+  return out.sort((x,y)=>changeOrder(x.change)-changeOrder(y.change)||String(x.itemNo).localeCompare(String(y.itemNo),"vi",{numeric:true}));
+}
+
+function compareSummary(changes){
+  const changed=changes.filter(x=>x.change!=="UNCHANGED");
+  return {
+    changed:changed.length,added:changed.filter(x=>x.change==="ADDED").length,
+    removed:changed.filter(x=>x.change==="REMOVED").length,
+    increased:changed.filter(x=>["INCREASE","MIXED"].includes(x.change)&&x.deltaQty>0).length,
+    decreased:changed.filter(x=>["DECREASE","MIXED"].includes(x.change)&&x.deltaQty<0).length,
+    deltaValue:changes.reduce((s,x)=>s+Number(x.deltaValue||0),0)
+  };
+}
+
+async function activateRevision(revisionId){
+  if(!can("quantityRevisionActivate"))return;
+  const r=revisions.find(x=>x.id===revisionId);if(!r||r.status!=="DRAFT")return;
+  const current=activeRevision||tenderRevision;
+  const changes=compareRevisionItems(current?.items||{},r.items||{}),sum=compareSummary(changes);
+  const tenderSum=compareSummary(compareRevisionItems(tenderRevision?.items||{},r.items||{}));
+  const orderedCount=requests.filter(x=>COUNTED_STATUSES.has(x.status)).length;
+  const message=`Kích hoạt ${r.code} làm Baseline? ${sum.changed} đầu mục thay đổi so với ${current?.code||"R0"}, Δ giá trị ${signedMoney(sum.deltaValue)}. `+
+    `So Tender R0: ${signedMoney(tenderSum.deltaValue)}. ${orderedCount?`${orderedCount} phiếu đã duyệt/đặt sẽ được tính lại trên Baseline mới.`:""}`;
+  if(!await confirmBox(`Áp dụng ${r.code}`,message,`Áp dụng ${r.code}`))return;
+
+  const u=getProfile()||{};
+  const materialized=materializeBaseline(r.items||{});
+  const total=revisionTotal(r.items||{});
+  const oldId=activeRevision?.id;
+
+  await refs.quantityBaselineProject(projectId).set(materialized);
+  await refs.quantityBaselineMeta(projectId).update({
+    lineCount:Object.keys(materialized).length,totalBidValue:total,
+    activeRevisionId:revisionId,activeRevisionCode:r.code,activeRevisionName:r.name,
+    activeEffectiveDate:r.effectiveDate,activatedAt:Date.now(),activatedByUid:u.uid||"",activatedByName:u.displayName||u.email||""
+  });
+  if(oldId&&oldId!==revisionId)await refs.quantityBoqRevision(projectId,oldId).update({status:"SUPERSEDED",supersededAt:Date.now()});
+  await refs.quantityBoqRevision(projectId,revisionId).update({
+    status:"ACTIVE",activatedAt:Date.now(),activatedByUid:u.uid||"",activatedByName:u.displayName||u.email||""
+  });
+
+  await audit("REVISION_ACTIVATED",`Áp dụng ${r.code} làm Baseline · Δ so Tender ${signedMoney(tenderSum.deltaValue)}`,{
+    revisionId,revisionCode:r.code,previousRevisionId:oldId||"",changeSummary:sum,tenderSummary:tenderSum
+  });
+  await logActivity("QTY_REVISION_ACTIVATED",`Áp dụng ${r.code} - ${r.name} làm Baseline`,{projectId,revisionId});
+  toast(`Đã áp dụng ${r.code}. Toàn bộ phiếu đặt hàng đã được tính lại theo Baseline mới.`);
+  await reload();view="SUMMARY";paint();
+}
+
+function materializeBaseline(targetItems){
+  const registry=historicalItemRegistry(),out={};
+  Object.entries(targetItems||{}).forEach(([id,x])=>out[id]={...x,lineStatus:"ACTIVE",activeRevisionCode:""});
+  Object.entries(registry).forEach(([id,x])=>{
+    if(out[id])return;
+    out[id]={...x,qty:0,lineStatus:"REMOVED",activeRevisionCode:""};
+  });
+  return out;
+}
+
+async function deleteDraftRevision(id){
+  const r=revisions.find(x=>x.id===id);if(!r||r.status!=="DRAFT"||!can("quantityRevisionManage"))return;
+  if(!await confirmBox("Xóa BOQ Revision",`Xóa ${r.code} - ${r.name}? Revision chưa áp dụng nên không ảnh hưởng phiếu đặt hàng.`,"Xóa"))return;
+  await refs.quantityBoqRevision(projectId,id).remove();
+  await audit("REVISION_DELETED",`Xóa Revision nháp ${r.code}`,{revisionId:id,revisionCode:r.code});
+  toast(`Đã xóa ${r.code}.`,"warning");await reload();view="REVISIONS";paint();
+}
+
+function previousRevision(r){
+  const candidates=revisions.filter(x=>Number(x.revisionNo||0)<Number(r.revisionNo||0)).sort((a,b)=>Number(b.revisionNo||0)-Number(a.revisionNo||0));
+  return candidates[0]||null;
+}
+
+function nextRevisionNo(){
+  return revisions.reduce((m,r)=>Math.max(m,Number(r.revisionNo||0)),0)+1;
+}
+
+function revisionTotal(items){
+  return Object.values(items||{}).reduce((s,x)=>s+Number(x.qty||0)*Number(x.bidUnit||0),0);
+}
+
+function revisionSort(a,b){
+  return Number(b.revisionNo||0)-Number(a.revisionNo||0);
+}
+
+function changeOrder(k){
+  return {ADDED:0,INCREASE:1,MIXED:2,PRICE:3,DECREASE:4,REMOVED:5,UNCHANGED:9}[k]??8;
+}
+
+function itemSignature(x){
+  const desc=norm(x.description||"").replace(/[^a-z0-9]+/g," ");
+  const spec=norm(x.specification||"").replace(/[^a-z0-9]+/g," ");
+  const unit=norm(x.unit||"");
+  return `${desc}|${spec}|${unit}`.trim();
+}
+
+function downloadRevisionTemplate(){
+  const rows=[
+    ["STT","Hệ","Nhóm","Mô tả","Thông số","ĐVT","Khối lượng","Giá chào/ĐVT","Giá vật tư","Nhân công","Thầu phụ","Khác","Hao hụt %","Markup %"],
+    ["1","PCCC","Đường ống","Ống thép đen DN50","SCH40","m","1200","120000","85000","0","0","0","0","0"]
+  ];
+  downloadCsv("MAU_BOQ_REVISION.csv",rows);
+}
+
+function parseCsv(text){
+  const first=(text.split(/\r?\n/,1)[0]||""),delim=(first.match(/;/g)||[]).length>=(first.match(/,/g)||[]).length?";":",";
+  const rows=[];let row=[],cell="",quoted=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(ch==='"'){if(quoted&&text[i+1]==='"'){cell+='"';i++}else quoted=!quoted}
+    else if(ch===delim&&!quoted){row.push(cell);cell=""}
+    else if((ch==="\n"||ch==="\r")&&!quoted){if(ch==="\r"&&text[i+1]==="\n")i++;row.push(cell);rows.push(row);row=[];cell=""}
+    else cell+=ch;
+  }
+  if(cell.length||row.length){row.push(cell);rows.push(row)}
+  return rows.map(r=>r.map(x=>x.trim()));
+}
+
+function toNumber(v){
+  const raw=String(v??"").trim().replace(/\s/g,"");if(!raw)return 0;
+  if(raw.includes(",")&&!raw.includes("."))return Number(raw.replace(",","."))||0;
+  return Number(raw.replaceAll(",",""))||0;
 }
 
 function editRequest(id){
@@ -607,11 +1151,21 @@ async function createVariationFromRow(key){
 
 function aggregateRows(){
   const baseMap=new Map();
-  baseline.forEach(b=>baseMap.set(b.id,{
-    key:b.id,isOutside:false,itemNo:b.itemNo||"",discipline:b.discipline||"KHÁC",description:b.description||"",specification:b.specification||"",
-    unit:b.unit||"",baselineQty:Number(b.qty||0),bidUnit:Number(b.bidUnit||0),defaultCost:Number(b.materialUnit||0),
-    confirmedQty:0,pendingQty:0,orderedValue:0,excessBidValue:0,excessCost:0,diffBidValue:0,reasonLabel:""
-  }));
+  const tenderItems=tenderRevision?.items||{};
+  baseline.forEach(b=>{
+    const t=tenderItems[b.id]||{};
+    const baselineQty=Number(b.qty||0),tenderQty=Number(t.qty||0);
+    const bidUnit=Number(b.bidUnit||0),tenderBidUnit=Number(t.bidUnit||bidUnit||0);
+    baseMap.set(b.id,{
+      key:b.id,isOutside:false,itemNo:b.itemNo||t.itemNo||"",discipline:b.discipline||t.discipline||"KHÁC",
+      description:b.description||t.description||"",specification:b.specification||t.specification||"",
+      unit:b.unit||t.unit||"",baselineQty,tenderQty,bidUnit,tenderBidUnit,defaultCost:Number(b.materialUnit||t.materialUnit||0),
+      lineStatus:b.lineStatus||"ACTIVE",
+      contractDeltaQty:baselineQty-tenderQty,
+      contractDeltaValue:baselineQty*bidUnit-tenderQty*tenderBidUnit,
+      confirmedQty:0,pendingQty:0,orderedValue:0,excessBidValue:0,excessCost:0,diffBidValue:0,reasonLabel:""
+    });
+  });
 
   const outsideMap=new Map();
 
@@ -624,7 +1178,9 @@ function aggregateRows(){
         const key=`OUT:${line.outsideKey||outsideKey(line.description,line.specification,line.unit)}`;
         if(!outsideMap.has(key))outsideMap.set(key,{
           key,isOutside:true,itemNo:"NGOÀI BOQ",discipline:line.discipline||"KHÁC",description:line.description||"",specification:line.specification||"",
-          unit:line.unit||"",baselineQty:0,bidUnit:0,defaultCost:0,confirmedQty:0,pendingQty:0,orderedValue:0,excessBidValue:0,excessCost:0,diffBidValue:0,
+          unit:line.unit||"",baselineQty:0,tenderQty:0,bidUnit:0,tenderBidUnit:0,defaultCost:0,lineStatus:"OUTSIDE",
+          contractDeltaQty:0,contractDeltaValue:0,
+          confirmedQty:0,pendingQty:0,orderedValue:0,excessBidValue:0,excessCost:0,diffBidValue:0,
           bidValueSum:0,costValueSum:0,reasonLabel:reasonLabel(line.reasonCode)
         });
         const row=outsideMap.get(key);
@@ -728,12 +1284,15 @@ function projectedLineImpact(line){
 }
 
 function summaryTotals(rows){
-  const baselineValue=baseline.reduce((s,b)=>s+Number(b.qty||0)*Number(b.bidUnit||0),0);
+  const baselineValue=rows.filter(r=>!r.isOutside).reduce((s,r)=>s+Number(r.baselineQty||0)*Number(r.bidUnit||0),0);
+  const tenderValue=rows.filter(r=>!r.isOutside).reduce((s,r)=>s+Number(r.tenderQty||0)*Number(r.tenderBidUnit||0),0);
+  const contractRows=rows.filter(r=>!r.isOutside&&(Math.abs(Number(r.contractDeltaQty||0))>1e-9||Math.abs(Number(r.contractDeltaValue||0))>0.5));
   const confirmed=requests.filter(r=>COUNTED_STATUSES.has(r.status));
-  const orderedValue=confirmed.reduce((s,r)=>s+linesOf(r).reduce((a,l)=>a+Number(l.boqQty||0)*Number(l.bidUnit||0),0),0);
+  const orderedValue=rows.reduce((s,r)=>s+Number(r.confirmedQty||0)*Number(r.bidUnit||0),0);
   const over=rows.filter(r=>(r.isOutside&&r.confirmedQty>0)||r.confirmedQty>r.baselineQty);
   return {
-    baselineValue,orderedValue,confirmedRequests:confirmed.length,
+    baselineValue,tenderValue,contractDeltaValue:baselineValue-tenderValue,contractChangedCount:contractRows.length,
+    orderedValue,confirmedRequests:confirmed.length,
     overCount:over.length,outsideCount:rows.filter(r=>r.isOutside&&r.confirmedQty>0).length,
     excessBidValue:over.reduce((s,r)=>s+Number(r.excessBidValue||0),0),
     excessCost:over.reduce((s,r)=>s+Number(r.excessCost||0),0),
@@ -770,19 +1329,35 @@ async function reload(){
 }
 
 function exportCsv(){
-  const rows=aggregateRows();
+  const rows=aggregateRows(),totals=summaryTotals(rows);
   const data=[
     ["KIỂM SOÁT KHỐI LƯỢNG ĐẶT HÀNG"],
-    ["Baseline khóa",fmtDateTime(baselineMeta.frozenAt)],
+    ["Tender Revision",tenderRevision?.code||"R0",tenderRevision?.name||""],
+    ["Baseline áp dụng",activeRevision?.code||baselineMeta.activeRevisionCode||"R0",activeRevision?.name||baselineMeta.activeRevisionName||""],
+    ["Ngày kích hoạt",fmtDateTime(baselineMeta.activatedAt||baselineMeta.frozenAt)],
+    ["Giá trị Tender R0",totals.tenderValue],
+    ["Giá trị Baseline hiện hành",totals.baselineValue],
+    ["Chênh HĐ so Tender",totals.contractDeltaValue],
+    ["Giá trị vượt do công trường",totals.excessBidValue],
     [],
-    ["Mã BOQ","Hệ","Mô tả","Thông số","ĐVT","KL BOQ","Đã duyệt/đặt","Chờ duyệt","Còn lại","Tăng/Giảm","% sử dụng","Giá chào/ĐVT","GT chênh","Chi phí vượt","Trạng thái"],
-    ...rows.map(r=>[r.itemNo,r.discipline,r.description,r.specification,r.unit,r.baselineQty,r.confirmedQty,r.pendingQty,r.baselineQty-r.confirmedQty,r.confirmedQty-r.baselineQty,r.baselineQty?r.confirmedQty/r.baselineQty*100:(r.confirmedQty?100:0),r.bidUnit,r.diffBidValue,r.excessCost,rowState(r).label]),
+    ["Mã BOQ","Hệ","Mô tả","Thông số","ĐVT","Tender R0","Baseline hiện hành","Δ HĐ","Đã duyệt/đặt","Chờ duyệt","Còn lại","Vượt công trường","% sử dụng","Giá HĐ/ĐVT","GT Δ HĐ","GT vượt công trường","Chi phí vượt","Trạng thái"],
+    ...rows.map(r=>[
+      r.itemNo,r.discipline,r.description,r.specification,r.unit,r.tenderQty,r.baselineQty,r.contractDeltaQty,
+      r.confirmedQty,r.pendingQty,r.baselineQty-r.confirmedQty,Math.max(0,r.confirmedQty-r.baselineQty),
+      r.baselineQty?r.confirmedQty/r.baselineQty*100:(r.confirmedQty?100:0),r.bidUnit,r.contractDeltaValue,r.excessBidValue,r.excessCost,rowState(r).label
+    ]),
+    [],
+    ["BOQ REVISION"],
+    ["Rev","Loại","Tên","Ngày hiệu lực","Trạng thái","Số dòng","Giá trị","Nguồn file"],
+    ...[...revisions].sort((a,b)=>Number(a.revisionNo||0)-Number(b.revisionNo||0)).map(r=>[
+      r.code,r.type,r.name,r.effectiveDate,r.status,r.lineCount||Object.keys(r.items||{}).length,revisionTotal(r.items||{}),r.sourceFileName||r.source||""
+    ]),
     [],
     ["PHIẾU ĐẶT HÀNG"],
     ["Mã phiếu","Ngày","Người đề nghị","Khu vực","Trạng thái","Số dòng","Ghi chú"],
     ...requests.map(r=>[r.code,r.requestDate,r.requesterName,r.location,statusInfo(r.status).label,linesOf(r).length,r.notes])
   ];
-  downloadCsv(`KIEM_SOAT_KHOI_LUONG_${projectId}.csv`,data);
+  downloadCsv(`KIEM_SOAT_KHOI_LUONG_${activeRevision?.code||"R0"}_${projectId}.csv`,data);
 }
 
 function linesOf(r){return toArray(r?.lines||{})}

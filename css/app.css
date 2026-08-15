@@ -244,3 +244,34 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
 
 .qty-info-strip{background:#f8fafc;border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-bottom:9px;font-size:9px;color:#64748b;line-height:1.45}
 .qty-info-strip b{color:#334155}
+
+
+/* =========================
+   V2.8 - BOQ REVISION & BASELINE HỢP ĐỒNG
+   ========================= */
+.baseline-badges{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.baseline-empty-actions{display:flex;justify-content:center;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.baseline-empty-actions .secondary-text{flex-basis:100%;text-align:center}
+.revision-flow{display:flex;align-items:center;gap:10px;background:#f8fafc;border:1px solid var(--border);border-radius:11px;padding:11px 13px}
+.revision-flow>div{flex:1;background:#fff;border:1px solid var(--border);border-radius:9px;padding:10px}
+.revision-flow b{display:block;font-size:10px}.revision-flow span{display:block;font-size:9px;color:var(--muted);margin-top:3px}
+.revision-flow i{font-style:normal;color:#94a3b8;font-weight:800}
+.revision-table{min-width:1500px}.revision-active-row{background:#f0fdf4!important}.revision-active-row td:first-child{box-shadow:inset 4px 0 0 #16a34a}
+.revision-help{font-size:9px;line-height:1.55;color:#64748b;background:#f8fafc;border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+.revision-upload-note{font-size:10px;line-height:1.55;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:9px;padding:10px 12px}
+.revision-template-box{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:9px;padding:10px 12px}
+.revision-template-box span{font-size:9px;color:#64748b;line-height:1.45}
+.revision-compare-note{font-size:10px;line-height:1.55;background:#f8fafc;border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+.revision-compare-table{min-width:1700px}
+.revision-change-added{background:#f0fdf4!important}.revision-change-removed{background:#fef2f2!important}
+.revision-change-increase,.revision-change-mixed{background:#fff7ed!important}
+.revision-change-decrease{background:#eff6ff!important}
+.revision-map-source{background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;padding:11px}
+.revision-map-source span{display:block;font-size:8px;color:#9a3412}.revision-map-source b{display:block;font-size:12px;margin-top:3px}.revision-map-source small{display:block;font-size:9px;color:#64748b;margin-top:3px}
+.quantity-summary-table{min-width:2500px}
+
+@media(max-width:900px){
+  .revision-flow{flex-direction:column;align-items:stretch}
+  .revision-flow i{transform:rotate(90deg);align-self:center}
+  .revision-template-box{flex-direction:column;align-items:flex-start}
+}
