@@ -1,7 +1,7 @@
 import {
   refs,arr,getProfile,can,esc,money,fmtDate,fmtDateTime,daysUntil,stageInfo,
   TASK_PRIORITIES,setPage,loading,empty,badge
-} from "../core.js?v=2.4.1";
+} from "../core.js?v=2.5.0";
 
 export async function renderDashboard(container){
   setPage("Dashboard","Tổng quan");
@@ -14,8 +14,17 @@ export async function renderDashboard(container){
     arr(refs.tasks())
   ];
   reads.push(can("finance")?arr(refs.approvals()):Promise.resolve([]));
+  reads.push(can("financeProjectView")?Promise.all([
+    refs.financeSettingsRoot().once("value"),
+    refs.budgetsRoot().once("value"),
+    refs.actualCostsRoot().once("value"),
+    refs.supplierPaymentsRoot().once("value"),
+    refs.variationsRoot().once("value"),
+    refs.billingsRoot().once("value"),
+    refs.receiptsRoot().once("value")
+  ]):Promise.resolve(null));
 
-  const [projects,activities,execution,tasks,approvals]=await Promise.all(reads);
+  const [projects,activities,execution,tasks,approvals,financeBundle]=await Promise.all(reads);
 
   const tender=projects.filter(x=>x.phase==="TENDER");
   const exe=projects.filter(x=>x.phase==="EXECUTION");
@@ -90,7 +99,9 @@ export async function renderDashboard(container){
             empty("Chưa có hoạt động","Các thao tác tạo/sửa dữ liệu sẽ xuất hiện tại đây.","◉")}
         </div>
       </div>
-    </div>`;
+    </div>
+
+    ${can("financeProjectView")?portfolioFinanceHtml(projects,financeBundle):""}`;
 }
 
 function taskRow(t){
@@ -117,6 +128,48 @@ function taskSort(a,b){
   const aBlocked=a.status==="BLOCKED",bBlocked=b.status==="BLOCKED";
   if(aBlocked!==bBlocked)return aBlocked?-1:1;
   return String(a.dueDate||"9999").localeCompare(String(b.dueDate||"9999"));
+}
+
+
+function portfolioFinanceHtml(projects,bundle){
+  if(!bundle)return"";
+  const [settingsSnap,budgetSnap,costSnap,paymentSnap,varSnap,billingSnap,receiptSnap]=bundle;
+  const settings=settingsSnap.val()||{}, budgets=budgetSnap.val()||{}, costs=costSnap.val()||{},
+    payments=paymentSnap.val()||{}, variations=varSnap.val()||{}, billings=billingSnap.val()||{}, receipts=receiptSnap.val()||{};
+
+  const active=projects.filter(p=>p.phase==="EXECUTION"||p.phase==="CLOSED"||p.tenderStatus==="WON");
+  const rows=active.map(p=>{
+    const st=settings[p.id]||{},bs=Object.values(budgets[p.id]||{}),cs=Object.values(costs[p.id]||{}),
+      ps=Object.values(payments[p.id]||{}),vs=Object.values(variations[p.id]||{}),bis=Object.values(billings[p.id]||{}),rs=Object.values(receipts[p.id]||{});
+    const original=Number(st.contractValueExVat??p.approvedBidPrice??0);
+    const variation=vs.filter(v=>v.status==="APPROVED").reduce((a,v)=>a+(v.direction==="DECREASE"?-1:1)*Number(v.amount||0),0);
+    const contract=original+variation;
+    const budget=bs.reduce((a,b)=>a+Number(b.budgetAmount||0),0);
+    const actual=cs.reduce((a,c)=>a+Number(c.amountExVat||0),0);
+    const forecast=bs.length?bs.reduce((a,b)=>a+Number(b.forecastAmount??b.budgetAmount??0),0):actual;
+    const billed=bis.reduce((a,b)=>a+Number(b.amountExVat||0)*(1+Number(b.vatPct||0)/100),0);
+    const collected=rs.reduce((a,r)=>a+Number(r.amount||0),0);
+    const costGross=cs.reduce((a,c)=>a+Number(c.amountExVat||0)*(1+Number(c.vatPct||0)/100),0);
+    const paid=ps.reduce((a,x)=>a+Number(x.amount||0),0);
+    return {p,contract,budget,forecast,actual,billed,collected,receivable:Math.max(0,billed-collected),payable:Math.max(0,costGross-paid),profit:contract-forecast,margin:contract?(contract-forecast)/contract*100:0};
+  });
+
+  const total=rows.reduce((a,r)=>{for(const k of ["contract","budget","forecast","actual","billed","collected","receivable","payable","profit"])a[k]+=r[k];return a},{contract:0,budget:0,forecast:0,actual:0,billed:0,collected:0,receivable:0,payable:0,profit:0});
+  const margin=total.contract?total.profit/total.contract*100:0;
+
+  return `<div class="card mt">
+    <div class="card-head"><div><h3>Tài chính danh mục dự án</h3><div class="secondary-text">Tổng hợp nhanh các dự án trúng thầu / đang triển khai</div></div><a href="#/finance" class="btn sm">Mở Tài chính →</a></div>
+    <div class="card-body">
+      <div class="grid g5">
+        ${metric("Giá trị HĐ",money(total.contract,true),"HĐ","#2563eb","#eff6ff",`${rows.length} dự án`)}
+        ${metric("Forecast Cost",money(total.forecast,true),"F","#7c3aed","#f5f3ff",`Budget ${money(total.budget,true)}`)}
+        ${metric("LN dự kiến",`${margin.toFixed(1)}%`,"↗",total.profit>=0?"#16a34a":"#dc2626",total.profit>=0?"#f0fdf4":"#fef2f2",money(total.profit))}
+        ${metric("Phải thu KH",money(total.receivable,true),"AR","#dc2626","#fef2f2",`Đã thu ${money(total.collected,true)}`)}
+        ${metric("Phải trả NCC",money(total.payable,true),"AP","#d97706","#fff7ed",`Actual ${money(total.actual,true)}`)}
+      </div>
+      ${rows.length?`<div class="table-wrap mt"><table class="table" style="min-width:1100px"><thead><tr><th>DỰ ÁN</th><th>HỢP ĐỒNG</th><th>BUDGET</th><th>FORECAST</th><th>LN DỰ KIẾN</th><th>% LN</th><th>PHẢI THU</th><th>PHẢI TRẢ</th></tr></thead><tbody>${rows.sort((a,b)=>b.contract-a.contract).slice(0,8).map(r=>`<tr><td><div class="primary-text">${esc(r.p.code||"")} · ${esc(r.p.name||"")}</div></td><td>${money(r.contract)}</td><td>${money(r.budget)}</td><td>${money(r.forecast)}</td><td class="${r.profit>=0?"positive-text":"danger-text"}"><b>${money(r.profit)}</b></td><td>${r.margin.toFixed(1)}%</td><td>${money(r.receivable)}</td><td>${money(r.payable)}</td></tr>`).join("")}</tbody></table></div>`:""}
+    </div>
+  </div>`;
 }
 
 function metric(label,value,icon,c,s,foot){

@@ -1,4 +1,4 @@
-import { firebaseConfig, APP_ROOT, ADMIN_EMAIL } from "./config.js?v=2.4.1";
+import { firebaseConfig, APP_ROOT, ADMIN_EMAIL } from "./config.js?v=2.5.0";
 
 if (!window.firebase) throw new Error("Không tải được Firebase SDK.");
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
@@ -36,6 +36,34 @@ export const refs = {
   milestones:()=>root.child("milestones"),
   milestonesProject:projectId=>root.child(`milestones/${projectId}`),
   milestone:(projectId,id)=>root.child(`milestones/${projectId}/${id}`),
+
+  financeSettingsRoot:()=>root.child("financeSettings"),
+  financeSettings:projectId=>root.child(`financeSettings/${projectId}`),
+
+  budgetsRoot:()=>root.child("budgets"),
+  budgetsProject:projectId=>root.child(`budgets/${projectId}`),
+  budgetItem:(projectId,id)=>root.child(`budgets/${projectId}/${id}`),
+
+  actualCostsRoot:()=>root.child("actualCosts"),
+  actualCostsProject:projectId=>root.child(`actualCosts/${projectId}`),
+  actualCost:(projectId,id)=>root.child(`actualCosts/${projectId}/${id}`),
+
+  supplierPaymentsRoot:()=>root.child("supplierPayments"),
+  supplierPaymentsProject:projectId=>root.child(`supplierPayments/${projectId}`),
+  supplierPayment:(projectId,id)=>root.child(`supplierPayments/${projectId}/${id}`),
+
+  variationsRoot:()=>root.child("variations"),
+  variationsProject:projectId=>root.child(`variations/${projectId}`),
+  variation:(projectId,id)=>root.child(`variations/${projectId}/${id}`),
+
+  billingsRoot:()=>root.child("billings"),
+  billingsProject:projectId=>root.child(`billings/${projectId}`),
+  billing:(projectId,id)=>root.child(`billings/${projectId}/${id}`),
+
+  receiptsRoot:()=>root.child("receipts"),
+  receiptsProject:projectId=>root.child(`receipts/${projectId}`),
+  receipt:(projectId,id)=>root.child(`receipts/${projectId}/${id}`),
+
   reports:()=>root.child("reports"), report:id=>root.child(`reports/${id}`),
   tasks:()=>root.child("tasks"), task:id=>root.child(`tasks/${id}`),
   activities:()=>root.child("activities")
@@ -62,6 +90,11 @@ const PERMS = {
   executionDocsEdit:["ADMIN","DIRECTOR","MANAGER","TECHNICAL"],
   procurementEdit:["ADMIN","DIRECTOR","MANAGER","PROCUREMENT","TECHNICAL"],
   milestoneEdit:["ADMIN","DIRECTOR","MANAGER","TECHNICAL"],
+  financeProjectView:["ADMIN","DIRECTOR","MANAGER","TENDER"],
+  financeProjectEdit:["ADMIN","DIRECTOR","MANAGER"],
+  financeCostEdit:["ADMIN","DIRECTOR","MANAGER"],
+  financeVariationEdit:["ADMIN","DIRECTOR","MANAGER","TENDER"],
+  financeBillingEdit:["ADMIN","DIRECTOR","MANAGER"],
   taskAssign:["ADMIN","DIRECTOR","MANAGER","TENDER","PROCUREMENT","TECHNICAL"],
   taskSelfEdit:["ADMIN","DIRECTOR","MANAGER","TENDER","PROCUREMENT","TECHNICAL","EMPLOYEE"],
   taskDelete:["ADMIN","DIRECTOR","MANAGER"],
@@ -176,7 +209,7 @@ export const TASK_TYPES=[
 
 export const DISCIPLINES=["PCCC","HVAC","CẤP THOÁT NƯỚC","ĐIỆN","ĐIỆN NHẸ","KHÁC"];
 export const projectCode=n=>`DA-${new Date().getFullYear()}-${String(n).padStart(3,"0")}`;
-export const appVersion="2.4.1";
+export const appVersion="2.5.0";
 export const weekKey=()=>{
   const d=new Date(), t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())), day=t.getUTCDay()||7;
   t.setUTCDate(t.getUTCDate()+4-day);const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1));

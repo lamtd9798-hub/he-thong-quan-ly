@@ -125,3 +125,31 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
 @media(max-width:780px){
   .handover-grid{grid-template-columns:1fr}
 }
+
+
+/* =========================
+   V2.5 - TÀI CHÍNH DỰ ÁN
+   ========================= */
+.finance-cash-metric{background:#fff;border:1px solid var(--border);border-top:3px solid var(--c,#2563eb);border-radius:12px;padding:14px}
+.finance-cash-metric span{display:block;font-size:10px;font-weight:760;color:var(--muted)}
+.finance-cash-metric b{display:block;font-size:22px;margin-top:5px;letter-spacing:-.4px}
+.finance-cash-metric small{display:block;font-size:9px;color:var(--muted);margin-top:5px}
+.finance-summary{display:grid;gap:0}
+.finance-progress-line{margin-bottom:16px}
+.finance-progress-line>div:first-child{display:flex;justify-content:space-between;gap:10px;font-size:10px;margin-bottom:5px}
+.finance-progress-line span{color:var(--muted)}.finance-progress-line b{font-size:10px}
+.finance-progress-line small{display:block;color:var(--muted);font-size:9px;margin-top:5px}
+.finance-alert-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.finance-mini-alert{border:1px solid var(--border);border-radius:9px;padding:10px;background:#fff}
+.finance-mini-alert span{display:block;font-size:9px;color:var(--muted)}
+.finance-mini-alert b{display:block;font-size:15px;margin-top:4px}
+.finance-mini-alert.red{background:#fef2f2;border-color:#fecaca}.finance-mini-alert.red b{color:#b91c1c}
+.finance-mini-alert.orange{background:#fff7ed;border-color:#fed7aa}.finance-mini-alert.orange b{color:#c2410c}
+.finance-mini-alert.green{background:#f0fdf4;border-color:#bbf7d0}.finance-mini-alert.green b{color:#15803d}
+.variance-main{font-size:23px;font-weight:850;letter-spacing:-.4px;margin-bottom:5px}
+.finance-pay-summary{display:grid;grid-template-columns:1fr auto;gap:8px 16px;background:#f8fafc;border:1px solid var(--border);border-radius:9px;padding:12px;font-size:11px}
+.finance-pay-summary span{color:var(--muted)}.finance-pay-summary b{text-align:right}
+.finance-budget-table{min-width:1350px}.finance-cost-table{min-width:1750px}.finance-var-table{min-width:1450px}.finance-billing-table{min-width:1550px}.finance-overview-table{min-width:850px}
+.positive-text{color:#15803d!important}.bar-danger{background:linear-gradient(90deg,#dc2626,#ef4444)!important}
+.finance-budget-table tfoot th{background:#f8fafc;border-top:2px solid #cbd5e1;font-size:10px;padding:11px;white-space:nowrap}
+@media(max-width:760px){.finance-alert-grid{grid-template-columns:1fr}}

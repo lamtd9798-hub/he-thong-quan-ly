@@ -1,15 +1,16 @@
-import {auth,db,listenAuth,getProfile,ROLES,can,initials,initModal,loading} from "./core.js?v=2.4.1";
-import {renderDashboard} from "./modules/dashboard.js?v=2.4.1";
-import {renderProjects} from "./modules/projects.js?v=2.4.1";
-import {renderTasks} from "./modules/tasks.js?v=2.4.1";
-import {renderTender} from "./modules/tender.js?v=2.4.1";
-import {renderBOQ} from "./modules/boq.js?v=2.4.1";
-import {renderExecution} from "./modules/execution.js?v=2.4.1";
-import {renderReports} from "./modules/reports.js?v=2.4.1";
-import {renderUsers} from "./modules/users.js?v=2.4.1";
+import {auth,db,listenAuth,getProfile,ROLES,can,initials,initModal,loading} from "./core.js?v=2.5.0";
+import {renderDashboard} from "./modules/dashboard.js?v=2.5.0";
+import {renderProjects} from "./modules/projects.js?v=2.5.0";
+import {renderTasks} from "./modules/tasks.js?v=2.5.0";
+import {renderTender} from "./modules/tender.js?v=2.5.0";
+import {renderBOQ} from "./modules/boq.js?v=2.5.0";
+import {renderExecution} from "./modules/execution.js?v=2.5.0";
+import {renderFinance} from "./modules/finance.js?v=2.5.0";
+import {renderReports} from "./modules/reports.js?v=2.5.0";
+import {renderUsers} from "./modules/users.js?v=2.5.0";
 
 const $=s=>document.querySelector(s);
-const routes={dashboard:renderDashboard,projects:renderProjects,tasks:renderTasks,tender:renderTender,boq:renderBOQ,execution:renderExecution,reports:renderReports,users:renderUsers};
+const routes={dashboard:renderDashboard,projects:renderProjects,tasks:renderTasks,tender:renderTender,boq:renderBOQ,execution:renderExecution,finance:renderFinance,reports:renderReports,users:renderUsers};
 let routerStarted=false;
 
 initModal();
@@ -52,6 +53,7 @@ async function route(){
   if(!routes[name])name="dashboard";
   if(name==="users"&&!can("usersManage"))name="dashboard";
   if(name==="boq"&&!can("finance")){ location.hash="#/dashboard"; return; }
+  if(name==="finance"&&!can("financeProjectView")){ location.hash="#/dashboard"; return; }
   document.querySelectorAll(".nav-item").forEach(a=>a.classList.toggle("active",a.dataset.route===name));
   const c=$("#content");c.innerHTML=loading();
   try{await routes[name](c)}catch(err){console.error(err);c.innerHTML=`<div class="empty"><b>!</b><h3>Không tải được trang</h3><p>${String(err.message||err)}</p></div>`}
@@ -61,6 +63,7 @@ function applyProfile(p){
   $("#userName").textContent=p.displayName||p.email||"Người dùng";$("#userRole").textContent=ROLES[p.role]||p.role||"Chưa phân quyền";$("#userEmail").textContent=p.email||"";$("#avatar").textContent=initials(p.displayName,p.email);
   document.querySelectorAll(".admin-only").forEach(x=>x.classList.toggle("hidden",!can("usersManage")));
   document.querySelectorAll(".finance-only").forEach(x=>x.classList.toggle("hidden",!can("finance")));
+  document.querySelectorAll(".finance-project-only").forEach(x=>x.classList.toggle("hidden",!can("financeProjectView")));
 }
 function closeMobile(){$("#sidebar").classList.remove("mobile-open");$("#mobileOverlay").classList.remove("show")}
 function listenConnection(){

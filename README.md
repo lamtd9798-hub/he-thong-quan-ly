@@ -1,9 +1,94 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.4
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.5
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
 
 
+
+
+## Nâng cấp V2.5 — Tài chính dự án
+
+Thêm menu **Tài chính dự án** theo vòng đời:
+
+`Giá trị hợp đồng → Budget → PO/Chi phí → Phát sinh → Xuất hóa đơn → Thu tiền → Lợi nhuận`
+
+### 1. Hợp đồng & Budget
+- Giá trị hợp đồng gốc trước VAT.
+- VAT, ngày ký, hạn hợp đồng, tạm ứng, giữ lại bảo hành.
+- Giá trị hợp đồng tự lấy mặc định từ giá đã duyệt/trúng thầu.
+- Phát sinh đã duyệt tự cộng/trừ để ra **HĐ điều chỉnh**.
+- Nút **Tạo Budget từ BOQ**:
+  - Vật tư.
+  - Nhân công.
+  - Thầu phụ.
+  - Chi phí khác.
+  - Chi phí chung.
+  - Dự phòng.
+- Mỗi Budget có **Budget Amount** và **Forecast Cost**.
+
+### 2. PO / Cam kết chi phí
+- Hệ thống đọc trực tiếp dữ liệu PO từ module **Triển khai → Vật tư & Mua hàng**.
+- Tự tổng hợp giá trị PO đang cam kết.
+
+### 3. Chi phí thực tế & Công nợ NCC
+- Ngày ghi nhận.
+- Nhóm chi phí.
+- Hệ thống.
+- NCC / Thầu phụ.
+- Nội dung.
+- Số hóa đơn / chứng từ.
+- Giá trị trước VAT.
+- VAT.
+- Hạn thanh toán.
+- Ghi nhận nhiều lần thanh toán cho cùng một chứng từ.
+- Tự tính:
+  - Tổng phải trả.
+  - Đã trả.
+  - Còn nợ.
+  - Khoản quá hạn.
+
+### 4. Phát sinh / Variation
+- Phát sinh tăng hoặc giảm.
+- Trạng thái Nháp / Đã trình / Đã duyệt / Từ chối.
+- Chỉ phát sinh **Đã duyệt** mới làm thay đổi giá trị hợp đồng.
+- Có ngày duyệt và tham chiếu CĐT.
+
+### 5. Xuất hóa đơn & Thu tiền
+- Số hóa đơn / đợt.
+- Ngày xuất.
+- Hạn thanh toán.
+- Giá trị trước VAT.
+- VAT.
+- Ghi nhận nhiều lần thu tiền.
+- Tự tính:
+  - Đã xuất hóa đơn.
+  - Đã thu.
+  - Còn phải thu.
+  - Hóa đơn quá hạn.
+
+### 6. Hiệu quả dự án
+Tự tính:
+- HĐ điều chỉnh.
+- Budget.
+- PO cam kết.
+- Actual Cost.
+- Forecast Cost.
+- Forecast Profit.
+- Forecast Margin %.
+- Phải thu khách hàng.
+- Phải trả NCC.
+- Dòng tiền ròng đã thu - đã trả.
+
+Dashboard cũng có thêm **Tài chính danh mục dự án** cho Giám đốc/Quản lý.
+
+### Dữ liệu Firebase mới
+- `/v2/financeSettings/{projectId}`
+- `/v2/budgets/{projectId}/{id}`
+- `/v2/actualCosts/{projectId}/{id}`
+- `/v2/supplierPayments/{projectId}/{id}`
+- `/v2/variations/{projectId}/{id}`
+- `/v2/billings/{projectId}/{id}`
+- `/v2/receipts/{projectId}/{id}`
 
 ## Nâng cấp V2.4 — Quản lý triển khai sau khi trúng thầu
 
