@@ -275,3 +275,15 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
   .revision-flow i{transform:rotate(90deg);align-self:center}
   .revision-template-box{flex-direction:column;align-items:flex-start}
 }
+
+
+/* =========================
+   V2.9 - IMPORT BOQ EXCEL / CSV
+   ========================= */
+.revision-file-preview{background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.revision-file-preview-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.revision-file-preview-head b{display:block;font-size:10px}
+.revision-file-preview-head span{display:block;font-size:9px;color:var(--muted);margin-top:3px}
+.revision-file-columns{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.revision-file-columns span{font-size:8px;padding:3px 6px;border:1px solid #dbe4ee;background:#fff;border-radius:999px;color:#475569}
+.revision-file-warning{margin-top:8px;border:1px solid #fed7aa;background:#fff7ed;color:#9a3412;border-radius:8px;padding:8px 10px;font-size:9px;line-height:1.45}

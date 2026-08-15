@@ -1,4 +1,4 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.8
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.9
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
@@ -8,6 +8,96 @@
 
 
 
+
+
+## Nâng cấp V2.9 — Import BOQ Excel / CSV
+
+V2.9 nâng phần `Triển khai → Kiểm soát khối lượng → BOQ Revision`.
+
+### Định dạng hỗ trợ
+
+- `.xlsx`
+- `.xls`
+- `.csv`
+
+### Excel nhiều Sheet
+
+Sau khi chọn file Excel:
+
+1. Hệ thống đọc danh sách Sheet.
+2. Tự đề xuất Sheet có cấu trúc BOQ phù hợp nhất.
+3. Người dùng có thể chọn lại Sheet cần nhập.
+4. File chỉ được lưu thành Revision sau khi bấm `Tải & So sánh`.
+
+### Tự nhận dòng tiêu đề
+
+Hệ thống dò trong 40 dòng đầu để tìm hàng tiêu đề.
+
+Nếu file có dạng:
+
+- Dòng 1: Tên dự án.
+- Dòng 2: Chủ đầu tư.
+- Dòng 3: Gói thầu.
+- Dòng 6: STT | Mô tả | ĐVT | Khối lượng...
+
+thì hệ thống có thể tự chọn dòng 6.
+
+Người dùng vẫn có ô `Dòng tiêu đề` để sửa thủ công khi cần.
+
+### Không bắt buộc thứ tự cột
+
+Các cột được nhận theo tên, không theo vị trí.
+
+Hỗ trợ nhiều tên thường gặp:
+
+- STT / Mã / Code.
+- Hệ / Hệ thống.
+- Nhóm / Hạng mục.
+- Mô tả / Nội dung / Tên vật tư.
+- Thông số / Quy cách / Model / Spec.
+- ĐVT / Đơn vị / UOM.
+- Khối lượng / Số lượng / Qty.
+- Giá chào / Đơn giá HĐ / Unit Price.
+- Giá vật tư.
+- Nhân công.
+- Thầu phụ.
+- Khác.
+- Hao hụt %.
+- Markup / Lợi nhuận %.
+
+Tối thiểu phải nhận được:
+- Mô tả/Nội dung.
+- Khối lượng/Số lượng.
+
+### Preview trước khi nhập
+
+Sau khi chọn file, giao diện hiển thị:
+
+- Tên file.
+- Sheet.
+- Dòng tiêu đề đang dùng.
+- Số dòng dữ liệu ước tính.
+- Các tiêu đề cột đã đọc.
+- Cảnh báo nếu chưa nhận được Mô tả + Khối lượng.
+
+### Mẫu file
+
+Có hai nút:
+
+- `Tải mẫu Excel`
+- `Tải mẫu CSV`
+
+### Xử lý Excel
+
+Website sử dụng SheetJS Community Edition standalone để đọc workbook ngay trên trình duyệt.
+
+Dữ liệu Revision vẫn chạy qua quy trình V2.8:
+
+`File Excel/CSV → Chọn Sheet → Đọc BOQ → Mapping → So sánh → Xác nhận → Áp dụng Baseline`
+
+### Firebase
+
+V2.9 không thêm node Firebase mới và không thay đổi cấu trúc dữ liệu so với V2.8.
 
 ## Nâng cấp V2.8 — BOQ Revision & Baseline hợp đồng
 

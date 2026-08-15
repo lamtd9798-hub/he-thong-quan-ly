@@ -1,7 +1,7 @@
 import {
   refs,arr,ts,logActivity,getProfile,can,esc,norm,money,fmtDate,fmtDateTime,
   loading,empty,badge,modal,toast,confirmBox
-} from "../core.js?v=2.8.0";
+} from "../core.js?v=2.9.0";
 
 let projectId="";
 let mountEl=null;
@@ -402,22 +402,42 @@ function revisionRow(r){
   </tr>`;
 }
 
+const REVISION_HEADER_ALIASES={
+  itemNo:["stt","ma","mã","ma boq","mã boq","code","item no","item","no"],
+  discipline:["he","hệ","he thong","hệ thống","system","discipline"],
+  category:["nhom","nhóm","hang muc","hạng mục","category","group"],
+  description:["mo ta","mô tả","mo ta cong viec","mô tả công việc","noi dung","nội dung","noi dung cong viec","nội dung công việc","ten vat tu","tên vật tư","ten hang","tên hàng","description","item description","work description"],
+  specification:["thong so","thông số","quy cach","quy cách","model","spec","specification","kich thuoc","kích thước"],
+  unit:["dvt","đvt","don vi","đơn vị","unit","uom"],
+  qty:["khoi luong","khối lượng","so luong","số lượng","qty","quantity","boq qty","contract quantity"],
+  bidUnit:["gia chao/dvt","giá chào/đvt","gia chao","giá chào","don gia hd","đơn giá hđ","don gia hop dong","đơn giá hợp đồng","don gia","đơn giá","unit price","unit rate","bid unit price","gia ban","giá bán"],
+  materialUnit:["gia vat tu","giá vật tư","material unit","material price"],
+  laborUnit:["gia nhan cong","giá nhân công","nhan cong","nhân công","labor unit","labor price"],
+  subcontractUnit:["gia thau phu","giá thầu phụ","thau phu","thầu phụ","subcontract unit","subcontract price"],
+  otherUnit:["gia khac","giá khác","khac","khác","other unit","other price"],
+  wastePct:["hao hut %","hao hụt %","hao hut","hao hụt","waste %","wastage %"],
+  markupPct:["markup %","loi nhuan %","lợi nhuận %","margin %"]
+};
+
 function uploadRevisionDialog(isTenderR0=false){
   if(!can("quantityRevisionManage"))return;
   if(isTenderR0&&baseline.length){toast("Dự án đã có R0/Baseline.","warning");return}
   if(!isTenderR0&&!tenderRevision){toast("Cần tạo Tender R0 trước khi tải Revision hợp đồng.","error");return}
-  if(!isTenderR0&&revisions.some(x=>x.status==="DRAFT")){toast("Đang có một Revision Chờ áp dụng. Hãy kiểm tra/kích hoạt hoặc xóa Revision đó trước khi tải phiên bản tiếp theo.","warning");view="REVISIONS";paint();return}
+  if(!isTenderR0&&revisions.some(x=>x.status==="DRAFT")){
+    toast("Đang có một Revision Chờ áp dụng. Hãy kiểm tra/kích hoạt hoặc xóa Revision đó trước khi tải phiên bản tiếp theo.","warning");
+    view="REVISIONS";paint();return;
+  }
 
   const nextNo=isTenderR0?0:nextRevisionNo();
   const code=`R${nextNo}`;
   modal({
-    title:isTenderR0?"Tải Tender R0 từ CSV":`Tải BOQ ${code}`,
+    title:isTenderR0?"Tải Tender R0 từ Excel / CSV":`Tải BOQ ${code}`,
     eyebrow:isTenderR0?"BOQ ĐẤU THẦU / TRÚNG THẦU":"BOQ HỢP ĐỒNG / PHỤ LỤC",
     size:"lg",submitText:isTenderR0?"Tạo R0":"Tải & So sánh",
     body:`<div class="revision-upload-note">
       ${isTenderR0
-        ?"<b>R0 sẽ là mốc gốc.</b> File CSV cần có tối thiểu Mô tả và Khối lượng."
-        :`File mới sẽ được lưu thành <b>${code} – Chờ áp dụng</b>. Khối lượng đặt hàng chưa thay đổi cho tới khi bấm “Áp dụng Baseline”.`}
+        ?"<b>R0 sẽ là mốc gốc.</b> Có thể tải Excel .xlsx/.xls hoặc CSV. File cần có tối thiểu Mô tả và Khối lượng."
+        :`File mới sẽ được lưu thành <b>${code} – Chờ áp dụng</b>. Hỗ trợ Excel .xlsx/.xls và CSV. Khối lượng đặt hàng chưa thay đổi cho tới khi bấm “Áp dụng Baseline”.`}
     </div>
     <div class="form-grid mt">
       <label class="field"><span>Mã Revision</span><input name="code" value="${code}" readonly></label>
@@ -426,28 +446,53 @@ function uploadRevisionDialog(isTenderR0=false){
       </select></label>
       <label class="field span2"><span>Tên phiên bản *</span><input required name="name" value="${isTenderR0?"BOQ đấu thầu / Trúng thầu":code+" - BOQ Hợp đồng"}"></label>
       <label class="field"><span>Ngày hiệu lực *</span><input required type="date" name="effectiveDate" value="${todayIso()}"></label>
-      <label class="field"><span>File BOQ CSV *</span><input required type="file" name="revisionFile" id="revisionFile" accept=".csv,text/csv"></label>
+      <label class="field"><span>File BOQ Excel / CSV *</span>
+        <input required type="file" name="revisionFile" id="revisionFile" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv">
+        <small>Hỗ trợ .xlsx, .xls và .csv</small>
+      </label>
+
+      <label class="field hidden" id="revisionSheetWrap"><span>Sheet cần nhập *</span>
+        <select name="revisionSheet" id="revisionSheet"></select>
+        <small>Nếu Excel có nhiều Sheet, chọn đúng Sheet chứa BOQ.</small>
+      </label>
+      <label class="field hidden" id="revisionHeaderRowWrap"><span>Dòng tiêu đề</span>
+        <input type="number" min="1" step="1" name="revisionHeaderRow" id="revisionHeaderRow" value="1">
+        <small>Hệ thống tự nhận; có thể sửa nếu file có tiêu đề dự án ở các dòng phía trên.</small>
+      </label>
+
+      <div class="span2 hidden revision-file-preview" id="revisionFilePreview"></div>
+
       <label class="field span2"><span>Ghi chú</span><textarea name="notes" placeholder="Ví dụ: BOQ theo HĐ số..., Phụ lục 01..."></textarea></label>
     </div>
     <div class="revision-template-box">
-      <span>Hỗ trợ cột: STT/Mã, Hệ, Nhóm, Mô tả, Thông số, ĐVT, Khối lượng, Giá chào/ĐVT hoặc các cột Giá vật tư/Nhân công/Thầu phụ/Khác.</span>
-      <button type="button" class="btn sm" id="downloadRevisionTemplateBtn">Tải mẫu CSV</button>
+      <span>Không bắt buộc đúng thứ tự cột. Hệ thống tự nhận STT/Mã, Hệ, Nhóm, Mô tả/Nội dung, Thông số/Quy cách, ĐVT/Đơn vị, Khối lượng/Số lượng, Giá chào/ĐVT hoặc Giá vật tư/Nhân công/Thầu phụ/Khác.</span>
+      <div class="row-actions">
+        <button type="button" class="btn sm" id="downloadRevisionExcelTemplateBtn">Tải mẫu Excel</button>
+        <button type="button" class="btn sm" id="downloadRevisionCsvTemplateBtn">Tải mẫu CSV</button>
+      </div>
     </div>`,
     onSubmit:async fd=>{
       try{
         const file=fd.get("revisionFile");
-        if(!(file instanceof File)||!file.size){toast("Vui lòng chọn file CSV.","error");return false}
-        const parsed=await parseRevisionCsv(file);
-        if(!parsed.length){toast("Không có dòng BOQ hợp lệ trong file.","error");return false}
+        if(!(file instanceof File)||!file.size){toast("Vui lòng chọn file Excel hoặc CSV.","error");return false}
+
+        const sheetName=String(fd.get("revisionSheet")||"");
+        const headerRow=Math.max(1,Number(fd.get("revisionHeaderRow")||1));
+        const parsedInfo=await parseRevisionSpreadsheet(file,{sheetName,headerRow});
+        const parsed=parsedInfo.rows;
+        if(!parsed.length){toast("Không có dòng BOQ hợp lệ trong Sheet đã chọn.","error");return false}
 
         const items=mapRevisionItems(parsed);
         const u=getProfile()||{},revisionId=refs.quantityBoqRevisionsProject(projectId).push().key;
         const total=revisionTotal(items);
+        const ext=fileExtension(file.name);
+        const sourceType=["xlsx","xls"].includes(ext)?"EXCEL_UPLOAD":"CSV_UPLOAD";
         const revision={
           code:String(fd.get("code")||code),revisionNo:nextNo,type:String(fd.get("type")||"CONTRACT"),
           name:String(fd.get("name")||code),effectiveDate:String(fd.get("effectiveDate")||todayIso()),
           notes:String(fd.get("notes")||""),status:isTenderR0?"ACTIVE":"DRAFT",
-          source:"CSV_UPLOAD",sourceFileName:file.name,lineCount:Object.keys(items).length,totalBidValue:total,
+          source:sourceType,sourceFileName:file.name,sourceSheetName:parsedInfo.sheetName||"",
+          sourceHeaderRow:parsedInfo.headerRow,lineCount:Object.keys(items).length,totalBidValue:total,
           createdAt:Date.now(),createdByUid:u.uid||"",createdByName:u.displayName||u.email||"",items
         };
 
@@ -455,7 +500,8 @@ function uploadRevisionDialog(isTenderR0=false){
           revision.activatedAt=Date.now();revision.activatedByUid=u.uid||"";revision.activatedByName=u.displayName||u.email||"";
           const baselineItems=materializeBaseline(items);
           const meta={
-            source:"CSV_R0",frozenAt:Date.now(),frozenByUid:u.uid||"",frozenByName:u.displayName||"",frozenByEmail:u.email||"",
+            source:sourceType==="EXCEL_UPLOAD"?"EXCEL_R0":"CSV_R0",
+            frozenAt:Date.now(),frozenByUid:u.uid||"",frozenByName:u.displayName||"",frozenByEmail:u.email||"",
             lineCount:Object.keys(baselineItems).length,totalBidValue:total,
             tenderRevisionId:revisionId,tenderRevisionCode:"R0",
             activeRevisionId:revisionId,activeRevisionCode:"R0",activeRevisionName:revision.name,
@@ -466,13 +512,13 @@ function uploadRevisionDialog(isTenderR0=false){
             refs.quantityBaselineProject(projectId).set(baselineItems),
             refs.quantityBaselineMeta(projectId).set(meta)
           ]);
-          await audit("R0_UPLOADED",`Tải Tender R0 từ ${file.name} · ${Object.keys(items).length} đầu mục`,{revisionId,revisionCode:"R0"});
+          await audit("R0_UPLOADED",`Tải Tender R0 từ ${file.name}${parsedInfo.sheetName?` / ${parsedInfo.sheetName}`:""} · ${Object.keys(items).length} đầu mục`,{revisionId,revisionCode:"R0"});
           toast("Đã tạo Tender R0 và kích hoạt Baseline.");
           await reload();return true;
         }
 
         await refs.quantityBoqRevision(projectId,revisionId).set(revision);
-        await audit("REVISION_UPLOADED",`Tải ${revision.code} từ ${file.name} · ${Object.keys(items).length} đầu mục`,{revisionId,revisionCode:revision.code});
+        await audit("REVISION_UPLOADED",`Tải ${revision.code} từ ${file.name}${parsedInfo.sheetName?` / ${parsedInfo.sheetName}`:""} · ${Object.keys(items).length} đầu mục`,{revisionId,revisionCode:revision.code});
         await logActivity("QTY_REVISION_UPLOADED",`Tải ${revision.code} - ${revision.name}`,{projectId,revisionId});
         toast(`Đã tải ${revision.code}. Hãy kiểm tra so sánh trước khi áp dụng.`);
         await reload();view="REVISIONS";paint();compareRevisionDialog(revisionId);return false;
@@ -482,49 +528,225 @@ function uploadRevisionDialog(isTenderR0=false){
     }
   });
 
-  document.querySelector("#downloadRevisionTemplateBtn")?.addEventListener("click",downloadRevisionTemplate);
+  const fileInput=document.querySelector("#revisionFile");
+  const sheetSelect=document.querySelector("#revisionSheet");
+  const headerInput=document.querySelector("#revisionHeaderRow");
+
+  fileInput?.addEventListener("change",async()=>{
+    const file=fileInput.files?.[0];
+    if(!file){resetRevisionFileUi();return}
+    try{
+      const inspection=await inspectRevisionSpreadsheet(file);
+      fileInput._revisionInspection=inspection;
+      renderRevisionFileInspection(inspection);
+    }catch(e){
+      console.error(e);resetRevisionFileUi();
+      toast(e.message||"Không thể đọc file Excel/CSV.","error");
+    }
+  });
+
+  sheetSelect?.addEventListener("change",()=>{
+    const inspection=fileInput?._revisionInspection;
+    if(!inspection)return;
+    const meta=inspection.sheets?.[sheetSelect.value];
+    if(meta){
+      headerInput.value=meta.headerRow;
+      renderRevisionFilePreview(inspection,sheetSelect.value,meta.headerRow);
+    }
+  });
+
+  headerInput?.addEventListener("input",()=>{
+    const inspection=fileInput?._revisionInspection;
+    if(!inspection)return;
+    renderRevisionFilePreview(inspection,sheetSelect?.value||inspection.defaultSheet,Math.max(1,Number(headerInput.value||1)));
+  });
+
+  document.querySelector("#downloadRevisionExcelTemplateBtn")?.addEventListener("click",downloadRevisionExcelTemplate);
+  document.querySelector("#downloadRevisionCsvTemplateBtn")?.addEventListener("click",downloadRevisionTemplate);
 }
 
-async function parseRevisionCsv(file){
-  const text=await file.text(),rows=parseCsv(text);
-  if(rows.length<2)throw new Error("File CSV không có dữ liệu.");
-  const headers=rows[0].map(x=>norm(x).replace(/\s+/g," "));
-  const idx=(...names)=>headers.findIndex(h=>names.some(n=>h===norm(n)));
-  const map={
-    itemNo:idx("stt","ma","mã","item no","item"),
-    discipline:idx("he","hệ","system"),
-    category:idx("nhom","nhóm","category"),
-    description:idx("mo ta","mô tả","description"),
-    specification:idx("thong so","thông số","spec","specification"),
-    unit:idx("dvt","đvt","unit"),
-    qty:idx("khoi luong","khối lượng","qty","quantity"),
-    bidUnit:idx("gia chao/dvt","giá chào/đvt","gia chao","giá chào","don gia hd","đơn giá hđ","don gia","đơn giá","unit price"),
-    materialUnit:idx("gia vat tu","giá vật tư"),
-    laborUnit:idx("nhan cong","nhân công"),
-    subcontractUnit:idx("thau phu","thầu phụ"),
-    otherUnit:idx("khac","khác"),
-    wastePct:idx("hao hut %","hao hụt %"),
-    markupPct:idx("markup %","loi nhuan %","lợi nhuận %")
-  };
-  if(map.description<0||map.qty<0)throw new Error("File phải có ít nhất cột Mô tả và Khối lượng.");
+async function inspectRevisionSpreadsheet(file){
+  const ext=fileExtension(file.name);
+  if(!["xlsx","xls","csv"].includes(ext))throw new Error("Chỉ hỗ trợ file .xlsx, .xls hoặc .csv.");
+
+  if(ext==="csv"){
+    const text=await file.text(),aoa=parseCsv(text);
+    const detected=detectRevisionHeader(aoa);
+    return {
+      kind:"CSV",fileName:file.name,defaultSheet:"CSV",
+      sheets:{CSV:{aoa,headerRow:detected.headerRow,score:detected.score}}
+    };
+  }
+
+  const XLSX=globalThis.XLSX;
+  if(!XLSX)throw new Error("Thư viện đọc Excel chưa tải được. Kiểm tra kết nối Internet rồi tải lại trang.");
+  const buffer=await file.arrayBuffer();
+  const workbook=XLSX.read(buffer,{type:"array",cellDates:false,cellText:false,raw:true});
+  if(!workbook.SheetNames?.length)throw new Error("File Excel không có Sheet.");
+
+  const sheets={};
+  workbook.SheetNames.forEach(name=>{
+    const ws=workbook.Sheets[name];
+    const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:true,blankrows:false});
+    const detected=detectRevisionHeader(aoa);
+    sheets[name]={aoa,headerRow:detected.headerRow,score:detected.score};
+  });
+
+  const defaultSheet=[...workbook.SheetNames].sort((a,b)=>(sheets[b]?.score||0)-(sheets[a]?.score||0))[0];
+  return {kind:"EXCEL",fileName:file.name,workbook,sheets,defaultSheet};
+}
+
+function renderRevisionFileInspection(inspection){
+  const sheetWrap=document.querySelector("#revisionSheetWrap");
+  const headerWrap=document.querySelector("#revisionHeaderRowWrap");
+  const sheet=document.querySelector("#revisionSheet");
+  const header=document.querySelector("#revisionHeaderRow");
+
+  if(inspection.kind==="EXCEL"){
+    sheetWrap?.classList.remove("hidden");
+    if(sheet)sheet.innerHTML=Object.keys(inspection.sheets).map(name=>{
+      const m=inspection.sheets[name];
+      return `<option value="${esc(name)}" ${name===inspection.defaultSheet?"selected":""}>${esc(name)} · ${Math.max(0,m.aoa.length-m.headerRow)} dòng dữ liệu</option>`;
+    }).join("");
+  }else{
+    sheetWrap?.classList.add("hidden");
+    if(sheet)sheet.innerHTML=`<option value="CSV">CSV</option>`;
+  }
+
+  headerWrap?.classList.remove("hidden");
+  const meta=inspection.sheets[inspection.defaultSheet];
+  if(header)header.value=meta?.headerRow||1;
+  renderRevisionFilePreview(inspection,inspection.defaultSheet,meta?.headerRow||1);
+}
+
+function renderRevisionFilePreview(inspection,sheetName,headerRow){
+  const box=document.querySelector("#revisionFilePreview");
+  if(!box)return;
+  const meta=inspection.sheets?.[sheetName]||inspection.sheets?.[inspection.defaultSheet];
+  const aoa=meta?.aoa||[];
+  const rowIndex=Math.max(0,Number(headerRow||1)-1);
+  const headers=(aoa[rowIndex]||[]).map(x=>String(x??"").trim()).filter(Boolean);
+  const analyzed=analyzeRevisionHeaders(aoa,rowIndex);
+  const dataRows=Math.max(0,aoa.length-rowIndex-1);
+
+  box.classList.remove("hidden");
+  box.innerHTML=`<div class="revision-file-preview-head">
+      <div><b>${inspection.kind==="EXCEL"?"Excel":"CSV"} · ${esc(inspection.fileName)}</b><span>${inspection.kind==="EXCEL"?`Sheet: ${esc(sheetName)} · `:""}Dòng tiêu đề: ${rowIndex+1} · khoảng ${dataRows} dòng phía dưới</span></div>
+      ${analyzed.valid?badge("Đã nhận Mô tả + Khối lượng","green"):badge("Cần kiểm tra tiêu đề","orange")}
+    </div>
+    <div class="revision-file-columns">${headers.slice(0,14).map(h=>`<span>${esc(h)}</span>`).join("")}${headers.length>14?`<span>+${headers.length-14} cột</span>`:""}</div>
+    ${!analyzed.valid?`<div class="revision-file-warning">Chưa nhận ra đủ cột <b>Mô tả/Nội dung</b> và <b>Khối lượng/Số lượng</b>. Nếu tiêu đề nằm ở dòng khác, sửa ô “Dòng tiêu đề”.</div>`:""}`;
+}
+
+function resetRevisionFileUi(){
+  document.querySelector("#revisionSheetWrap")?.classList.add("hidden");
+  document.querySelector("#revisionHeaderRowWrap")?.classList.add("hidden");
+  document.querySelector("#revisionFilePreview")?.classList.add("hidden");
+}
+
+async function parseRevisionSpreadsheet(file,{sheetName="",headerRow=1}={}){
+  const inspection=document.querySelector("#revisionFile")?._revisionInspection||await inspectRevisionSpreadsheet(file);
+  const selected=sheetName&&inspection.sheets?.[sheetName]?sheetName:inspection.defaultSheet;
+  const aoa=inspection.sheets?.[selected]?.aoa||[];
+  const rowIndex=Math.max(0,Number(headerRow||1)-1);
+  const rows=parseRevisionAoa(aoa,rowIndex);
+  return {rows,sheetName:inspection.kind==="EXCEL"?selected:"",headerRow:rowIndex+1};
+}
+
+function parseRevisionAoa(aoa,headerRowIndex){
+  if(!Array.isArray(aoa)||aoa.length<=headerRowIndex+0)throw new Error("Sheet không có dữ liệu.");
+  const analyzed=analyzeRevisionHeaders(aoa,headerRowIndex);
+  const map=analyzed.map;
+  if(map.description<0||map.qty<0){
+    throw new Error(`Dòng ${headerRowIndex+1} phải có ít nhất cột Mô tả/Nội dung và Khối lượng/Số lượng.`);
+  }
 
   const out=[];
-  for(let i=1;i<rows.length;i++){
-    const r=rows[i];if(!r.some(x=>String(x).trim()))continue;
+  for(let i=headerRowIndex+1;i<aoa.length;i++){
+    const r=aoa[i]||[];
+    if(!r.some(x=>String(x??"").trim()))continue;
     const get=k=>map[k]>=0?(r[map[k]]??""):"";
+    const description=String(get("description")??"").trim();
+    if(!description)continue;
+
+    const qtyRaw=get("qty");
+    if((qtyRaw===null||qtyRaw===undefined||String(qtyRaw).trim()==="")&&typeof qtyRaw!=="number")continue;
+    const qty=toNumber(qtyRaw);
     const d={
-      itemNo:String(get("itemNo")||i).trim(),discipline:String(get("discipline")||"KHÁC").trim().toUpperCase(),
-      category:String(get("category")||"").trim(),description:String(get("description")||"").trim(),
-      specification:String(get("specification")||"").trim(),unit:String(get("unit")||"").trim(),
-      qty:toNumber(get("qty")),bidUnit:toNumber(get("bidUnit")),materialUnit:toNumber(get("materialUnit")),
-      laborUnit:toNumber(get("laborUnit")),subcontractUnit:toNumber(get("subcontractUnit")),otherUnit:toNumber(get("otherUnit")),
-      wastePct:toNumber(get("wastePct")),markupPct:toNumber(get("markupPct"))
+      itemNo:String(get("itemNo")||out.length+1).trim(),
+      discipline:String(get("discipline")||"KHÁC").trim().toUpperCase(),
+      category:String(get("category")||"").trim(),
+      description,
+      specification:String(get("specification")||"").trim(),
+      unit:String(get("unit")||"").trim(),
+      qty,
+      bidUnit:toNumber(get("bidUnit")),
+      materialUnit:toNumber(get("materialUnit")),
+      laborUnit:toNumber(get("laborUnit")),
+      subcontractUnit:toNumber(get("subcontractUnit")),
+      otherUnit:toNumber(get("otherUnit")),
+      wastePct:toNumber(get("wastePct")),
+      markupPct:toNumber(get("markupPct"))
     };
-    if(!d.description)continue;
+
+    // Bỏ dòng tổng cộng / heading không có khối lượng thật.
+    if(!Number.isFinite(d.qty))continue;
     out.push(d);
   }
   return out;
 }
+
+function analyzeRevisionHeaders(aoa,rowIndex){
+  const headers=(aoa[rowIndex]||[]).map(cleanRevisionHeader);
+  const map={};
+  Object.entries(REVISION_HEADER_ALIASES).forEach(([key,aliases])=>{
+    const normalized=aliases.map(cleanRevisionHeader);
+    map[key]=headers.findIndex(h=>normalized.includes(h));
+  });
+  return {map,valid:map.description>=0&&map.qty>=0,headers};
+}
+
+function detectRevisionHeader(aoa){
+  let best={headerRow:1,score:-1};
+  const limit=Math.min(40,aoa.length);
+  for(let i=0;i<limit;i++){
+    const analyzed=analyzeRevisionHeaders(aoa,i);
+    let score=0;
+    Object.values(analyzed.map).forEach(idx=>{if(idx>=0)score++});
+    if(analyzed.map.description>=0)score+=4;
+    if(analyzed.map.qty>=0)score+=4;
+    if(analyzed.map.unit>=0)score+=1;
+    if(score>best.score)best={headerRow:i+1,score};
+  }
+  return best;
+}
+
+function cleanRevisionHeader(v){
+  return norm(String(v??"")).replace(/đ/g,"d").replace(/[^a-z0-9%]+/g," ").replace(/\s+/g," ").trim();
+}
+
+function fileExtension(name){
+  return String(name||"").split(".").pop().toLowerCase();
+}
+
+function downloadRevisionExcelTemplate(){
+  const XLSX=globalThis.XLSX;
+  if(!XLSX){toast("Thư viện Excel chưa tải được. Có thể dùng mẫu CSV tạm thời.","error");return}
+  const rows=revisionTemplateRows();
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"]=[{wch:8},{wch:12},{wch:18},{wch:34},{wch:24},{wch:10},{wch:14},{wch:18},{wch:16},{wch:14},{wch:14},{wch:12},{wch:12},{wch:12}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"BOQ");
+  XLSX.writeFile(wb,"MAU_BOQ_REVISION.xlsx");
+}
+
+function revisionTemplateRows(){
+  return [
+    ["STT","Hệ","Nhóm","Mô tả","Thông số","ĐVT","Khối lượng","Giá chào/ĐVT","Giá vật tư","Nhân công","Thầu phụ","Khác","Hao hụt %","Markup %"],
+    ["1","PCCC","Đường ống","Ống thép đen DN50","SCH40","m",1200,120000,85000,0,0,0,0,0]
+  ];
+}
+
 
 function mapRevisionItems(parsed){
   const historyItems=historicalItemRegistry();
@@ -788,11 +1010,7 @@ function itemSignature(x){
 }
 
 function downloadRevisionTemplate(){
-  const rows=[
-    ["STT","Hệ","Nhóm","Mô tả","Thông số","ĐVT","Khối lượng","Giá chào/ĐVT","Giá vật tư","Nhân công","Thầu phụ","Khác","Hao hụt %","Markup %"],
-    ["1","PCCC","Đường ống","Ống thép đen DN50","SCH40","m","1200","120000","85000","0","0","0","0","0"]
-  ];
-  downloadCsv("MAU_BOQ_REVISION.csv",rows);
+  downloadCsv("MAU_BOQ_REVISION.csv",revisionTemplateRows());
 }
 
 function parseCsv(text){
@@ -810,9 +1028,20 @@ function parseCsv(text){
 }
 
 function toNumber(v){
-  const raw=String(v??"").trim().replace(/\s/g,"");if(!raw)return 0;
-  if(raw.includes(",")&&!raw.includes("."))return Number(raw.replace(",","."))||0;
-  return Number(raw.replaceAll(",",""))||0;
+  if(typeof v==="number")return Number.isFinite(v)?v:0;
+  let raw=String(v??"").trim();
+  if(!raw)return 0;
+  raw=raw.replace(/\s/g,"").replace(/[₫đ]/gi,"").replace(/%$/,"");
+  const comma=raw.lastIndexOf(","),dot=raw.lastIndexOf(".");
+  if(comma>=0&&dot>=0){
+    if(comma>dot)raw=raw.replaceAll(".","").replace(",",".");
+    else raw=raw.replaceAll(",","");
+  }else if(comma>=0){
+    const parts=raw.split(",");
+    raw=parts.length===2&&parts[1].length<=3?parts[0].replaceAll(".","")+"."+parts[1]:raw.replaceAll(",","");
+  }
+  const n=Number(raw);
+  return Number.isFinite(n)?n:0;
 }
 
 function editRequest(id){
