@@ -1,7 +1,7 @@
 import {
   refs, arr, ts, logActivity, can, getProfile, esc, norm, money, fmtDateTime,
   setPage, loading, empty, badge, modal, toast, confirmBox
-} from "../core.js?v=2.19.1";
+} from "../core.js?v=2.19.2";
 
 let projects=[];
 let selectedProjectId="";
@@ -26,14 +26,31 @@ const BOQ_ALIASES={
 };
 
 const PRICE_ALIASES={
-  code:["ma hang","mã hàng","ma vat tu","mã vật tư","item code","code","sku","part no","part number"],
-  description:["ten vat tu","tên vật tư","ten hang","tên hàng","mo ta","mô tả","dien giai","diễn giải","description","item description","product"],
-  specification:["quy cach","quy cách","model","thong so","thông số","spec","specification","kich thuoc","kích thước"],
-  unit:["don vi","đơn vị","dvt","đvt","unit","uom"],
-  brand:["nhan hieu","nhãn hiệu","thuong hieu","thương hiệu","hang","hãng","brand","manufacturer"],
-  origin:["xuat xu","xuất xứ","origin","country of origin"],
-  unitPrice:["don gia","đơn giá","gia ban","giá bán","gia vat tu","giá vật tư","unit price","unit rate","price","gia","giá"],
-  supplier:["nha cung cap","nhà cung cấp","ncc","supplier","vendor"]
+  code:[
+    "ma hang","mã hàng","ma vat tu","mã vật tư","ma sp","mã sp","ma san pham","mã sản phẩm",
+    "item code","code","sku","part no","part number","catalog no","model code"
+  ],
+  description:[
+    "ten vat tu","tên vật tư","ten hang","tên hàng","ten hang hoa","tên hàng hóa","ten san pham","tên sản phẩm",
+    "ten thiet bi","tên thiết bị","hang hoa","hàng hóa","mo ta","mô tả","mo ta hang hoa","mô tả hàng hóa",
+    "dien giai","diễn giải","noi dung","nội dung","description","item description","product","product name",
+    "goods description","description of goods","item","equipment","material"
+  ],
+  specification:[
+    "quy cach","quy cách","model","model no","model number","thong so","thông số","thong so ky thuat","thông số kỹ thuật",
+    "spec","specification","kich thuoc","kích thước","size","type","part number","catalog"
+  ],
+  unit:["don vi","đơn vị","dvt","đvt","unit","uom","unit of measure"],
+  brand:["nhan hieu","nhãn hiệu","thuong hieu","thương hiệu","hang","hãng","brand","manufacturer","make"],
+  origin:["xuat xu","xuất xứ","origin","country of origin","country"],
+  unitPrice:[
+    "don gia","đơn giá","don gia vnd","đơn giá vnd","don gia vnđ","đơn giá vnđ",
+    "don gia chua vat","đơn giá chưa vat","don gia truoc thue","đơn giá trước thuế",
+    "don gia sau chiet khau","đơn giá sau chiết khấu","don gia sau ck","đơn giá sau ck",
+    "gia ban","giá bán","gia vat tu","giá vật tư","gia chao","giá chào","gia net","giá net",
+    "unit price","unit rate","unit cost","price","price vnd","net price","rate","gia","giá"
+  ],
+  supplier:["nha cung cap","nhà cung cấp","ncc","supplier","vendor","seller"]
 };
 
 export async function renderBOQ(container){
@@ -488,31 +505,59 @@ function openMaterialUpload(container){
       const input=document.querySelector("#materialPriceFiles");const files=[...(input?.files||[])];
       if(!files.length){toast("Chọn ít nhất một file giá.","error");return false}
       const defaultSupplier=String(fd.get("defaultSupplier")||"").trim();
-      let total=0;
+      let total=0,successFiles=0;
+      const failed=[];
+
       for(const file of files){
-        const inspection=await inspectSpreadsheet(file,"PRICE");
-        const sheetName=inspection.defaultSheet,m=inspection.sheets[sheetName];
-        const rows=parsePriceSheet(m.aoa,m.headerRow-1,m.headerDepth,{fileName:file.name,sheetName,defaultSupplier});
-        if(!rows.length)continue;
-        const importId=refs.materialPriceImportsProject(selectedProjectId).push().key;
-        const rowObj={};rows.forEach((r,i)=>rowObj[`r${String(i+1).padStart(5,"0")}`]=r);
         try{
+          const inspection=await inspectSpreadsheet(file,"PRICE");
+          const sheetName=inspection.defaultSheet,m=inspection.sheets[sheetName];
+          const rows=parsePriceSheet(m.aoa,m.headerRow-1,m.headerDepth,{fileName:file.name,sheetName,defaultSupplier});
+
+          const importId=refs.materialPriceImportsProject(selectedProjectId).push().key;
+          const rowObj={};
+          rows.forEach((r,i)=>rowObj[`r${String(i+1).padStart(5,"0")}`]=r);
+
           await refs.materialPriceImport(selectedProjectId,importId).set({
-            fileName:file.name,sheetName,supplier:defaultSupplier||baseFileName(file.name),rowCount:rows.length,
-            headerRow:m.headerRow,headerDepth:m.headerDepth,createdAt:Date.now(),createdByName:getProfile()?.displayName||getProfile()?.email||"",rows:rowObj
+            fileName:file.name,
+            sheetName,
+            supplier:defaultSupplier||baseFileName(file.name),
+            rowCount:rows.length,
+            headerRow:m.headerRow,
+            headerDepth:m.headerDepth,
+            detectedDescriptionColumn:m.columnMap?.description??-1,
+            detectedPriceColumn:m.columnMap?.unitPrice??-1,
+            createdAt:Date.now(),
+            createdByName:getProfile()?.displayName||getProfile()?.email||"",
+            rows:rowObj
           });
+
+          total+=rows.length;
+          successFiles++;
         }catch(e){
-          console.error("[V2.18.2] Lỗi lưu file giá",e);
-          throw new Error(`Không lưu được file giá ${file.name}. ${firebaseErrorText(e)}`);
+          console.warn("[V2.19.2] Bỏ qua file giá không đọc được:",file.name,e);
+          failed.push({file:file.name,error:e?.message||"Không nhận diện được"});
         }
-        total+=rows.length;
       }
-      if(!total){toast("Không file nào có dữ liệu giá hợp lệ. Cần tối thiểu Mô tả + Đơn giá.","error");return false}
+
+      if(!successFiles){
+        const first=failed.slice(0,3).map(x=>`${x.file}: ${x.error}`).join(" | ");
+        toast(`Chưa nhập được file giá nào. ${first}`,"error");
+        return false;
+      }
+
       await loadProjectData();
       const applied=await autoApplyMatches(95,{onlyEmpty:true});
       await loadProjectData();
-      toast(`Đã thêm ${files.length} file, đọc ${total} dòng giá. Tự điền ${applied} dòng BOQ đang chưa có giá (độ khớp ≥95%).`);
-      tab="MATERIAL";paint(container);return true;
+
+      const failText=failed.length
+        ?` Bỏ qua ${failed.length} file chưa nhận được; các file còn lại vẫn đã lưu.`
+        :"";
+
+      toast(`Đã nhập ${successFiles}/${files.length} file, đọc ${total} dòng giá. Tự điền ${applied} dòng BOQ chưa có giá.${failText}`);
+      tab="MATERIAL";
+      paint(container);
+      return true;
     }
   });
 
@@ -525,7 +570,11 @@ function openMaterialUpload(container){
       try{
         const ins=await inspectSpreadsheet(file,"PRICE"),m=ins.sheets[ins.defaultSheet];
         const rows=parsePriceSheet(m.aoa,m.headerRow-1,m.headerDepth,{fileName:file.name,sheetName:ins.defaultSheet,defaultSupplier:""});
-        cards.push(`<div class="pricing-file-mini ok"><b>${esc(file.name)}</b><span>Sheet ${esc(ins.defaultSheet)} · tiêu đề ${m.headerRow}${m.headerDepth>1?`–${m.headerRow+m.headerDepth-1}`:""} · ${rows.length} dòng giá</span></div>`);
+        const descCol=Number(m.columnMap?.description??-1);
+        const priceCol=Number(m.columnMap?.unitPrice??-1);
+        const descLabel=descCol>=0?pricingExcelColName(descCol):"?";
+        const priceLabel=priceCol>=0?pricingExcelColName(priceCol):"?";
+        cards.push(`<div class="pricing-file-mini ok"><b>${esc(file.name)}</b><span>Sheet ${esc(ins.defaultSheet)} · tiêu đề ${m.headerRow}${m.headerDepth>1?`–${m.headerRow+m.headerDepth-1}`:""} · ${rows.length} dòng giá · Mô tả: cột ${descLabel} · Giá: cột ${priceLabel}</span></div>`);
       }catch(e){cards.push(`<div class="pricing-file-mini bad"><b>${esc(file.name)}</b><span>${esc(e.message||"Không nhận diện được")}</span></div>`)}
     }
     preview.innerHTML=cards.join("");
@@ -661,7 +710,9 @@ async function inspectSpreadsheet(file,mode){
     const aoa=parseCsv(await file.text());
     const d=detectHeader(aoa,mode);
     const headers=combineHeaders(aoa,d.headerRow-1,d.headerDepth);
-    const map=mode==="BOQ"?mapBoqHeadersDataAware(aoa,d.headerRow-1,d.headerDepth):mapHeaders(headers,PRICE_ALIASES,mode);
+    const map=mode==="BOQ"
+      ?mapBoqHeadersDataAware(aoa,d.headerRow-1,d.headerDepth)
+      :mapPriceHeadersDataAware(aoa,d.headerRow-1,d.headerDepth);
     return {
       kind:"CSV",fileName:file.name,defaultSheet:"CSV",
       sheets:{CSV:{
@@ -682,7 +733,9 @@ async function inspectSpreadsheet(file,mode){
     const aoa=expandMergedCells(raw,ws["!merges"]||[]);
     const d=detectHeader(aoa,mode);
     const headers=combineHeaders(aoa,d.headerRow-1,d.headerDepth);
-    const map=mode==="BOQ"?mapBoqHeadersDataAware(aoa,d.headerRow-1,d.headerDepth):mapHeaders(headers,PRICE_ALIASES,mode);
+    const map=mode==="BOQ"
+      ?mapBoqHeadersDataAware(aoa,d.headerRow-1,d.headerDepth)
+      :mapPriceHeadersDataAware(aoa,d.headerRow-1,d.headerDepth);
     sheets[name]={
       aoa,headerRow:d.headerRow,headerDepth:d.headerDepth,score:d.score,
       columnMap:map,sourceGrid:buildPricingGridFromWorksheet(ws,XLSX,name)
@@ -894,24 +947,216 @@ function pricingHeaderSemanticScore(h,aliases,key){
 }
 
 function detectHeader(aoa,mode){
-  const aliases=mode==="PRICE"?PRICE_ALIASES:BOQ_ALIASES;
-  let best={headerRow:1,headerDepth:1,score:-1};const limit=Math.min(50,aoa.length);
+  let best={headerRow:1,headerDepth:1,score:-1,validRows:0};
+  const limit=Math.min(mode==="PRICE"?80:50,aoa.length);
+  const maxDepth=mode==="PRICE"?4:3;
+
   for(let r=0;r<limit;r++){
     if(!(aoa[r]||[]).some(x=>String(x??"").trim()))continue;
-    for(let depth=1;depth<=3;depth++){
+
+    for(let depth=1;depth<=maxDepth;depth++){
       if(r+depth>aoa.length)break;
-      const headers=combineHeaders(aoa,r,depth);
-      const map=mode==="BOQ"?mapBoqHeadersDataAware(aoa,r,depth):mapHeaders(headers,aliases,mode);
-      let score=Object.values(map).filter(i=>i>=0).length*3;
+
+      const map=mode==="BOQ"
+        ?mapBoqHeadersDataAware(aoa,r,depth)
+        :mapPriceHeadersDataAware(aoa,r,depth);
+
+      let score=Object.values(map).filter(i=>Number.isInteger(i)&&i>=0).length*3;
       if(map.description>=0)score+=18;
-      if(mode==="PRICE"&&map.unitPrice>=0)score+=20;
+      if(mode==="PRICE"&&map.unitPrice>=0)score+=22;
       if(mode==="BOQ"&&map.qty>=0)score+=12;
-      if(map.unit>=0)score+=4;if(map.specification>=0)score+=3;
-      score+=dataLikelihood(aoa,r+depth,map,mode);
-      if(score>best.score)best={headerRow:r+1,headerDepth:depth,score};
+      if(map.unit>=0)score+=4;
+      if(map.specification>=0)score+=3;
+
+      const validRows=mode==="PRICE"
+        ?countPriceValidRows(aoa,r+depth,map)
+        :0;
+
+      score+=mode==="PRICE"
+        ?Math.min(60,validRows*2.5)
+        :dataLikelihood(aoa,r+depth,map,mode);
+
+      // Ưu tiên block tiêu đề thực sự tạo ra nhiều dòng giá.
+      if(
+        score>best.score ||
+        (score===best.score&&validRows>best.validRows) ||
+        (score===best.score&&validRows===best.validRows&&r+1<best.headerRow)
+      ){
+        best={headerRow:r+1,headerDepth:depth,score,validRows};
+      }
     }
   }
   return best;
+}
+
+function mapPriceHeadersDataAware(aoa,start,depth){
+  const headers=combineHeaders(aoa,start,depth);
+  const clean=headers.map(cleanHeader);
+  const dataStart=start+depth;
+  const stats=clean.map((_,c)=>priceColumnStats(aoa,c,dataStart));
+
+  const map={};
+
+  // 1) Giá trước: vừa xét tên cột vừa xét hình thái tiền tệ.
+  let bestPrice=-1,bestPriceScore=-1e9;
+  clean.forEach((h,c)=>{
+    const semantic=priceHeaderSemanticScore(h,PRICE_ALIASES.unitPrice.map(cleanHeader),"unitPrice");
+    const st=stats[c];
+    if(!st.nonEmpty)return;
+
+    let score=(semantic>=0?semantic:0);
+    score+=st.positiveNumeric*5;
+    score+=Math.min(26,st.moneyMagnitudeScore*4);
+    score+=st.numericRatio*16;
+
+    if(priceHeaderLooksLikeTotal(h))score-=85;
+    if(priceHeaderLooksLikeQty(h))score-=90;
+    if(priceHeaderLooksLikePercent(h))score-=100;
+
+    // Khi không có tên cột rõ ràng, vẫn cho phép suy luận từ dữ liệu.
+    if(semantic<0&&st.positiveNumeric<2)score=-1e9;
+
+    if(score>bestPriceScore){bestPriceScore=score;bestPrice=c}
+  });
+  map.unitPrice=bestPrice;
+
+  // 2) Mô tả: ưu tiên text dài, xuất hiện cùng dòng với giá.
+  let bestDesc=-1,bestDescScore=-1e9;
+  clean.forEach((h,c)=>{
+    if(c===map.unitPrice)return;
+    const semantic=priceHeaderSemanticScore(h,PRICE_ALIASES.description.map(cleanHeader),"description");
+    const st=stats[c];
+    if(!st.nonEmpty)return;
+
+    const coPrice=map.unitPrice>=0?priceCooccurrenceStats(aoa,c,map.unitPrice,dataStart):0;
+    let score=(semantic>=0?semantic:0);
+    score+=st.text*2.3;
+    score+=Math.min(35,st.avgTextLen*.55);
+    score+=coPrice*5;
+    score-=st.numericRatio*30;
+
+    if(priceHeaderLooksLikeQty(h)||priceHeaderLooksLikeTotal(h))score-=70;
+    if(semantic<0&&st.text<2)score=-1e9;
+
+    if(score>bestDescScore){bestDescScore=score;bestDesc=c}
+  });
+  map.description=bestDesc;
+
+  // 3) Các cột phụ.
+  for(const key of ["code","specification","unit","brand","origin","supplier"]){
+    let best=-1,bestScore=-1e9;
+    const aliases=(PRICE_ALIASES[key]||[]).map(cleanHeader);
+
+    clean.forEach((h,c)=>{
+      if(c===map.description||c===map.unitPrice)return;
+      const semantic=priceHeaderSemanticScore(h,aliases,key);
+      if(semantic<0)return;
+
+      const st=stats[c];
+      let score=semantic+st.nonEmpty*.2;
+      if(key==="unit")score+=st.shortText*1.8-st.numericRatio*20;
+      else if(key==="code")score+=st.shortText*.9;
+      else score+=st.text*.35;
+
+      if(score>bestScore){bestScore=score;best=c}
+    });
+    map[key]=best;
+  }
+
+  return map;
+}
+
+function priceHeaderSemanticScore(h,aliases,key){
+  if(!h)return -1;
+  let best=-1;
+
+  for(const a of aliases||[]){
+    if(!a)continue;
+    let score=-1;
+    if(h===a)score=155+a.length;
+    else if(h.startsWith(a+" ")||h.endsWith(" "+a))score=125+a.length;
+    else if(a.length>=3&&h.includes(a))score=92+a.length;
+    best=Math.max(best,score);
+  }
+
+  if(key==="description"){
+    if(/ten .*hang|ten .*vat tu|ten .*san pham|mo ta|dien giai|description|product/.test(h))best=Math.max(best,170);
+  }else if(key==="unitPrice"){
+    if(/don gia|unit price|unit rate|unit cost|gia ban|gia chao|gia net|price/.test(h))best=Math.max(best,180);
+  }
+  return best;
+}
+
+function priceColumnStats(aoa,col,start){
+  let nonEmpty=0,numeric=0,positiveNumeric=0,text=0,shortText=0,totalTextLen=0;
+  const nums=[];
+  const end=Math.min(aoa.length,start+500);
+
+  for(let r=start;r<end;r++){
+    const v=aoa[r]?.[col];
+    const t=String(v??"").trim();
+    if(!t)continue;
+    nonEmpty++;
+
+    if(isNumericLike(v)){
+      numeric++;
+      const n=toNumber(v);
+      if(n>0){positiveNumeric++;nums.push(Math.abs(n))}
+    }else{
+      text++;
+      totalTextLen+=t.length;
+      if(t.length<=24)shortText++;
+    }
+  }
+
+  nums.sort((a,b)=>a-b);
+  const median=nums.length?nums[Math.floor(nums.length/2)]:0;
+  return {
+    nonEmpty,numeric,positiveNumeric,text,shortText,
+    numericRatio:nonEmpty?numeric/nonEmpty:0,
+    avgTextLen:text?totalTextLen/text:0,
+    moneyMagnitudeScore:median>0?Math.max(0,Math.log10(median+1)):0,
+    median
+  };
+}
+
+function priceCooccurrenceStats(aoa,textCol,priceCol,start){
+  let n=0;
+  const end=Math.min(aoa.length,start+500);
+  for(let r=start;r<end;r++){
+    const text=String(aoa[r]?.[textCol]??"").trim();
+    const price=toNumber(aoa[r]?.[priceCol]);
+    if(text&&price>0&&!isNumericLike(text))n++;
+  }
+  return n;
+}
+
+function priceHeaderLooksLikeTotal(h){
+  return /thanh tien|tong tien|tong cong|subtotal|amount|total amount|gia tri/.test(h||"");
+}
+function priceHeaderLooksLikeQty(h){
+  return /so luong|khoi luong|quantity|qty/.test(h||"");
+}
+function priceHeaderLooksLikePercent(h){
+  return /%|phan tram|vat|thue|tax|chiet khau|discount/.test(h||"");
+}
+
+function countPriceValidRows(aoa,start,map){
+  if(map.description<0||map.unitPrice<0)return 0;
+  let n=0;
+  for(let r=start;r<Math.min(aoa.length,start+700);r++){
+    const desc=String(aoa[r]?.[map.description]??"").trim();
+    const price=toNumber(aoa[r]?.[map.unitPrice]);
+    if(desc&&price>0&&!isPriceSummaryDescription(desc))n++;
+  }
+  return n;
+}
+
+function isPriceSummaryDescription(desc){
+  const t=cleanText(desc);
+  return /^(tong|tong cong|subtotal|total|vat|thue|tax|chiet khau|discount)\b/.test(t)
+    || t.includes("tong gia tri")
+    || t.includes("total amount");
 }
 
 function combineHeaders(aoa,start,depth){
@@ -986,22 +1231,50 @@ function parseBoqSheet(aoa,headerIndex,headerDepth){
 }
 
 function parsePriceSheet(aoa,headerIndex,headerDepth,{fileName,sheetName,defaultSupplier}){
-  const headers=combineHeaders(aoa,headerIndex,headerDepth),map=mapHeaders(headers,PRICE_ALIASES,"PRICE");
-  if(map.description<0||map.unitPrice<0)throw new Error(`${fileName}: cần cột Mô tả/Tên hàng và Đơn giá.`);
+  const map=mapPriceHeadersDataAware(aoa,headerIndex,headerDepth);
+
+  if(map.description<0||map.unitPrice<0){
+    throw new Error(`${fileName}: chưa suy luận được cột Tên/Mô tả hàng và cột Giá.`);
+  }
+
   const out=[];
   for(let r=headerIndex+headerDepth;r<aoa.length;r++){
-    const row=aoa[r]||[];const get=k=>map[k]>=0?(row[map[k]]??""):"";
-    const description=String(get("description")??"").trim(),price=toNumber(get("unitPrice"));
-    if(!description||!(price>0))continue;
-    out.push({
-      code:String(get("code")??"").trim(),description,specification:String(get("specification")??"").trim(),
-      unit:String(get("unit")??"").trim(),brand:String(get("brand")??"").trim(),origin:String(get("origin")??"").trim(),
-      supplier:String(get("supplier")||defaultSupplier||baseFileName(fileName)).trim(),unitPrice:price,
-      sourceFileName:fileName,sourceSheetName:sheetName,sourceRow:r+1,createdAt:Date.now()
-    });
-  }return out;
-}
+    const row=aoa[r]||[];
+    const get=k=>map[k]>=0?(row[map[k]]??""):"";
 
+    let description=String(get("description")??"").trim();
+    const specification=String(get("specification")??"").trim();
+    const code=String(get("code")??"").trim();
+    const price=toNumber(get("unitPrice"));
+
+    if(!description&&specification)description=specification;
+    if(!description&&code)description=code;
+
+    if(!description||!(price>0)||isPriceSummaryDescription(description))continue;
+
+    out.push({
+      code,
+      description,
+      specification,
+      unit:String(get("unit")??"").trim(),
+      brand:String(get("brand")??"").trim(),
+      origin:String(get("origin")??"").trim(),
+      supplier:String(get("supplier")||defaultSupplier||baseFileName(fileName)).trim(),
+      unitPrice:price,
+      sourceFileName:fileName,
+      sourceSheetName:sheetName,
+      sourceRow:r+1,
+      detectedDescriptionColumn:map.description,
+      detectedPriceColumn:map.unitPrice,
+      createdAt:Date.now()
+    });
+  }
+
+  if(!out.length){
+    throw new Error(`${fileName}: đã nhận cột nhưng chưa tìm thấy dòng nào có Tên hàng + Giá > 0.`);
+  }
+  return out;
+}
 function expandMergedCells(source,merges){
   const aoa=(source||[]).map(r=>Array.isArray(r)?[...r]:[]);
   for(const m of merges||[]){

@@ -1,7 +1,7 @@
 import {
   refs,arr,ts,logActivity,getProfile,can,esc,norm,fmtDate,fmtDateTime,
   weekKey,monthKey,setPage,loading,empty,badge,modal,toast,confirmBox
-} from "../core.js?v=2.19.1";
+} from "../core.js?v=2.19.2";
 
 let reports=[],projects=[],tasks=[],type="WEEK",q="";
 

@@ -1,7 +1,7 @@
 import {
   refs,arr,getProfile,can,esc,money,fmtDate,fmtDateTime,daysUntil,stageInfo,
   TASK_PRIORITIES,setPage,loading,empty,badge
-} from "../core.js?v=2.19.1";
+} from "../core.js?v=2.19.2";
 
 export async function renderDashboard(container){
   setPage("Dashboard","Tổng quan");
