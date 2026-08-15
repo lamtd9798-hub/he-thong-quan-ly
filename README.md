@@ -1,4 +1,4 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.17
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.18
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
@@ -17,6 +17,77 @@
 
 
 
+
+
+## V2.18 — Lập giá đấu thầu: BOQ + tự ráp giá vật tư
+
+V2.18 xây lại mục `BOQ & Lập giá` thành `Lập giá đấu thầu` theo quy trình thực tế:
+
+`Upload BOQ → Upload báo giá vật tư → tự nhận diện → ráp giá vào BOQ → kiểm tra nguồn giá`
+
+### 1. BOQ
+
+- Hỗ trợ `.xlsx`, `.xls`, `.csv`.
+- Excel nhiều Sheet: tự đề xuất Sheet giống BOQ nhất.
+- Tự dò tiêu đề 1–3 hàng và ô gộp.
+- Nhận các cột Mục, Diễn giải, Model/Thông số, ĐVT, Khối lượng, Nhãn hiệu, Xuất xứ, Giá vật tư, Nhân công.
+- Giữ các dòng Section/Hạng mục để BOQ dễ đọc.
+- Khối lượng và Giá vật tư có thể nhập trực tiếp trên bảng.
+- Khi nhập giá vật tư bằng tay, hệ thống đánh dấu `Nhập tay` và bỏ liên kết nguồn giá tự động cũ.
+
+### 2. Báo giá vật tư
+
+- Chọn nhiều file Excel/CSV trong một lần.
+- Tự tìm Sheet có dữ liệu giá phù hợp.
+- Tự tìm dòng tiêu đề 1–3 hàng.
+- Tự nhận các cột Mã hàng, Tên vật tư/Mô tả, Quy cách/Model, ĐVT, Hãng, Xuất xứ, NCC, Đơn giá.
+- Nếu file không có cột NCC, tên file được dùng làm tên NCC.
+- Tất cả dòng giá được lưu thành kho giá của riêng dự án.
+
+### 3. Ráp giá tự động
+
+Hệ thống chấm điểm dựa trên:
+
+1. Mã hàng / mã BOQ.
+2. Mô tả vật tư.
+3. Quy cách / Model / Thông số.
+4. ĐVT.
+5. Nhãn hiệu.
+6. Các token kỹ thuật như DN, kích thước, kW, HP, bar...
+
+Quy tắc:
+
+- `>=95%`: được phép tự ráp vào cột Giá vật tư.
+- `78–94%`: chỉ đề xuất, người dùng bấm `Dùng giá` để xác nhận.
+- `<78%`: coi là chưa tìm được giá đáng tin cậy.
+
+### 4. Truy vết nguồn giá
+
+Mỗi giá ráp tự động lưu kèm:
+
+- NCC.
+- File nguồn.
+- Sheet.
+- Dòng trong file nguồn.
+- Đơn giá nguồn.
+- % khớp.
+- Lý do khớp.
+
+Click vào nguồn giá trên BOQ để xem lại thông tin này.
+
+### 5. Giá nhân công
+
+Tab `Giá nhân công` đã được đặt chỗ nhưng chưa bật ở V2.18.
+Bước tiếp theo sẽ dùng một BOQ/file giá nhân công mẫu để tự ráp vào cột Nhân công theo cùng cơ chế kiểm soát độ khớp.
+
+### Firebase mới
+
+V2.18 thêm hai vùng dữ liệu:
+
+- `boqImportMeta`
+- `materialPriceImports`
+
+Vì vậy cần cập nhật Firebase Rules bằng file `FIREBASE_RULES_V2.18_COPY.txt`.
 
 ## V2.17 — BOQ Professional Auto Layout
 

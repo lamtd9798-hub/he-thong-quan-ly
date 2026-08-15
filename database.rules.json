@@ -248,6 +248,20 @@
             ".write": "auth != null && ((auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER') || (root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' && ((!data.exists() && newData.exists() && (newData.child('status').val() === 'DRAFT' || (newData.child('code').val() === 'R0' && newData.child('status').val() === 'ACTIVE'))) || (data.exists() && data.child('status').val() === 'DRAFT' && (!newData.exists() || newData.child('status').val() === 'DRAFT')))))"
           }
         }
+      },
+      "boqImportMeta": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$projectId": {
+          ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')"
+        }
+      },
+      "materialPriceImports": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' || root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT')",
+        "$projectId": {
+          "$importId": {
+            ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' || root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT')"
+          }
+        }
       }
     }
   }
