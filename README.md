@@ -1,4 +1,4 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.15
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.16
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
@@ -16,6 +16,17 @@
 
 
 
+
+## V2.16 — Ribbon Excel cho BOQ gốc
+
+- Ribbon: Trang chủ / Chèn / Hiển thị / Dữ liệu.
+- Font + cỡ chữ.
+- Đậm / nghiêng / căn lề / wrap.
+- Chọn vùng bằng Shift.
+- Chèn hàng/cột.
+- Freeze Panes.
+- Group/Ungroup hàng và cột.
+- Lưu format/cấu trúc BOQ vào Firebase.
 ## V2.15 — Giao diện BOQ kiểu Excel + resize cột
 
 - Kéo mép tiêu đề A/B/C... để thay đổi độ rộng.

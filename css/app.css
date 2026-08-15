@@ -523,3 +523,168 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
   .excel-boq-toolbar{align-items:flex-start;flex-direction:column}
   .excel-boq-toolbar-hint{white-space:normal}
 }
+
+
+/* =========================
+   V2.16 - EXCEL RIBBON / FORMAT / FREEZE / INSERT / GROUP
+   ========================= */
+.boq-ribbon{
+  background:#fff;
+  border-bottom:1px solid #dbe3ec;
+}
+.boq-ribbon-tabs{
+  display:flex;
+  align-items:center;
+  min-height:34px;
+  padding:0 8px;
+  gap:2px;
+  border-bottom:1px solid #e8edf3;
+  background:#fbfcfe;
+}
+.boq-ribbon-tab{
+  height:33px;
+  padding:0 13px;
+  border:0;
+  border-bottom:2px solid transparent;
+  background:transparent;
+  color:#64748b;
+  font-size:9px;
+  font-weight:750;
+  cursor:pointer;
+}
+.boq-ribbon-tab:hover{color:#1d4ed8;background:#f4f8ff}
+.boq-ribbon-tab.active{
+  color:#1d4ed8;
+  border-bottom-color:#2563eb;
+  background:#fff;
+}
+.boq-ribbon-spacer{flex:1}
+.boq-save-state{
+  margin-right:8px;
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:8px;
+  font-weight:700;
+}
+.boq-save-state.saved{background:#f0fdf4;color:#15803d}
+.boq-save-state.dirty{background:#fff7ed;color:#c2410c}
+
+.boq-ribbon-panel{
+  display:none;
+  align-items:stretch;
+  gap:0;
+  min-height:62px;
+  padding:6px 8px;
+  overflow-x:auto;
+}
+.boq-ribbon-panel.active{display:flex}
+.boq-ribbon-group{
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  min-width:max-content;
+  padding:2px 10px 1px;
+  border-right:1px solid #e5eaf0;
+}
+.boq-ribbon-group:last-child{border-right:0}
+.boq-ribbon-controls{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  min-height:35px;
+}
+.boq-ribbon-label{
+  text-align:center;
+  color:#94a3b8;
+  font-size:7px;
+  line-height:1;
+  margin-top:4px;
+}
+.boq-font-select,.boq-size-select{
+  height:28px;
+  border:1px solid #d7dee8;
+  background:#fff;
+  color:#334155;
+  border-radius:6px;
+  padding:0 7px;
+  font-size:9px;
+}
+.boq-font-select{width:130px}
+.boq-size-select{width:57px}
+.excel-format-btn{
+  width:29px;
+  height:28px;
+  border:1px solid #d7dee8;
+  background:#fff;
+  border-radius:6px;
+  color:#334155;
+  cursor:pointer;
+  font-size:12px;
+}
+.excel-format-btn.bold{font-weight:800}
+.excel-format-btn.italic{font-style:italic;font-family:Georgia,serif}
+.excel-format-btn.center{text-align:center}
+.excel-format-btn.right{text-align:right}
+.excel-format-btn:hover{
+  background:#eff6ff;
+  border-color:#93c5fd;
+  color:#1d4ed8;
+}
+
+.excel-cell-range{
+  outline:1px solid #60a5fa!important;
+  outline-offset:-1px;
+  background:#eff6ff!important;
+}
+.boq-hidden-row{display:none!important}
+.boq-hidden-col{width:0!important;min-width:0!important;max-width:0!important;overflow:hidden!important;border:0!important;padding:0!important}
+.boq-hidden-col-cell{display:none!important}
+
+.excel-group-toggle{
+  width:16px;
+  height:16px;
+  padding:0;
+  border:1px solid #94a3b8;
+  background:#fff;
+  color:#334155;
+  border-radius:3px;
+  line-height:13px;
+  font-size:10px;
+  font-weight:800;
+  cursor:pointer;
+  z-index:12;
+}
+.excel-group-toggle.row{margin-right:4px;vertical-align:middle}
+.excel-group-toggle.col{
+  position:absolute;
+  left:2px;
+  top:6px;
+}
+.excel-row-head{
+  display:table-cell;
+  white-space:nowrap;
+}
+.excel-row-head > span{vertical-align:middle}
+
+.boq-frozen-row{
+  box-shadow:0 1px 0 #94a3b8;
+}
+.boq-frozen-col{
+  box-shadow:1px 0 0 #94a3b8;
+}
+.boq-frozen-both{
+  box-shadow:1px 1px 0 #64748b;
+}
+.excel-column-header.boq-frozen-col{
+  position:sticky!important;
+  background:#eef3f8!important;
+}
+.excel-row-head.boq-frozen-row{
+  background:#eef3f8!important;
+}
+
+@media(max-width:900px){
+  .boq-ribbon-tabs{overflow-x:auto}
+  .boq-ribbon-panel{max-width:100%}
+  .boq-ribbon-spacer{min-width:20px}
+}

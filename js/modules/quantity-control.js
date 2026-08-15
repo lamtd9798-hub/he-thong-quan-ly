@@ -1,7 +1,7 @@
 import {
   refs,arr,ts,logActivity,getProfile,can,esc,norm,money,fmtDate,fmtDateTime,
   loading,empty,badge,modal,toast,confirmBox
-} from "../core.js?v=2.15.0";
+} from "../core.js?v=2.16.0";
 
 let projectId="";
 let mountEl=null;
@@ -15,6 +15,7 @@ let tenderRevision=null;
 let activeRevision=null;
 let view="SUMMARY";
 let q="";
+let boqEditorDirty=false;
 
 const COUNTED_STATUSES=new Set(["APPROVED","ORDERED"]);
 const ORDER_STATUSES={
@@ -37,6 +38,7 @@ const REASONS=[
 export async function renderQuantityControl(el,selectedProjectId){
   mountEl=typeof el==="string"?document.querySelector(el):el;
   projectId=selectedProjectId||"";
+  boqEditorDirty=false;
   if(!mountEl)return;
   mountEl.innerHTML=loading();
   await loadData();
@@ -467,26 +469,39 @@ function sourceExcelGridHtml(grid,rev=boqMirrorRevision()){
   const prefs=loadBoqGridPrefs(grid,rev);
   const customWidths=prefs.widths||{};
   const zoom=clampBoqZoom(Number(prefs.zoom||1));
+  const hiddenRows=boqCollapsedIndexes(grid.rowGroups||[]);
+  const hiddenCols=boqCollapsedIndexes(grid.colGroups||[]);
+  const rowGroupStarts=boqGroupStartMap(grid.rowGroups||[]);
+  const colGroupStarts=boqGroupStartMap(grid.colGroups||[]);
 
   const colgroup=`<colgroup><col class="excel-row-number-col" style="width:48px">`+
     Array.from({length:colCount},(_,c)=>{
-      const width=Number(customWidths[c]||customWidths[String(c)]||0)||gridColWidth(widths[c]);
-      return `<col data-boq-col="${c}" style="width:${Math.round(width)}px">`;
+      const width=hiddenCols.has(c)?0:(Number(customWidths[c]||customWidths[String(c)]||0)||gridColWidth(widths[c]));
+      return `<col data-boq-col="${c}" style="width:${Math.round(width)}px"${hiddenCols.has(c)?' class="boq-hidden-col"':""}>`;
     }).join("")+
     `</colgroup>`;
 
   const letters=`<tr class="excel-col-head"><th class="excel-corner"></th>`+
-    Array.from({length:colCount},(_,c)=>`
-      <th class="excel-column-header" data-col-index="${c}">
+    Array.from({length:colCount},(_,c)=>{
+      const grp=colGroupStarts.get(c);
+      return `
+      <th class="excel-column-header${hiddenCols.has(c)?" boq-hidden-col":""}" data-col-index="${c}">
+        ${grp?`<button type="button" class="excel-group-toggle col" data-col-group="${c}" title="Thu gọn / mở rộng nhóm cột">${grp.collapsed?"+":"−"}</button>`:""}
         <span class="excel-col-label">${excelColumnName(startCol+c)}</span>
         <span class="excel-col-resizer" data-resize-col="${c}" title="Kéo để đổi độ rộng · Nhấp đúp để AutoFit"></span>
-      </th>`).join("")+
+      </th>`;
+    }).join("")+
     `</tr>`;
 
   const body=Array.from({length:rowCount},(_,r)=>{
     const row=rows[r]||[];
     const rowHeight=gridRowHeight(heights[r]);
-    let cells=`<th class="excel-row-head" data-row-index="${r}">${startRow+r}</th>`;
+    const rg=rowGroupStarts.get(r);
+    let cells=`<th class="excel-row-head" data-row-index="${r}">
+      ${rg?`<button type="button" class="excel-group-toggle row" data-row-group="${r}" title="Thu gọn / mở rộng nhóm hàng">${rg.collapsed?"+":"−"}</button>`:""}
+      <span>${startRow+r}</span>
+    </th>`;
+
     for(let c=0;c<colCount;c++){
       const key=`${r}_${c}`;
       if(mergeInfo.covered.has(key))continue;
@@ -496,28 +511,120 @@ function sourceExcelGridHtml(grid,rev=boqMirrorRevision()){
       const colspan=merge?merge.c2-merge.c1+1:1;
       const value=row[c]??"";
       const style=sourceGridCellStyle(grid.styles?.[key]);
-      cells+=`<td data-grid-row="${r}" data-grid-col="${c}"${rowspan>1?` rowspan="${rowspan}"`:""}${colspan>1?` colspan="${colspan}"`:""}${style?` style="${style}"`:""}>${formatGridCell(value)}</td>`;
+      cells+=`<td data-grid-row="${r}" data-grid-col="${c}" class="${hiddenCols.has(c)?"boq-hidden-col-cell":""}"${rowspan>1?` rowspan="${rowspan}"`:""}${colspan>1?` colspan="${colspan}"`:""}${style?` style="${style}"`:""}>${formatGridCell(value)}</td>`;
     }
-    return `<tr style="height:${rowHeight}px">${cells}</tr>`;
+    return `<tr data-grid-row-wrap="${r}" class="${hiddenRows.has(r)?"boq-hidden-row":""}" style="height:${rowHeight}px">${cells}</tr>`;
   }).join("");
 
+  const canEdit=can("quantityRevisionManage")||can("quantityRevisionActivate");
+
   return `<div class="excel-boq-shell" data-boq-pref-key="${esc(boqGridPreferenceKey(grid,rev))}">
-    <div class="excel-boq-toolbar">
-      <div class="excel-boq-toolbar-left">
-        <button type="button" class="excel-tool-btn" data-boq-action="zoom-out" title="Thu nhỏ">−</button>
-        <button type="button" class="excel-zoom-value" data-boq-action="zoom-100" title="Về 100%">${Math.round(zoom*100)}%</button>
-        <button type="button" class="excel-tool-btn" data-boq-action="zoom-in" title="Phóng to">＋</button>
-        <span class="excel-toolbar-sep"></span>
-        <button type="button" class="excel-tool-text" data-boq-action="fit-width">Vừa màn hình</button>
-        <button type="button" class="excel-tool-text" data-boq-action="reset-widths">Khôi phục cột</button>
+    <div class="boq-ribbon">
+      <div class="boq-ribbon-tabs">
+        <button type="button" class="boq-ribbon-tab active" data-ribbon-tab="home">TRANG CHỦ</button>
+        <button type="button" class="boq-ribbon-tab" data-ribbon-tab="insert">CHÈN</button>
+        <button type="button" class="boq-ribbon-tab" data-ribbon-tab="view">HIỂN THỊ</button>
+        <button type="button" class="boq-ribbon-tab" data-ribbon-tab="data">DỮ LIỆU</button>
+        <div class="boq-ribbon-spacer"></div>
+        <span class="boq-save-state ${boqEditorDirty?"dirty":"saved"}" data-boq-save-state>${boqEditorDirty?"● Chưa lưu":"✓ Đã lưu"}</span>
+        ${canEdit?`<button type="button" class="btn primary sm" data-boq-action="save-grid">Lưu thay đổi</button>`:""}
       </div>
-      <div class="excel-boq-toolbar-hint">Kéo mép A/B/C… để chỉnh cột · Nhấp đúp mép cột để AutoFit</div>
+
+      <div class="boq-ribbon-panel active" data-ribbon-panel="home">
+        <div class="boq-ribbon-group">
+          <div class="boq-ribbon-controls">
+            <select class="boq-font-select" data-boq-font-family title="Font chữ">
+              ${["Arial","Calibri","Times New Roman","Tahoma","Verdana"].map(f=>`<option value="${f}">${f}</option>`).join("")}
+            </select>
+            <select class="boq-size-select" data-boq-font-size title="Cỡ chữ">
+              ${[8,9,10,11,12,14,16,18,20,24].map(n=>`<option value="${n}" ${n===10?"selected":""}>${n}</option>`).join("")}
+            </select>
+            <button type="button" class="excel-format-btn bold" data-boq-format="bold" title="In đậm">B</button>
+            <button type="button" class="excel-format-btn italic" data-boq-format="italic" title="In nghiêng">I</button>
+          </div>
+          <span class="boq-ribbon-label">Font</span>
+        </div>
+
+        <div class="boq-ribbon-group">
+          <div class="boq-ribbon-controls">
+            <button type="button" class="excel-format-btn" data-boq-align="left" title="Căn trái">≡</button>
+            <button type="button" class="excel-format-btn center" data-boq-align="center" title="Căn giữa">≡</button>
+            <button type="button" class="excel-format-btn right" data-boq-align="right" title="Căn phải">≡</button>
+            <button type="button" class="excel-tool-text" data-boq-format="wrap">Xuống dòng</button>
+          </div>
+          <span class="boq-ribbon-label">Căn chỉnh</span>
+        </div>
+
+        <div class="boq-ribbon-group">
+          <div class="boq-ribbon-controls">
+            <button type="button" class="excel-tool-text" data-boq-action="reset-widths">Khôi phục độ rộng</button>
+          </div>
+          <span class="boq-ribbon-label">Cột</span>
+        </div>
+      </div>
+
+      <div class="boq-ribbon-panel" data-ribbon-panel="insert">
+        <div class="boq-ribbon-group">
+          <div class="boq-ribbon-controls">
+            <button type="button" class="excel-tool-text" data-boq-action="insert-row-above">＋ Hàng phía trên</button>
+            <button type="button" class="excel-tool-text" data-boq-action="insert-row-below">＋ Hàng phía dưới</button>
+          </div>
+          <span class="boq-ribbon-label">Hàng</span>
+        </div>
+        <div class="boq-ribbon-group">
+          <div class="boq-ribbon-controls">
+            <button type="button" class="excel-tool-text" data-boq-action="insert-col-left">＋ Cột bên trái</button>
+            <button type="button" class="excel-tool-text" data-boq-action="insert-col-right">＋ Cột bên phải</button>
+          </div>
+          <span class="boq-ribbon-label">Cột</span>
+        </div>
+      </div>
+
+      <div class="boq-ribbon-panel" data-ribbon-panel="view">
+        <div class="boq-ribbon-group">
+          <div class="boq-ribbon-controls">
+            <button type="button" class="excel-tool-text" data-boq-action="freeze-selection">Cố định tại ô chọn</button>
+            <button type="button" class="excel-tool-text" data-boq-action="freeze-top-row">Cố định hàng đầu</button>
+            <button type="button" class="excel-tool-text" data-boq-action="freeze-first-col">Cố định cột đầu</button>
+            <button type="button" class="excel-tool-text" data-boq-action="unfreeze">Bỏ cố định</button>
+          </div>
+          <span class="boq-ribbon-label">Cố định</span>
+        </div>
+
+        <div class="boq-ribbon-group">
+          <div class="boq-ribbon-controls">
+            <button type="button" class="excel-tool-btn" data-boq-action="zoom-out">−</button>
+            <button type="button" class="excel-zoom-value" data-boq-action="zoom-100">${Math.round(zoom*100)}%</button>
+            <button type="button" class="excel-tool-btn" data-boq-action="zoom-in">＋</button>
+            <button type="button" class="excel-tool-text" data-boq-action="fit-width">Vừa màn hình</button>
+          </div>
+          <span class="boq-ribbon-label">Thu phóng</span>
+        </div>
+      </div>
+
+      <div class="boq-ribbon-panel" data-ribbon-panel="data">
+        <div class="boq-ribbon-group">
+          <div class="boq-ribbon-controls">
+            <button type="button" class="excel-tool-text" data-boq-action="group-rows">Group hàng</button>
+            <button type="button" class="excel-tool-text" data-boq-action="ungroup-rows">Ungroup hàng</button>
+          </div>
+          <span class="boq-ribbon-label">Nhóm hàng</span>
+        </div>
+        <div class="boq-ribbon-group">
+          <div class="boq-ribbon-controls">
+            <button type="button" class="excel-tool-text" data-boq-action="group-cols">Group cột</button>
+            <button type="button" class="excel-tool-text" data-boq-action="ungroup-cols">Ungroup cột</button>
+          </div>
+          <span class="boq-ribbon-label">Nhóm cột</span>
+        </div>
+      </div>
     </div>
 
     <div class="excel-boq-meta">
       <span>Sheet: <b>${esc(grid.sheetName||"")}</b></span>
       <span>Vùng dữ liệu: <b>${esc(grid.range||"")}</b></span>
       <span>Ô gộp: <b>${(grid.merges||[]).length}</b></span>
+      <span data-boq-selection-label>Chưa chọn ô</span>
     </div>
 
     <div class="excel-boq-scroll">
@@ -538,9 +645,25 @@ function bindExcelBoqGrid(grid,rev){
 
   let prefs=loadBoqGridPrefs(grid,rev);
   let zoom=clampBoqZoom(Number(prefs.zoom||1));
+  let selection=null;
+  let anchor=null;
 
   const getCol=c=>table.querySelector(`col[data-boq-col="${c}"]`);
   const zoomLabel=()=>shell.querySelector('[data-boq-action="zoom-100"]');
+
+  shell.querySelectorAll("[data-ribbon-tab]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      shell.querySelectorAll("[data-ribbon-tab]").forEach(x=>x.classList.toggle("active",x===btn));
+      shell.querySelectorAll("[data-ribbon-panel]").forEach(p=>p.classList.toggle("active",p.dataset.ribbonPanel===btn.dataset.ribbonTab));
+    });
+  });
+
+  const markDirty=()=>{
+    boqEditorDirty=true;
+    const el=shell.querySelector("[data-boq-save-state]");
+    if(el){el.textContent="● Chưa lưu";el.classList.remove("saved");el.classList.add("dirty")}
+    if(rev)rev.sourceGrid=grid;
+  };
 
   const applyZoom=value=>{
     zoom=clampBoqZoom(value);
@@ -550,6 +673,7 @@ function bindExcelBoqGrid(grid,rev){
     if(label)label.textContent=`${Math.round(zoom*100)}%`;
     prefs.zoom=zoom;
     saveBoqGridPrefs(grid,rev,prefs);
+    requestAnimationFrame(()=>applyBoqFreeze(shell,grid,prefs));
   };
 
   const setColWidth=(c,width,save=true)=>{
@@ -560,15 +684,39 @@ function bindExcelBoqGrid(grid,rev){
     if(save){
       prefs.widths={...(prefs.widths||{}),[c]:w};
       saveBoqGridPrefs(grid,rev,prefs);
+      requestAnimationFrame(()=>applyBoqFreeze(shell,grid,prefs));
     }
+  };
+
+  const normalizeSel=s=>({
+    type:s?.type||"cell",
+    r1:Math.min(Number(s?.r1||0),Number(s?.r2??s?.r1??0)),
+    r2:Math.max(Number(s?.r1||0),Number(s?.r2??s?.r1??0)),
+    c1:Math.min(Number(s?.c1||0),Number(s?.c2??s?.c1??0)),
+    c2:Math.max(Number(s?.c1||0),Number(s?.c2??s?.c1??0))
+  });
+
+  const setSelection=s=>{
+    selection=normalizeSel(s);
+    paintBoqSelection(table,selection,grid);
+    const label=shell.querySelector("[data-boq-selection-label]");
+    if(label){
+      if(selection.type==="row")label.textContent=`Hàng ${Number(grid.startRow||1)+selection.r1}${selection.r2>selection.r1?`:${Number(grid.startRow||1)+selection.r2}`:""}`;
+      else if(selection.type==="col")label.textContent=`Cột ${excelColumnName(Number(grid.startCol||0)+selection.c1)}${selection.c2>selection.c1?`:${excelColumnName(Number(grid.startCol||0)+selection.c2)}`:""}`;
+      else label.textContent=`Ô ${excelColumnName(Number(grid.startCol||0)+selection.c1)}${Number(grid.startRow||1)+selection.r1}${selection.r2!==selection.r1||selection.c2!==selection.c1?` → ${excelColumnName(Number(grid.startCol||0)+selection.c2)}${Number(grid.startRow||1)+selection.r2}`:""}`;
+    }
+  };
+
+  const requireSelection=()=>{
+    if(selection)return true;
+    toast("Chọn ô, hàng hoặc cột trước.","warning");
+    return false;
   };
 
   shell.querySelectorAll(".excel-col-resizer").forEach(handle=>{
     handle.addEventListener("pointerdown",e=>{
       if(e.button!==0)return;
-      e.preventDefault();
-      e.stopPropagation();
-
+      e.preventDefault();e.stopPropagation();
       const c=Number(handle.dataset.resizeCol);
       const col=getCol(c);
       if(!col)return;
@@ -583,31 +731,126 @@ function bindExcelBoqGrid(grid,rev){
         const delta=(ev.clientX-startX)/currentZoom;
         setColWidth(c,startWidth+delta,false);
       };
-
       const onUp=()=>{
         document.removeEventListener("pointermove",onMove);
-        document.removeEventListener("pointerup",onUp);
         document.body.classList.remove("boq-column-resizing");
         handle.classList.remove("dragging");
-        const finalWidth=parseFloat(col.style.width)||startWidth;
-        setColWidth(c,finalWidth,true);
+        setColWidth(c,parseFloat(col.style.width)||startWidth,true);
       };
-
       document.addEventListener("pointermove",onMove);
       document.addEventListener("pointerup",onUp,{once:true});
     });
 
     handle.addEventListener("dblclick",e=>{
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault();e.stopPropagation();
       const c=Number(handle.dataset.resizeCol);
       setColWidth(c,autoFitBoqColumn(grid,c),true);
     });
   });
 
-  shell.querySelectorAll("[data-boq-action]").forEach(btn=>{
+  table.querySelectorAll("tbody td").forEach(td=>{
+    td.addEventListener("click",e=>{
+      const r=Number(td.dataset.gridRow),c=Number(td.dataset.gridCol);
+      if(e.shiftKey&&anchor){
+        setSelection({type:"cell",r1:anchor.r,c1:anchor.c,r2:r,c2:c});
+      }else{
+        anchor={r,c};
+        setSelection({type:"cell",r1:r,c1:c,r2:r,c2:c});
+      }
+    });
+  });
+
+  table.querySelectorAll(".excel-row-head").forEach(th=>{
+    th.addEventListener("click",e=>{
+      if(e.target.closest(".excel-group-toggle"))return;
+      const r=Number(th.dataset.rowIndex);
+      if(e.shiftKey&&anchor?.type==="row"){
+        setSelection({type:"row",r1:anchor.r,r2:r,c1:0,c2:Number(grid.colCount||1)-1});
+      }else{
+        anchor={type:"row",r};
+        setSelection({type:"row",r1:r,r2:r,c1:0,c2:Number(grid.colCount||1)-1});
+      }
+    });
+  });
+
+  table.querySelectorAll(".excel-column-header").forEach(th=>{
+    th.addEventListener("click",e=>{
+      if(e.target.closest(".excel-col-resizer,.excel-group-toggle"))return;
+      const c=Number(th.dataset.colIndex);
+      if(e.shiftKey&&anchor?.type==="col"){
+        setSelection({type:"col",c1:anchor.c,c2:c,r1:0,r2:Number(grid.rowCount||1)-1});
+      }else{
+        anchor={type:"col",c};
+        setSelection({type:"col",c1:c,c2:c,r1:0,r2:Number(grid.rowCount||1)-1});
+      }
+    });
+  });
+
+  shell.querySelector("[data-boq-font-family]")?.addEventListener("change",e=>{
+    if(!requireSelection())return;
+    applyBoqStyle(grid,selection,{ff:String(e.target.value||"Arial")});
+    applyBoqStylesToDom(table,grid,selection);
+    requestAnimationFrame(()=>applyBoqFreeze(shell,grid,prefs));
+    markDirty();
+  });
+
+  shell.querySelector("[data-boq-font-size]")?.addEventListener("change",e=>{
+    if(!requireSelection())return;
+    applyBoqStyle(grid,selection,{fs:Number(e.target.value||10)});
+    applyBoqStylesToDom(table,grid,selection);
+    requestAnimationFrame(()=>applyBoqFreeze(shell,grid,prefs));
+    markDirty();
+  });
+
+  shell.querySelectorAll("[data-boq-format]").forEach(btn=>{
     btn.addEventListener("click",()=>{
+      if(!requireSelection())return;
+      const f=btn.dataset.boqFormat;
+      if(f==="bold")applyBoqToggleStyle(grid,selection,"b");
+      else if(f==="italic")applyBoqToggleStyle(grid,selection,"i");
+      else if(f==="wrap")applyBoqToggleStyle(grid,selection,"w");
+      applyBoqStylesToDom(table,grid,selection);
+      requestAnimationFrame(()=>applyBoqFreeze(shell,grid,prefs));
+      markDirty();
+    });
+  });
+
+  shell.querySelectorAll("[data-boq-align]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      if(!requireSelection())return;
+      applyBoqStyle(grid,selection,{h:btn.dataset.boqAlign});
+      applyBoqStylesToDom(table,grid,selection);
+      requestAnimationFrame(()=>applyBoqFreeze(shell,grid,prefs));
+      markDirty();
+    });
+  });
+
+  shell.querySelectorAll(".excel-group-toggle.row").forEach(btn=>{
+    btn.addEventListener("click",e=>{
+      e.stopPropagation();
+      grid.rowGroups=toggleBoqGroup(grid.rowGroups,Number(btn.dataset.rowGroup));
+      markDirty();
+      rev.sourceGrid=grid;paint();
+    });
+  });
+  shell.querySelectorAll(".excel-group-toggle.col").forEach(btn=>{
+    btn.addEventListener("click",e=>{
+      e.stopPropagation();
+      grid.colGroups=toggleBoqGroup(grid.colGroups,Number(btn.dataset.colGroup));
+      markDirty();
+      rev.sourceGrid=grid;paint();
+    });
+  });
+
+  shell.querySelectorAll("[data-boq-action]").forEach(btn=>{
+    btn.addEventListener("click",async()=>{
       const action=btn.dataset.boqAction;
+
+      if(action==="save-grid"){
+        await saveBoqGridChanges(grid,rev,shell);
+        return;
+      }
+
       if(action==="zoom-out")applyZoom(zoom-0.1);
       else if(action==="zoom-in")applyZoom(zoom+0.1);
       else if(action==="zoom-100")applyZoom(1);
@@ -620,25 +863,302 @@ function bindExcelBoqGrid(grid,rev){
         const available=Math.max(300,scroll.clientWidth-14);
         applyZoom(Math.max(0.5,Math.min(1.15,available/natural)));
         scroll.scrollLeft=0;
-      }else if(action==="reset-widths"){
+      }
+      else if(action==="reset-widths"){
         prefs.widths={};
         Array.from({length:Number(grid.colCount||0)},(_,c)=>setColWidth(c,gridColWidth(grid.colWidths?.[c]),false));
         saveBoqGridPrefs(grid,rev,prefs);
+        requestAnimationFrame(()=>applyBoqFreeze(shell,grid,prefs));
+      }
+      else if(action==="freeze-top-row"){
+        prefs.freezeRows=1;saveBoqGridPrefs(grid,rev,prefs);applyBoqFreeze(shell,grid,prefs);
+      }
+      else if(action==="freeze-first-col"){
+        prefs.freezeCols=1;saveBoqGridPrefs(grid,rev,prefs);applyBoqFreeze(shell,grid,prefs);
+      }
+      else if(action==="unfreeze"){
+        prefs.freezeRows=0;prefs.freezeCols=0;saveBoqGridPrefs(grid,rev,prefs);applyBoqFreeze(shell,grid,prefs);
+      }
+      else if(action==="freeze-selection"){
+        if(!requireSelection())return;
+        prefs.freezeRows=selection.r1;
+        prefs.freezeCols=selection.c1;
+        saveBoqGridPrefs(grid,rev,prefs);
+        applyBoqFreeze(shell,grid,prefs);
+      }
+      else if(action==="insert-row-above"||action==="insert-row-below"){
+        if(!requireSelection())return;
+        const idx=action==="insert-row-above"?selection.r1:selection.r2+1;
+        insertBoqRow(grid,idx);
+        prefs.widths={};saveBoqGridPrefs(grid,rev,prefs);
+        markDirty();rev.sourceGrid=grid;paint();
+      }
+      else if(action==="insert-col-left"||action==="insert-col-right"){
+        if(!requireSelection())return;
+        const idx=action==="insert-col-left"?selection.c1:selection.c2+1;
+        insertBoqColumn(grid,idx);
+        prefs.widths={};saveBoqGridPrefs(grid,rev,prefs);
+        markDirty();rev.sourceGrid=grid;paint();
+      }
+      else if(action==="group-rows"){
+        if(!requireSelection())return;
+        addBoqGroup(grid,"row",selection.r1,selection.r2);
+        markDirty();rev.sourceGrid=grid;paint();
+      }
+      else if(action==="ungroup-rows"){
+        if(!requireSelection())return;
+        removeBoqGroups(grid,"row",selection.r1,selection.r2);
+        markDirty();rev.sourceGrid=grid;paint();
+      }
+      else if(action==="group-cols"){
+        if(!requireSelection())return;
+        addBoqGroup(grid,"col",selection.c1,selection.c2);
+        markDirty();rev.sourceGrid=grid;paint();
+      }
+      else if(action==="ungroup-cols"){
+        if(!requireSelection())return;
+        removeBoqGroups(grid,"col",selection.c1,selection.c2);
+        markDirty();rev.sourceGrid=grid;paint();
       }
     });
   });
 
-  table.querySelectorAll("tbody td").forEach(td=>{
-    td.addEventListener("click",()=>{
-      table.querySelector(".excel-cell-selected")?.classList.remove("excel-cell-selected");
-      table.querySelector(".excel-row-selected")?.classList.remove("excel-row-selected");
-      table.querySelector(".excel-col-selected")?.classList.remove("excel-col-selected");
-      td.classList.add("excel-cell-selected");
-      const r=td.dataset.gridRow,c=td.dataset.gridCol;
-      table.querySelector(`.excel-row-head[data-row-index="${r}"]`)?.classList.add("excel-row-selected");
-      table.querySelector(`.excel-column-header[data-col-index="${c}"]`)?.classList.add("excel-col-selected");
-    });
+  applyBoqFreeze(shell,grid,prefs);
+}
+
+function paintBoqSelection(table,selection,grid){
+  table.querySelectorAll(".excel-cell-selected,.excel-cell-range,.excel-row-selected,.excel-col-selected").forEach(x=>
+    x.classList.remove("excel-cell-selected","excel-cell-range","excel-row-selected","excel-col-selected")
+  );
+  if(!selection)return;
+
+  const s=selection;
+  for(let r=s.r1;r<=s.r2;r++){
+    table.querySelector(`.excel-row-head[data-row-index="${r}"]`)?.classList.add("excel-row-selected");
+  }
+  for(let c=s.c1;c<=s.c2;c++){
+    table.querySelector(`.excel-column-header[data-col-index="${c}"]`)?.classList.add("excel-col-selected");
+  }
+  table.querySelectorAll("tbody td[data-grid-row][data-grid-col]").forEach(td=>{
+    const r=Number(td.dataset.gridRow),c=Number(td.dataset.gridCol);
+    if(r>=s.r1&&r<=s.r2&&c>=s.c1&&c<=s.c2)td.classList.add(s.r1===s.r2&&s.c1===s.c2?"excel-cell-selected":"excel-cell-range");
   });
+}
+
+function selectedBoqCells(selection){
+  const out=[];
+  if(!selection)return out;
+  for(let r=selection.r1;r<=selection.r2;r++)for(let c=selection.c1;c<=selection.c2;c++)out.push([r,c]);
+  return out;
+}
+
+function applyBoqStyle(grid,selection,patch){
+  grid.styles=grid.styles||{};
+  selectedBoqCells(selection).forEach(([r,c])=>{
+    const key=`${r}_${c}`;
+    grid.styles[key]={...(grid.styles[key]||{}),...patch};
+  });
+}
+
+function applyBoqToggleStyle(grid,selection,key){
+  grid.styles=grid.styles||{};
+  const first=grid.styles?.[`${selection.r1}_${selection.c1}`]||{};
+  const value=first[key]?0:1;
+  selectedBoqCells(selection).forEach(([r,c])=>{
+    const k=`${r}_${c}`;
+    grid.styles[k]={...(grid.styles[k]||{}),[key]:value};
+  });
+}
+
+function applyBoqStylesToDom(table,grid,selection){
+  selectedBoqCells(selection).forEach(([r,c])=>{
+    const td=table.querySelector(`td[data-grid-row="${r}"][data-grid-col="${c}"]`);
+    if(!td)return;
+    td.style.cssText=sourceGridCellStyle(grid.styles?.[`${r}_${c}`]||{});
+  });
+  paintBoqSelection(table,selection,grid);
+}
+
+async function saveBoqGridChanges(grid,rev,shell){
+  if(!rev?.id){toast("Không xác định được BOQ để lưu.","error");return}
+  try{
+    const btn=shell?.querySelector('[data-boq-action="save-grid"]');
+    if(btn){btn.disabled=true;btn.textContent="Đang lưu..."}
+    await refs.quantityBoqRevision(projectId,rev.id).update({
+      sourceGrid:grid,
+      sourceGridUpdatedAt:Date.now(),
+      updatedAt:Date.now()
+    });
+    rev.sourceGrid=grid;
+    boqEditorDirty=false;
+    const st=shell?.querySelector("[data-boq-save-state]");
+    if(st){st.textContent="✓ Đã lưu";st.classList.remove("dirty");st.classList.add("saved")}
+    try{
+      await audit("BOQ_GRID_EDITED","Cập nhật định dạng/cấu trúc BOQ gốc",{revisionId:rev.id,revisionCode:rev.code||""});
+    }catch{}
+    toast("Đã lưu thay đổi BOQ.");
+    if(btn){btn.disabled=false;btn.textContent="Lưu thay đổi"}
+  }catch(e){
+    console.error(e);
+    const btn=shell?.querySelector('[data-boq-action="save-grid"]');
+    if(btn){btn.disabled=false;btn.textContent="Lưu thay đổi"}
+    toast(e.message||"Không thể lưu thay đổi BOQ.","error");
+  }
+}
+
+function insertBoqRow(grid,index){
+  const cols=Math.max(1,Number(grid.colCount||0));
+  const i=Math.max(0,Math.min(Number(grid.rowCount||0),Number(index||0)));
+  grid.rows=normalizeIndexedArray(grid.rows).map(r=>normalizeIndexedArray(r));
+  grid.rows.splice(i,0,Array.from({length:cols},()=>""));
+  grid.rowHeights=normalizeIndexedArray(grid.rowHeights);
+  grid.rowHeights.splice(i,0,22);
+  grid.rowCount=Number(grid.rowCount||grid.rows.length-1)+1;
+  grid.styles=shiftBoqStyleKeys(grid.styles||{},"row",i,1);
+  grid.merges=shiftBoqMerges(grid.merges||[],"row",i,1);
+  grid.rowGroups=shiftBoqGroups(grid.rowGroups||[],i,1);
+  grid.range=boqGridRange(grid);
+}
+
+function insertBoqColumn(grid,index){
+  const i=Math.max(0,Math.min(Number(grid.colCount||0),Number(index||0)));
+  grid.rows=normalizeIndexedArray(grid.rows).map(r=>normalizeIndexedArray(r));
+  grid.rows.forEach(r=>r.splice(i,0,""));
+  grid.colWidths=normalizeIndexedArray(grid.colWidths);
+  grid.colWidths.splice(i,0,96);
+  grid.colCount=Number(grid.colCount||0)+1;
+  grid.styles=shiftBoqStyleKeys(grid.styles||{},"col",i,1);
+  grid.merges=shiftBoqMerges(grid.merges||[],"col",i,1);
+  grid.colGroups=shiftBoqGroups(grid.colGroups||[],i,1);
+  grid.range=boqGridRange(grid);
+}
+
+function shiftBoqStyleKeys(styles,axis,index,delta){
+  const out={};
+  Object.entries(styles||{}).forEach(([key,val])=>{
+    const m=key.match(/^(\d+)_(\d+)$/);
+    if(!m){out[key]=val;return}
+    let r=Number(m[1]),c=Number(m[2]);
+    if(axis==="row"&&r>=index)r+=delta;
+    if(axis==="col"&&c>=index)c+=delta;
+    out[`${r}_${c}`]=val;
+  });
+  return out;
+}
+
+function shiftBoqMerges(merges,axis,index,delta){
+  return normalizeIndexedArray(merges).map(m=>{
+    const x={...m,r1:Number(m.r1),r2:Number(m.r2),c1:Number(m.c1),c2:Number(m.c2)};
+    if(axis==="row"){
+      if(index<=x.r1){x.r1+=delta;x.r2+=delta}
+      else if(index<=x.r2)x.r2+=delta;
+    }else{
+      if(index<=x.c1){x.c1+=delta;x.c2+=delta}
+      else if(index<=x.c2)x.c2+=delta;
+    }
+    return x;
+  });
+}
+
+function shiftBoqGroups(groups,index,delta){
+  return normalizeIndexedArray(groups).map(g=>{
+    const x={...g,start:Number(g.start),end:Number(g.end)};
+    if(index<=x.start){x.start+=delta;x.end+=delta}
+    else if(index<=x.end)x.end+=delta;
+    return x;
+  });
+}
+
+function boqGridRange(grid){
+  const startRow=Math.max(1,Number(grid.startRow||1));
+  const startCol=Math.max(0,Number(grid.startCol||0));
+  const endRow=startRow+Math.max(1,Number(grid.rowCount||1))-1;
+  const endCol=startCol+Math.max(1,Number(grid.colCount||1))-1;
+  return `${excelColumnName(startCol)}${startRow}:${excelColumnName(endCol)}${endRow}`;
+}
+
+function addBoqGroup(grid,axis,start,end){
+  const s=Math.min(Number(start),Number(end)),e=Math.max(Number(start),Number(end));
+  if(e<=s){toast(`Chọn ít nhất 2 ${axis==="row"?"hàng":"cột"} để Group.`,"warning");return}
+  const key=axis==="row"?"rowGroups":"colGroups";
+  const groups=normalizeIndexedArray(grid[key]).filter(Boolean);
+  if(!groups.some(g=>Number(g.start)===s&&Number(g.end)===e))groups.push({start:s,end:e,collapsed:false});
+  grid[key]=groups.sort((a,b)=>Number(a.start)-Number(b.start));
+}
+
+function removeBoqGroups(grid,axis,start,end){
+  const s=Math.min(Number(start),Number(end)),e=Math.max(Number(start),Number(end));
+  const key=axis==="row"?"rowGroups":"colGroups";
+  grid[key]=normalizeIndexedArray(grid[key]).filter(g=>Number(g.end)<s||Number(g.start)>e);
+}
+
+function toggleBoqGroup(groups,start){
+  const arr=normalizeIndexedArray(groups);
+  const g=arr.find(x=>Number(x.start)===Number(start));
+  if(g)g.collapsed=!g.collapsed;
+  return arr;
+}
+
+function boqCollapsedIndexes(groups){
+  const set=new Set();
+  normalizeIndexedArray(groups).filter(Boolean).forEach(g=>{
+    if(!g.collapsed)return;
+    for(let i=Number(g.start)+1;i<=Number(g.end);i++)set.add(i);
+  });
+  return set;
+}
+
+function boqGroupStartMap(groups){
+  const m=new Map();
+  normalizeIndexedArray(groups).filter(Boolean).forEach(g=>m.set(Number(g.start),g));
+  return m;
+}
+
+function applyBoqFreeze(shell,grid,prefs){
+  const table=shell?.querySelector("[data-boq-table]");
+  if(!table)return;
+
+  table.querySelectorAll(".boq-frozen-row,.boq-frozen-col,.boq-frozen-both").forEach(el=>{
+    el.classList.remove("boq-frozen-row","boq-frozen-col","boq-frozen-both");
+    el.style.removeProperty("top");
+    el.style.removeProperty("left");
+    el.style.removeProperty("z-index");
+    if(el.tagName==="TD")el.style.removeProperty("position");
+  });
+
+  const freezeRows=Math.max(0,Math.min(Number(grid.rowCount||0),Number(prefs.freezeRows||0)));
+  const freezeCols=Math.max(0,Math.min(Number(grid.colCount||0),Number(prefs.freezeCols||0)));
+
+  let top=29;
+  for(let r=0;r<freezeRows;r++){
+    const tr=table.querySelector(`tr[data-grid-row-wrap="${r}"]`);
+    if(!tr||tr.classList.contains("boq-hidden-row"))continue;
+    const rowH=tr.getBoundingClientRect().height/(Number(table.dataset.zoom||1)||1);
+    tr.querySelectorAll("th,td").forEach(cell=>{
+      cell.classList.add("boq-frozen-row");
+      cell.style.position="sticky";
+      cell.style.top=`${top}px`;
+      cell.style.zIndex=cell.classList.contains("excel-row-head")?"7":"4";
+    });
+    top+=rowH;
+  }
+
+  let left=48;
+  for(let c=0;c<freezeCols;c++){
+    const col=table.querySelector(`col[data-boq-col="${c}"]`);
+    const width=parseFloat(col?.style.width)||gridColWidth(grid.colWidths?.[c]);
+    table.querySelector(`.excel-column-header[data-col-index="${c}"]`)?.classList.add("boq-frozen-col");
+    const header=table.querySelector(`.excel-column-header[data-col-index="${c}"]`);
+    if(header){header.style.left=`${left}px`;header.style.zIndex="8"}
+    table.querySelectorAll(`td[data-grid-col="${c}"]`).forEach(td=>{
+      td.classList.add("boq-frozen-col");
+      td.style.position="sticky";
+      td.style.left=`${left}px`;
+      td.style.zIndex=td.classList.contains("boq-frozen-row")?"6":"3";
+      if(td.classList.contains("boq-frozen-row"))td.classList.add("boq-frozen-both");
+    });
+    left+=width;
+  }
 }
 
 function autoFitBoqColumn(grid,c){
@@ -688,10 +1208,12 @@ function loadBoqGridPrefs(grid,rev){
     const parsed=raw?JSON.parse(raw):{};
     return {
       widths:parsed?.widths&&typeof parsed.widths==="object"?parsed.widths:{},
-      zoom:clampBoqZoom(Number(parsed?.zoom||1))
+      zoom:clampBoqZoom(Number(parsed?.zoom||1)),
+      freezeRows:Math.max(0,Number(parsed?.freezeRows||0)),
+      freezeCols:Math.max(0,Number(parsed?.freezeCols||0))
     };
   }catch{
-    return {widths:{},zoom:1};
+    return {widths:{},zoom:1,freezeRows:0,freezeCols:0};
   }
 }
 
@@ -699,7 +1221,9 @@ function saveBoqGridPrefs(grid,rev,prefs){
   try{
     localStorage.setItem(boqGridPreferenceKey(grid,rev),JSON.stringify({
       widths:prefs?.widths||{},
-      zoom:clampBoqZoom(Number(prefs?.zoom||1))
+      zoom:clampBoqZoom(Number(prefs?.zoom||1)),
+      freezeRows:Math.max(0,Number(prefs?.freezeRows||0)),
+      freezeCols:Math.max(0,Number(prefs?.freezeCols||0))
     }));
   }catch{}
 }
@@ -758,10 +1282,22 @@ function sourceGridCellStyle(st){
   if(st.w)out.push("white-space:pre-wrap");
   if(st.b)out.push("font-weight:700");
   if(st.i)out.push("font-style:italic");
-  if(st.fs)out.push(`font-size:${Math.max(7,Math.min(24,Number(st.fs)||10))}px`);
+  if(st.ff)out.push(`font-family:${safeBoqFont(st.ff)}`);
+  if(st.fs)out.push(`font-size:${Math.max(7,Math.min(32,Number(st.fs)||10))}px`);
   if(st.bg&&/^#[0-9A-F]{6}$/i.test(st.bg))out.push(`background:${st.bg}`);
   if(st.fg&&/^#[0-9A-F]{6}$/i.test(st.fg))out.push(`color:${st.fg}`);
   return out.join(";");
+}
+
+function safeBoqFont(v){
+  const allowed={
+    "Arial":"Arial, sans-serif",
+    "Calibri":"Calibri, Arial, sans-serif",
+    "Times New Roman":"'Times New Roman', serif",
+    "Tahoma":"Tahoma, Arial, sans-serif",
+    "Verdana":"Verdana, Arial, sans-serif"
+  };
+  return allowed[String(v||"")]||"Arial, sans-serif";
 }
 
 function safeCssAlign(v){
@@ -1508,6 +2044,7 @@ function extractSourceGridStyle(cell){
   const f=s.font||{};
   if(f.bold)o.b=1;
   if(f.italic)o.i=1;
+  if(f.name)o.ff=String(f.name);
   if(Number(f.sz)>0)o.fs=Number(f.sz);
   const fg=sourceRgb(f.color);
   if(fg)o.fg=fg;
