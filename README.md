@@ -1,4 +1,4 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.9
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.10
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
@@ -10,6 +10,113 @@
 
 
 
+
+## Nâng cấp V2.10 — Tự nhận BOQ có tiêu đề 1–3 hàng và ô gộp
+
+V2.10 nâng bộ đọc Excel cho các BOQ thực tế có cấu trúc phức tạp.
+
+### Nhận tiêu đề nhiều tầng
+
+Hệ thống tự thử:
+
+- 1 hàng tiêu đề.
+- 2 hàng tiêu đề.
+- 3 hàng tiêu đề.
+
+Ví dụ:
+
+Hàng 7:
+`Diễn giải | Đơn vị | Khối lượng | Model... | Đơn giá (VND)`
+
+Hàng 8:
+`... | ... | ... | ... | Vật tư chính | Nhân công và vật tư phụ | Tổng cộng`
+
+Hệ thống ghép thành:
+
+- `Đơn giá (VND) / Vật tư chính`
+- `Đơn giá (VND) / Nhân công và vật tư phụ`
+- `Đơn giá (VND) / Tổng cộng`
+
+### Nhận ô Merge
+
+V2.10 đọc vùng merged-cell từ workbook Excel.
+
+Các cột có tiêu đề merge dọc 2 hàng như:
+
+- Diễn giải.
+- Đơn vị.
+- Khối lượng.
+- Model/Thông số kỹ thuật.
+- Nhãn hiệu.
+- Xuất xứ.
+
+vẫn được nhận đúng.
+
+### Cột được nhận thêm
+
+- Diễn giải.
+- Model/Thông số kỹ thuật.
+- Nhãn hiệu.
+- Xuất xứ.
+- Đơn vị.
+- Khối lượng.
+- Vật tư chính.
+- Nhân công và vật tư phụ.
+- Tổng cộng.
+
+### Tự chọn đúng block tiêu đề
+
+Hệ thống:
+
+1. Quét 40 dòng đầu.
+2. Thử từng vị trí với 1/2/3 hàng tiêu đề.
+3. Chấm điểm số cột BOQ nhận được.
+4. Kiểm tra dữ liệu phía dưới có Mô tả + Khối lượng dạng số hay không.
+5. Chọn block phù hợp nhất.
+
+Do đó các dòng:
+- tên dự án,
+- tên gói thầu,
+- ghi chú chung,
+- dòng trắng,
+
+không bị coi nhầm là tiêu đề BOQ.
+
+### Cho phép chỉnh tay khi cần
+
+Sau khi chọn Excel sẽ có:
+
+- `Dòng tiêu đề bắt đầu`
+- `Số hàng tiêu đề: 1 / 2 / 3`
+
+Hệ thống tự điền trước. Người dùng chỉ cần sửa nếu file đặc biệt.
+
+### Preview mapping
+
+Trước khi nhập, giao diện hiển thị cột hệ thống đã nhận:
+
+- Mô tả.
+- ĐVT.
+- Khối lượng.
+- Model/Thông số.
+- Nhãn hiệu.
+- Xuất xứ.
+- Giá vật tư.
+- Nhân công + vật tư phụ.
+- Tổng đơn giá.
+
+### Mẫu Excel
+
+`MAU_BOQ_REVISION.xlsx` có 2 Sheet:
+
+- `BOQ_1_HANG`
+- `BOQ_2_HANG_MERGE`
+
+để test cả hai dạng tiêu đề.
+
+### Firebase
+
+V2.10 không thay đổi cấu trúc Firebase so với V2.9.
 ## Nâng cấp V2.9 — Import BOQ Excel / CSV
 
 V2.9 nâng phần `Triển khai → Kiểm soát khối lượng → BOQ Revision`.

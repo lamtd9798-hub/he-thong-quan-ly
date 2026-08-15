@@ -287,3 +287,12 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
 .revision-file-columns{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
 .revision-file-columns span{font-size:8px;padding:3px 6px;border:1px solid #dbe4ee;background:#fff;border-radius:999px;color:#475569}
 .revision-file-warning{margin-top:8px;border:1px solid #fed7aa;background:#fff7ed;color:#9a3412;border-radius:8px;padding:8px 10px;font-size:9px;line-height:1.45}
+
+
+/* =========================
+   V2.10 - NHẬN DIỆN BOQ NHIỀU HÀNG TIÊU ĐỀ
+   ========================= */
+.revision-detected-map{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px;padding-top:8px;border-top:1px dashed #dbe4ee}
+.revision-detected-map span{font-size:8px;border-radius:999px;padding:4px 7px}
+.revision-detected-map .ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d}
+.revision-detected-map .miss{background:#f8fafc;border:1px solid #e2e8f0;color:#94a3b8}
