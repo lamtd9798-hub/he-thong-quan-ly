@@ -1,7 +1,7 @@
 import {
   refs, arr, ts, logActivity, can, getProfile, esc, norm, money, fmtDateTime,
   setPage, loading, empty, badge, modal, toast, confirmBox
-} from "../core.js?v=2.19.2";
+} from "../core.js?v=2.19.3";
 
 let projects=[];
 let selectedProjectId="";
@@ -749,12 +749,16 @@ async function inspectSpreadsheet(file,mode){
 
 function buildPricingGridFromWorksheet(ws,XLSX,sheetName){
   if(!ws?.["!ref"])return buildPricingGridFromAoa([],sheetName);
+
   const range=XLSX.utils.decode_range(ws["!ref"]);
   const startRow=range.s.r;
   const endRow=range.e.r;
-  // Theo layout BOQ đã chốt trước đó: trên web chỉ giữ A → K.
-  const startCol=0;
-  const endCol=Math.min(10,range.e.c);
+  const startCol=range.s.c;
+
+  // V2.19.3:
+  // Module Lập giá đấu thầu phải giữ TOÀN BỘ cột BOQ thực sự có dữ liệu.
+  // Không còn giới hạn A→K. Đồng thời bỏ các cột trống dư do Excel từng format xa bên phải.
+  const endCol=findPricingMeaningfulEndCol(ws,XLSX,range);
   const rowCount=endRow-startRow+1;
   const colCount=Math.max(0,endCol-startCol+1);
   const rows=[],styles={};
@@ -787,21 +791,72 @@ function buildPricingGridFromWorksheet(ws,XLSX,sheetName){
     .filter(m=>m.c2>=m.c1&&m.r2>=m.r1);
 
   const cols=ws["!cols"]||[],rowMeta=ws["!rows"]||[];
-  const colWidths=Array.from({length:colCount},(_,i)=>pricingSourceColWidth(cols[startCol+i],i));
+  const colWidths=Array.from({length:colCount},(_,i)=>{
+    const sourceCol=startCol+i;
+    const fromExcel=pricingSourceColWidth(cols[sourceCol],sourceCol);
+    return Number(cols[sourceCol]?.wpx||cols[sourceCol]?.wch||cols[sourceCol]?.width)
+      ?fromExcel
+      :pricingAutoWidthFromRows(rows,i);
+  });
   const rowHeights=Array.from({length:rowCount},(_,i)=>pricingSourceRowHeight(rowMeta[startRow+i]));
 
   return {
-    sheetName,range:`A${startRow+1}:${pricingExcelColName(endCol)}${endRow+1}`,
+    sheetName,
+    range:`${pricingExcelColName(startCol)}${startRow+1}:${pricingExcelColName(endCol)}${endRow+1}`,
     startRow:startRow+1,startCol,rowCount,colCount,rows,merges,colWidths,rowHeights,styles
   };
 }
 
+function findPricingMeaningfulEndCol(ws,XLSX,range){
+  let end=Math.max(range.s.c,range.s.c);
+
+  // Cell có dữ liệu / công thức / text hiển thị.
+  for(const addr of Object.keys(ws||{})){
+    if(addr.startsWith("!"))continue;
+    let rc;
+    try{rc=XLSX.utils.decode_cell(addr)}catch{continue}
+    if(rc.r<range.s.r||rc.r>range.e.r||rc.c<range.s.c||rc.c>range.e.c)continue;
+
+    const cell=ws[addr];
+    let visible="";
+    try{visible=XLSX.utils.format_cell(cell)}catch{visible=cell?.w??cell?.v??""}
+    const hasFormula=Boolean(cell?.f);
+    if(String(visible??"").trim()!==""||hasFormula)end=Math.max(end,rc.c);
+  }
+
+  // Merge có nội dung cũng phải giữ đủ tới cột cuối của vùng merge.
+  for(const m of ws?.["!merges"]||[]){
+    if(m.e.r<range.s.r||m.s.r>range.e.r)continue;
+    const startAddr=XLSX.utils.encode_cell({r:m.s.r,c:m.s.c});
+    const cell=ws[startAddr];
+    let visible="";
+    try{visible=XLSX.utils.format_cell(cell)}catch{visible=cell?.w??cell?.v??""}
+    if(String(visible??"").trim()!=="")end=Math.max(end,m.e.c);
+  }
+
+  return Math.min(range.e.c,Math.max(range.s.c,end));
+}
+
 function buildPricingGridFromAoa(aoa,sheetName="CSV"){
-  const rows=(aoa||[]).map(r=>(Array.isArray(r)?r:[]).slice(0,11).map(v=>String(v??"")));
-  const colCount=Math.min(11,Math.max(0,...rows.map(r=>r.length)));
-  rows.forEach(r=>{while(r.length<colCount)r.push("")});
+  const rawRows=(aoa||[]).map(r=>(Array.isArray(r)?r:[]).map(v=>String(v??"")));
+  let lastCol=-1;
+
+  rawRows.forEach(r=>{
+    for(let c=r.length-1;c>=0;c--){
+      if(String(r[c]??"").trim()!==""){lastCol=Math.max(lastCol,c);break}
+    }
+  });
+
+  const colCount=Math.max(0,lastCol+1);
+  const rows=rawRows.map(r=>{
+    const out=r.slice(0,colCount);
+    while(out.length<colCount)out.push("");
+    return out;
+  });
+
   return {
-    sheetName,range:rows.length&&colCount?`A1:${pricingExcelColName(colCount-1)}${rows.length}`:"",
+    sheetName,
+    range:rows.length&&colCount?`A1:${pricingExcelColName(colCount-1)}${rows.length}`:"",
     startRow:1,startCol:0,rowCount:rows.length,colCount,rows,merges:[],
     colWidths:Array.from({length:colCount},(_,c)=>pricingAutoWidthFromRows(rows,c)),
     rowHeights:Array.from({length:rows.length},()=>24),styles:{}
