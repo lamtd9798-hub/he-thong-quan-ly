@@ -1,3 +1,11 @@
+## V2.19.1 — Báo giá cập nhật theo từng đợt
+
+- BOQ được upload trước.
+- Báo giá NCC có lúc nào thì tải thêm lúc đó.
+- Kho giá cộng dồn, không bắt buộc tải cùng lúc.
+- Tự động chỉ điền dòng BOQ chưa có giá, không ghi đè giá cũ.
+- Sửa lỗi đọc `qty` ở các dòng BOQ không có item map.
+
 ## V2.19 — Lập giá trực tiếp trên BOQ gốc
 
 - Tab BOQ không còn dựng bảng dữ liệu riêng.

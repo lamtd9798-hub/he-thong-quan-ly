@@ -979,3 +979,17 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
 }
 .pricing-grid-source-dot:hover{background:#bbf7d0}
 .pricing-boq-migrate{padding:18px}
+
+
+/* =========================
+   V2.19.1 - BÁO GIÁ TẢI BỔ SUNG THEO TỪNG ĐỢT
+   ========================= */
+.pricing-incremental-note{
+  display:flex;align-items:center;gap:14px;margin:10px 12px 12px;padding:10px 12px;
+  border:1px solid #cfe0f5;background:#f5f9ff;border-radius:10px;color:#475569
+}
+.pricing-incremental-note>div{min-width:92px;text-align:center;padding-right:12px;border-right:1px solid #dbe6f4}
+.pricing-incremental-note>div b{display:block;font-size:18px;color:#1d4ed8;line-height:1.1}
+.pricing-incremental-note>div span{display:block;font-size:8px;margin-top:3px;color:#64748b}
+.pricing-incremental-note p{margin:0;font-size:9px;line-height:1.5}
+@media(max-width:760px){.pricing-incremental-note{align-items:flex-start;flex-direction:column}.pricing-incremental-note>div{border-right:0;border-bottom:1px solid #dbe6f4;padding:0 0 8px;width:100%}}

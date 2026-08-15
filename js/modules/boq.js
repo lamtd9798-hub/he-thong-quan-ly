@@ -1,7 +1,7 @@
 import {
   refs, arr, ts, logActivity, can, getProfile, esc, norm, money, fmtDateTime,
   setPage, loading, empty, badge, modal, toast, confirmBox
-} from "../core.js?v=2.19.0";
+} from "../core.js?v=2.19.1";
 
 let projects=[];
 let selectedProjectId="";
@@ -164,7 +164,7 @@ function boqPanel(project){
       ${pricingBoqOriginalGrid(grid)}
     `:boqItems.length?`
       <div class="pricing-boq-migrate">
-        ${empty("BOQ này được nhập bằng bản cũ","Hãy bấm “Thay BOQ” và chọn lại đúng file Excel để V2.19 lưu nguyên bảng BOQ gốc.","▦")}
+        ${empty("BOQ này được nhập bằng bản cũ","Hãy bấm “Thay BOQ” và chọn lại đúng file Excel để V2.19.1 lưu nguyên bảng BOQ gốc.","▦")}
       </div>
     `:empty("Chưa có BOQ","Bấm “Tải BOQ Excel / CSV”. Hệ thống sẽ giữ nguyên bảng BOQ gốc để lập giá trực tiếp.","▦")}
   </div>`;
@@ -206,7 +206,7 @@ function pricingBoqOriginalGrid(rawGrid){
       const st=pricingCellStyle(grid.styles?.[key]);
       let content=esc(String(original??""));
 
-      if(item?.rowType!=="SECTION"&&item?.rowType!=="NOTE"){
+      if(item && item.rowType!=="SECTION"&&item.rowType!=="NOTE"){
         if(c===qtyCol){
           content=`<input class="pricing-grid-input" type="number" min="0" step="any"
             value="${Number(item.qty||0)}" data-inline-item="${item.id}" data-inline-field="qty" ${can("boqEdit")?"":"disabled"}>`;
@@ -267,8 +267,16 @@ function tenderBoqRow(x){
 function materialPanel(project){
   return `<div class="card tender-pricing-card">
     <div class="card-head">
-      <div><h3>Kho báo giá vật tư của dự án</h3><div class="secondary-text">Có thể tải nhiều file Excel/CSV. Hệ thống tự tìm Sheet và cột đơn giá.</div></div>
-      <div class="actions">${can("quoteEdit")?`<button class="btn primary" id="uploadMaterialPricesBtn">＋ Tải file giá vật tư</button>`:""}</div>
+      <div>
+        <h3>Kho báo giá vật tư của dự án</h3>
+        <div class="secondary-text"><b>Không cần chờ đủ báo giá.</b> NCC gửi file nào thì tải thêm file đó; các lần tải sau được cộng dồn và không xóa báo giá đã có.</div>
+      </div>
+      <div class="actions">${can("quoteEdit")?`<button class="btn primary" id="uploadMaterialPricesBtn">＋ Thêm báo giá mới</button>`:""}</div>
+    </div>
+
+    <div class="pricing-incremental-note">
+      <div><b>${materialImports.length}</b><span>file/đợt giá đã nhận</span></div>
+      <p>Quy trình: nhận báo giá → tải lên → hệ thống tự đọc → chỉ tự điền những dòng BOQ đang <b>chưa có giá</b>. Giá đã nhập/đã chọn trước đó không bị ghi đè tự động.</p>
     </div>
 
     ${materialImports.length?`
@@ -282,15 +290,15 @@ function materialPanel(project){
         <th>MÃ</th><th>VẬT TƯ / MÔ TẢ</th><th>QUY CÁCH / MODEL</th><th>ĐVT</th><th>HÃNG</th><th>NCC</th><th>ĐƠN GIÁ</th><th>NGUỒN</th>
       </tr></thead><tbody>${materialRows.slice(0,400).map(materialPriceRowHtml).join("")}</tbody></table></div>
       ${materialRows.length>400?`<div class="pricing-limit-note">Đang hiển thị 400/${materialRows.length} dòng. Toàn bộ dữ liệu vẫn được dùng khi ráp giá.</div>`:""}
-    `:empty("Chưa có báo giá vật tư","Tải báo giá của NCC lên. File có thể khác thứ tự cột; hệ thống sẽ tự nhận Mô tả / Quy cách / ĐVT / Đơn giá.","◆")}
+    `:empty("Chưa có báo giá vật tư","Khi NCC gửi báo giá đầu tiên, bấm “Thêm báo giá mới”. Sau này có file mới thì tiếp tục tải thêm; không cần tải cùng lúc.","◆")}
   </div>`;
 }
 
 function materialImportCard(x){
   return `<div class="material-import-card">
     <div class="material-file-icon">XLS</div>
-    <div class="material-file-main"><b>${esc(x.fileName||"")}</b><span>${esc(x.supplier||baseFileName(x.fileName||""))} · Sheet ${esc(x.sheetName||"—")} · ${Number(x.rowCount||0)} dòng</span></div>
-    <div class="material-file-time">${fmtDateTime(x.createdAt)}</div>
+    <div class="material-file-main"><b>${esc(x.fileName||"")}</b><span>${esc(x.supplier||baseFileName(x.fileName||""))} · Sheet ${esc(x.sheetName||"—")} · ${Number(x.rowCount||0)} dòng · Đã thêm vào kho</span></div>
+    <div class="material-file-time">Nhận ${fmtDateTime(x.createdAt)}</div>
     ${can("quoteEdit")?`<button class="btn red sm" data-delete-price-import="${x.id}">Xóa</button>`:""}
   </div>`;
 }
@@ -307,7 +315,7 @@ function matchPanel(project){
 
   return `<div class="card tender-pricing-card">
     <div class="card-head">
-      <div><h3>Ráp giá vật tư vào BOQ</h3><div class="secondary-text">Ưu tiên mã → mô tả → quy cách → ĐVT. Chỉ tự áp dụng khi độ tin cậy cao.</div></div>
+      <div><h3>Ráp giá vật tư vào BOQ</h3><div class="secondary-text">Mỗi báo giá mới được cộng vào kho ứng viên. Tự động chỉ điền dòng đang trống; dòng đã có giá chỉ thay khi anh chủ động bấm “Dùng giá”.</div></div>
       <div class="actions">
         ${can("boqEdit")&&materialRows.length?`<button class="btn" id="recalcMatchesBtn">Tính lại đối chiếu</button><button class="btn primary" id="applyHighMatchesBtn">Áp dụng tất cả ≥95%</button>`:""}
       </div>
@@ -467,12 +475,12 @@ function renderBoqPreview(inspection,sheetName,box){
 function openMaterialUpload(container){
   if(!can("quoteEdit"))return;
   modal({
-    title:"Tải báo giá vật tư",
-    eyebrow:"BƯỚC 2 · GIÁ VẬT TƯ",
-    size:"lg",submitText:"Đọc giá & ráp tự động",
-    body:`<div class="pricing-upload-note"><b>Có thể chọn nhiều file cùng lúc.</b> Hệ thống tự tìm cột Tên vật tư / Quy cách / ĐVT / Đơn giá và lấy tên file làm tên NCC nếu không có cột NCC.</div>
+    title:"Thêm báo giá mới",
+    eyebrow:"KHO GIÁ VẬT TƯ · TẢI BẤT CỨ KHI NÀO CÓ GIÁ",
+    size:"lg",submitText:"Thêm vào kho giá",
+    body:`<div class="pricing-upload-note"><b>Mỗi lần có báo giá mới thì tải thêm.</b> Không cần chờ đủ tất cả NCC và không cần tải cùng lúc với BOQ. File cũ vẫn được giữ nguyên. Nếu cùng lúc nhận nhiều file, anh vẫn có thể chọn nhiều file trong một lần.</div>
       <div class="form-grid mt">
-        <label class="field span2"><span>File báo giá Excel / CSV *</span><input required multiple type="file" name="priceFiles" id="materialPriceFiles" accept=".xlsx,.xls,.csv"></label>
+        <label class="field span2"><span>1 hoặc nhiều file báo giá Excel / CSV *</span><input required multiple type="file" name="priceFiles" id="materialPriceFiles" accept=".xlsx,.xls,.csv"><small>File mới sẽ được nối thêm vào kho giá hiện có.</small></label>
         <label class="field span2"><span>Tên NCC mặc định (không bắt buộc)</span><input name="defaultSupplier" placeholder="Để trống: dùng tên file làm tên NCC"></label>
         <div class="span2 hidden pricing-file-preview-list" id="materialFilesPreview"></div>
       </div>`,
@@ -501,10 +509,10 @@ function openMaterialUpload(container){
       }
       if(!total){toast("Không file nào có dữ liệu giá hợp lệ. Cần tối thiểu Mô tả + Đơn giá.","error");return false}
       await loadProjectData();
-      const applied=await autoApplyMatches(95);
+      const applied=await autoApplyMatches(95,{onlyEmpty:true});
       await loadProjectData();
-      toast(`Đã đọc ${total} dòng giá. Tự ráp ${applied} dòng BOQ có độ khớp ≥95%.`);
-      tab="MATCH";paint(container);return true;
+      toast(`Đã thêm ${files.length} file, đọc ${total} dòng giá. Tự điền ${applied} dòng BOQ đang chưa có giá (độ khớp ≥95%).`);
+      tab="MATERIAL";paint(container);return true;
     }
   });
 
@@ -586,10 +594,11 @@ function scoreMaterialMatch(item,row){
   return {score,reason:reason.join(" · ")};
 }
 
-async function autoApplyMatches(threshold=95){
+async function autoApplyMatches(threshold=95,{onlyEmpty=false}={}){
   rebuildMatchCache();
   const updates={};let count=0;
   for(const item of boqItems.filter(isPriceableItem)){
+    if(onlyEmpty && Number(item.materialUnit||0)>0)continue;
     const best=(matchCache.get(item.id)||[])[0];if(!best||best.score<threshold)continue;
     fillMatchUpdates(updates,item,best,"AUTO");count++;
   }
@@ -598,7 +607,7 @@ async function autoApplyMatches(threshold=95){
 }
 
 async function applyHighConfidenceMatches(container){
-  const count=await autoApplyMatches(95);await loadProjectData();toast(`Đã áp dụng ${count} dòng có độ khớp ≥95%.`);paint(container);
+  const count=await autoApplyMatches(95,{onlyEmpty:false});await loadProjectData();toast(`Đã áp dụng ${count} dòng có độ khớp ≥95%.`);paint(container);
 }
 
 function fillMatchUpdates(updates,item,best,status){
