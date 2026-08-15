@@ -1,4 +1,4 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.14
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.15
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
@@ -15,6 +15,17 @@
 
 
 
+
+## V2.15 — Giao diện BOQ kiểu Excel + resize cột
+
+- Kéo mép tiêu đề A/B/C... để thay đổi độ rộng.
+- Nhấp đúp mép cột để AutoFit.
+- Nhớ kích thước cột trên trình duyệt.
+- Zoom 50%–150%.
+- Vừa màn hình.
+- Khôi phục độ rộng cột từ file gốc.
+- Click ô để highlight ô, hàng và cột.
+- Không thay đổi dữ liệu BOQ gốc.
 ## V2.14 — Xây lại chức năng Kiểm soát khối lượng từ BOQ gốc
 
 Theo yêu cầu, V2.14 tạm bỏ toàn bộ giao diện quản lý cũ trong mục Kiểm soát khối lượng:

@@ -1,7 +1,7 @@
 import {
   refs,arr,ts,logActivity,getProfile,can,esc,norm,money,fmtDate,fmtDateTime,
   loading,empty,badge,modal,toast,confirmBox
-} from "../core.js?v=2.14.0";
+} from "../core.js?v=2.15.0";
 
 let projectId="";
 let mountEl=null;
@@ -115,6 +115,7 @@ function paint(){
 
   mountEl.querySelector("#boqMirrorUploadBtn")?.addEventListener("click",uploadBoqMirrorDialog);
   mountEl.querySelector("#boqMirrorUploadEmptyBtn")?.addEventListener("click",uploadBoqMirrorDialog);
+  if(grid)bindExcelBoqGrid(grid,rev);
 }
 
 function boqMirrorRevision(){
@@ -454,7 +455,7 @@ function revisionSourceGrid(){
   };
 }
 
-function sourceExcelGridHtml(grid){
+function sourceExcelGridHtml(grid,rev=boqMirrorRevision()){
   const rows=grid.rows||[];
   const colCount=Number(grid.colCount||Math.max(0,...rows.map(r=>r.length)));
   const rowCount=Number(grid.rowCount||rows.length);
@@ -463,19 +464,29 @@ function sourceExcelGridHtml(grid){
   const mergeInfo=buildGridMergeLookup(grid.merges||[]);
   const widths=grid.colWidths||[];
   const heights=grid.rowHeights||[];
+  const prefs=loadBoqGridPrefs(grid,rev);
+  const customWidths=prefs.widths||{};
+  const zoom=clampBoqZoom(Number(prefs.zoom||1));
 
-  const colgroup=`<colgroup><col style="width:46px">`+
-    Array.from({length:colCount},(_,c)=>`<col style="width:${gridColWidth(widths[c])}px">`).join("")+
+  const colgroup=`<colgroup><col class="excel-row-number-col" style="width:48px">`+
+    Array.from({length:colCount},(_,c)=>{
+      const width=Number(customWidths[c]||customWidths[String(c)]||0)||gridColWidth(widths[c]);
+      return `<col data-boq-col="${c}" style="width:${Math.round(width)}px">`;
+    }).join("")+
     `</colgroup>`;
 
   const letters=`<tr class="excel-col-head"><th class="excel-corner"></th>`+
-    Array.from({length:colCount},(_,c)=>`<th>${excelColumnName(startCol+c)}</th>`).join("")+
+    Array.from({length:colCount},(_,c)=>`
+      <th class="excel-column-header" data-col-index="${c}">
+        <span class="excel-col-label">${excelColumnName(startCol+c)}</span>
+        <span class="excel-col-resizer" data-resize-col="${c}" title="Kéo để đổi độ rộng · Nhấp đúp để AutoFit"></span>
+      </th>`).join("")+
     `</tr>`;
 
   const body=Array.from({length:rowCount},(_,r)=>{
     const row=rows[r]||[];
     const rowHeight=gridRowHeight(heights[r]);
-    let cells=`<th class="excel-row-head">${startRow+r}</th>`;
+    let cells=`<th class="excel-row-head" data-row-index="${r}">${startRow+r}</th>`;
     for(let c=0;c<colCount;c++){
       const key=`${r}_${c}`;
       if(mergeInfo.covered.has(key))continue;
@@ -485,21 +496,216 @@ function sourceExcelGridHtml(grid){
       const colspan=merge?merge.c2-merge.c1+1:1;
       const value=row[c]??"";
       const style=sourceGridCellStyle(grid.styles?.[key]);
-      cells+=`<td${rowspan>1?` rowspan="${rowspan}"`:""}${colspan>1?` colspan="${colspan}"`:""}${style?` style="${style}"`:""}>${formatGridCell(value)}</td>`;
+      cells+=`<td data-grid-row="${r}" data-grid-col="${c}"${rowspan>1?` rowspan="${rowspan}"`:""}${colspan>1?` colspan="${colspan}"`:""}${style?` style="${style}"`:""}>${formatGridCell(value)}</td>`;
     }
     return `<tr style="height:${rowHeight}px">${cells}</tr>`;
   }).join("");
 
-  return `<div class="excel-boq-shell">
+  return `<div class="excel-boq-shell" data-boq-pref-key="${esc(boqGridPreferenceKey(grid,rev))}">
+    <div class="excel-boq-toolbar">
+      <div class="excel-boq-toolbar-left">
+        <button type="button" class="excel-tool-btn" data-boq-action="zoom-out" title="Thu nhỏ">−</button>
+        <button type="button" class="excel-zoom-value" data-boq-action="zoom-100" title="Về 100%">${Math.round(zoom*100)}%</button>
+        <button type="button" class="excel-tool-btn" data-boq-action="zoom-in" title="Phóng to">＋</button>
+        <span class="excel-toolbar-sep"></span>
+        <button type="button" class="excel-tool-text" data-boq-action="fit-width">Vừa màn hình</button>
+        <button type="button" class="excel-tool-text" data-boq-action="reset-widths">Khôi phục cột</button>
+      </div>
+      <div class="excel-boq-toolbar-hint">Kéo mép A/B/C… để chỉnh cột · Nhấp đúp mép cột để AutoFit</div>
+    </div>
+
     <div class="excel-boq-meta">
       <span>Sheet: <b>${esc(grid.sheetName||"")}</b></span>
       <span>Vùng dữ liệu: <b>${esc(grid.range||"")}</b></span>
       <span>Ô gộp: <b>${(grid.merges||[]).length}</b></span>
     </div>
+
     <div class="excel-boq-scroll">
-      <table class="excel-boq-grid">${colgroup}<thead>${letters}</thead><tbody>${body}</tbody></table>
+      <table class="excel-boq-grid" data-boq-table data-zoom="${zoom}" style="zoom:${zoom}">
+        ${colgroup}<thead>${letters}</thead><tbody>${body}</tbody>
+      </table>
     </div>
   </div>`;
+}
+
+function bindExcelBoqGrid(grid,rev){
+  const shell=mountEl?.querySelector(".excel-boq-shell");
+  if(!shell)return;
+
+  const table=shell.querySelector("[data-boq-table]");
+  const scroll=shell.querySelector(".excel-boq-scroll");
+  if(!table||!scroll)return;
+
+  let prefs=loadBoqGridPrefs(grid,rev);
+  let zoom=clampBoqZoom(Number(prefs.zoom||1));
+
+  const getCol=c=>table.querySelector(`col[data-boq-col="${c}"]`);
+  const zoomLabel=()=>shell.querySelector('[data-boq-action="zoom-100"]');
+
+  const applyZoom=value=>{
+    zoom=clampBoqZoom(value);
+    table.style.zoom=String(zoom);
+    table.dataset.zoom=String(zoom);
+    const label=zoomLabel();
+    if(label)label.textContent=`${Math.round(zoom*100)}%`;
+    prefs.zoom=zoom;
+    saveBoqGridPrefs(grid,rev,prefs);
+  };
+
+  const setColWidth=(c,width,save=true)=>{
+    const col=getCol(c);
+    if(!col)return;
+    const w=Math.max(34,Math.min(760,Math.round(Number(width)||96)));
+    col.style.width=`${w}px`;
+    if(save){
+      prefs.widths={...(prefs.widths||{}),[c]:w};
+      saveBoqGridPrefs(grid,rev,prefs);
+    }
+  };
+
+  shell.querySelectorAll(".excel-col-resizer").forEach(handle=>{
+    handle.addEventListener("pointerdown",e=>{
+      if(e.button!==0)return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const c=Number(handle.dataset.resizeCol);
+      const col=getCol(c);
+      if(!col)return;
+
+      const startX=e.clientX;
+      const startWidth=parseFloat(col.style.width)||gridColWidth(grid.colWidths?.[c]);
+      const currentZoom=Number(table.dataset.zoom||1)||1;
+      document.body.classList.add("boq-column-resizing");
+      handle.classList.add("dragging");
+
+      const onMove=ev=>{
+        const delta=(ev.clientX-startX)/currentZoom;
+        setColWidth(c,startWidth+delta,false);
+      };
+
+      const onUp=()=>{
+        document.removeEventListener("pointermove",onMove);
+        document.removeEventListener("pointerup",onUp);
+        document.body.classList.remove("boq-column-resizing");
+        handle.classList.remove("dragging");
+        const finalWidth=parseFloat(col.style.width)||startWidth;
+        setColWidth(c,finalWidth,true);
+      };
+
+      document.addEventListener("pointermove",onMove);
+      document.addEventListener("pointerup",onUp,{once:true});
+    });
+
+    handle.addEventListener("dblclick",e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      const c=Number(handle.dataset.resizeCol);
+      setColWidth(c,autoFitBoqColumn(grid,c),true);
+    });
+  });
+
+  shell.querySelectorAll("[data-boq-action]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const action=btn.dataset.boqAction;
+      if(action==="zoom-out")applyZoom(zoom-0.1);
+      else if(action==="zoom-in")applyZoom(zoom+0.1);
+      else if(action==="zoom-100")applyZoom(1);
+      else if(action==="fit-width"){
+        const widthsNow=Array.from({length:Number(grid.colCount||0)},(_,c)=>{
+          const col=getCol(c);
+          return parseFloat(col?.style.width)||gridColWidth(grid.colWidths?.[c]);
+        });
+        const natural=48+widthsNow.reduce((a,b)=>a+b,0);
+        const available=Math.max(300,scroll.clientWidth-14);
+        applyZoom(Math.max(0.5,Math.min(1.15,available/natural)));
+        scroll.scrollLeft=0;
+      }else if(action==="reset-widths"){
+        prefs.widths={};
+        Array.from({length:Number(grid.colCount||0)},(_,c)=>setColWidth(c,gridColWidth(grid.colWidths?.[c]),false));
+        saveBoqGridPrefs(grid,rev,prefs);
+      }
+    });
+  });
+
+  table.querySelectorAll("tbody td").forEach(td=>{
+    td.addEventListener("click",()=>{
+      table.querySelector(".excel-cell-selected")?.classList.remove("excel-cell-selected");
+      table.querySelector(".excel-row-selected")?.classList.remove("excel-row-selected");
+      table.querySelector(".excel-col-selected")?.classList.remove("excel-col-selected");
+      td.classList.add("excel-cell-selected");
+      const r=td.dataset.gridRow,c=td.dataset.gridCol;
+      table.querySelector(`.excel-row-head[data-row-index="${r}"]`)?.classList.add("excel-row-selected");
+      table.querySelector(`.excel-column-header[data-col-index="${c}"]`)?.classList.add("excel-col-selected");
+    });
+  });
+}
+
+function autoFitBoqColumn(grid,c){
+  const mergeInfo=buildGridMergeLookup(grid.merges||[]);
+  const startCol=Number(grid.startCol||0);
+  let max=measureBoqText(excelColumnName(startCol+c),true)+28;
+  const rows=grid.rows||[];
+  const limit=Math.min(rows.length,800);
+
+  for(let r=0;r<limit;r++){
+    const key=`${r}_${c}`;
+    const merge=mergeInfo.starts.get(key);
+    if(merge&&(merge.c2-merge.c1)>=1)continue;
+    if(mergeInfo.covered.has(key))continue;
+
+    const text=String(rows[r]?.[c]??"").trim();
+    if(!text)continue;
+    const sample=text.length>180?text.slice(0,180):text;
+    const style=grid.styles?.[key]||{};
+    const measured=measureBoqText(sample,Boolean(style.b),Number(style.fs||10))+22;
+    max=Math.max(max,measured);
+  }
+  return Math.max(42,Math.min(620,Math.ceil(max)));
+}
+
+let _boqMeasureCanvas;
+function measureBoqText(text,bold=false,fontSize=10){
+  try{
+    _boqMeasureCanvas=_boqMeasureCanvas||document.createElement("canvas");
+    const ctx=_boqMeasureCanvas.getContext("2d");
+    ctx.font=`${bold?"700 ":""}${Math.max(8,Number(fontSize)||10)}px Arial, sans-serif`;
+    return ctx.measureText(String(text||"")).width;
+  }catch{
+    return String(text||"").length*7;
+  }
+}
+
+function boqGridPreferenceKey(grid,rev){
+  const revId=rev?.id||rev?.code||"boq";
+  const sheet=grid?.sheetName||rev?.sourceSheetName||"sheet";
+  return `companyhub:boq-grid:v1:${projectId||"project"}:${revId}:${sheet}`;
+}
+
+function loadBoqGridPrefs(grid,rev){
+  try{
+    const raw=localStorage.getItem(boqGridPreferenceKey(grid,rev));
+    const parsed=raw?JSON.parse(raw):{};
+    return {
+      widths:parsed?.widths&&typeof parsed.widths==="object"?parsed.widths:{},
+      zoom:clampBoqZoom(Number(parsed?.zoom||1))
+    };
+  }catch{
+    return {widths:{},zoom:1};
+  }
+}
+
+function saveBoqGridPrefs(grid,rev,prefs){
+  try{
+    localStorage.setItem(boqGridPreferenceKey(grid,rev),JSON.stringify({
+      widths:prefs?.widths||{},
+      zoom:clampBoqZoom(Number(prefs?.zoom||1))
+    }));
+  }catch{}
+}
+
+function clampBoqZoom(v){
+  return Math.max(0.5,Math.min(1.5,Number(v)||1));
 }
 
 function buildGridMergeLookup(merges){
