@@ -1,7 +1,7 @@
 import {
   refs,arr,ts,logActivity,getProfile,can,esc,norm,money,fmtDate,fmtDateTime,
   loading,empty,badge,modal,toast,confirmBox
-} from "../core.js?v=2.18.1";
+} from "../core.js?v=2.18.2";
 
 let projectId="";
 let mountEl=null;

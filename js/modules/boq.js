@@ -1,7 +1,7 @@
 import {
   refs, arr, ts, logActivity, can, getProfile, esc, norm, money, fmtDateTime,
   setPage, loading, empty, badge, modal, toast, confirmBox
-} from "../core.js?v=2.18.1";
+} from "../core.js?v=2.18.2";
 
 let projects=[];
 let selectedProjectId="";
@@ -54,17 +54,19 @@ async function loadProjectData(){
     boqItems=[];boqMeta={};materialImports=[];materialRows=[];matchCache=new Map();return;
   }
 
-  const [boqSnap,metaSnap,priceSnap]=await Promise.all([
-    refs.boqProject(selectedProjectId).once("value"),
-    optionalPricingRead(refs.boqImportMeta(selectedProjectId),"metadata BOQ"),
-    optionalPricingRead(refs.materialPriceImportsProject(selectedProjectId),"kho báo giá vật tư")
-  ]);
-
+  // V2.18.2 chỉ đọc MỘT vùng Firebase đã hoạt động ổn định: /boq/{projectId}.
+  // Metadata và kho giá nằm trong nhánh hệ thống __PRICING_DATA__, tránh mọi read permission mới.
+  const boqSnap=await refs.boqProject(selectedProjectId).once("value");
   const b=boqSnap.val()||{};
-  boqItems=Object.entries(b).map(([id,x])=>({id,...(x||{})})).sort(sortBoqRows);
-  boqMeta=metaSnap.val()||{};
+  const pricingData=b.__PRICING_DATA__||{};
 
-  const pv=priceSnap.val()||{};
+  boqItems=Object.entries(b)
+    .filter(([id])=>!String(id).startsWith("__"))
+    .map(([id,x])=>({id,...(x||{})}))
+    .sort(sortBoqRows);
+  boqMeta=pricingData.boqImportMeta||{};
+
+  const pv=pricingData.materialPriceImports||{};
   materialImports=Object.entries(pv).map(([id,x])=>({id,...(x||{})})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   materialRows=[];
   for(const imp of materialImports){
@@ -78,14 +80,6 @@ async function loadProjectData(){
     }
   }
   rebuildMatchCache();
-}
-
-async function optionalPricingRead(ref,label){
-  try{return await ref.once("value")}
-  catch(e){
-    console.warn(`[V2.18.1] Không đọc được ${label}:`,e);
-    return {val:()=>({}),exists:()=>false};
-  }
 }
 
 function paint(container){
@@ -360,19 +354,27 @@ async function saveBoqImport(parsed,meta){
     const key=refs.boqProject(selectedProjectId).push().key;
     updates[key]={...row,createdAt:Date.now(),updatedAt:Date.now()};
   }
-  if(meta.mode==="REPLACE")await refs.boqProject(selectedProjectId).set(updates);
-  else await refs.boqProject(selectedProjectId).update(updates);
+  if(meta.mode==="REPLACE"){
+    // Không dùng .set() ở /boq/{projectId} vì sẽ xóa luôn __PRICING_DATA__.
+    // Chỉ xóa các dòng BOQ thật, giữ nguyên nhánh hệ thống/kho báo giá.
+    const patch={};
+    for(const item of boqItems)patch[item.id]=null;
+    Object.assign(patch,updates);
+    await refs.boqProject(selectedProjectId).update(patch);
+  }else{
+    await refs.boqProject(selectedProjectId).update(updates);
+  }
 
   try{
     await refs.boqImportMeta(selectedProjectId).set({...meta,rowCount:parsed.length,itemCount:parsed.filter(isPriceableItem).length,updatedAt:Date.now(),updatedByName:getProfile()?.displayName||getProfile()?.email||""});
   }catch(e){
-    console.error("[V2.18.1] Lỗi lưu metadata BOQ",e);
-    throw new Error(`Không lưu được metadata BOQ. ${firebaseErrorText(e)}`);
+    // BOQ chính đã lưu thành công. Metadata chỉ là thông tin phụ, không được làm hỏng import.
+    console.warn("[V2.18.2] Không lưu được metadata BOQ nhưng BOQ chính đã lưu:",e);
   }
 
   // Trạng thái dự án chỉ là thông tin phụ; không để nó làm hỏng cả quá trình import BOQ.
   try{await refs.project(selectedProjectId).update({tenderStatus:"PRICING",updatedAt:ts()})}
-  catch(e){console.warn("[V2.18.1] Không cập nhật được tenderStatus:",e)}
+  catch(e){console.warn("[V2.18.2] Không cập nhật được tenderStatus:",e)}
   try{await logActivity("TENDER_BOQ_IMPORTED",`Nhập BOQ ${meta.fileName} / ${meta.sheetName}`,{projectId:selectedProjectId,itemCount:parsed.filter(isPriceableItem).length})}catch{}
 }
 
@@ -413,7 +415,7 @@ function openMaterialUpload(container){
             headerRow:m.headerRow,headerDepth:m.headerDepth,createdAt:Date.now(),createdByName:getProfile()?.displayName||getProfile()?.email||"",rows:rowObj
           });
         }catch(e){
-          console.error("[V2.18.1] Lỗi lưu file giá",e);
+          console.error("[V2.18.2] Lỗi lưu file giá",e);
           throw new Error(`Không lưu được file giá ${file.name}. ${firebaseErrorText(e)}`);
         }
         total+=rows.length;

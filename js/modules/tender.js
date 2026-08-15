@@ -1,4 +1,4 @@
-import {refs,arr,ts,logActivity,can,getProfile,esc,money,fmtDate,daysUntil,TENDER_STAGES,stageInfo,setPage,loading,empty,badge,modal,toast,confirmBox} from "../core.js?v=2.18.1";
+import {refs,arr,ts,logActivity,can,getProfile,esc,money,fmtDate,daysUntil,TENDER_STAGES,stageInfo,setPage,loading,empty,badge,modal,toast,confirmBox} from "../core.js?v=2.18.2";
 
 let projects=[],rfqs=[],approvals=[],boqData={},pricingData={},tab="pipeline";
 
@@ -56,7 +56,7 @@ async function freezeQuantityBaseline(projectId){
     return {count:Object.keys(existing).length,existing:true};
   }
 
-  const boq=await arr(refs.boqProject(projectId));
+  const boq=(await arr(refs.boqProject(projectId))).filter(x=>!String(x.id||"").startsWith("__"));
   if(!boq.length)return {count:0,existing:false};
 
   const items={};
@@ -147,7 +147,7 @@ function approvalRow(a){
   return `<tr><td><div class="primary-text">${esc(p?.code||"—")}</div><div class="secondary-text">${esc(p?.name||"")}</div></td><td>V${String(a.version||1).padStart(2,"0")}</td><td>${money(a.netPrice)}</td><td>${money(a.bidPrice)}</td><td>${money(profit)} <span class="secondary-text">(${margin.toFixed(1)}%)</span></td><td>${badge(status[0],status[1])}</td><td>${esc(a.submittedByName||a.submittedByEmail||"—")}</td><td>${fmtDate(a.submittedDate)}</td><td><div class="row-actions"><button class="btn sm" data-approval="${a.id}">Xem</button></div></td></tr>`;
 }
 function boqTotals(projectId){
-  const val=boqData[projectId]||{}, lines=Object.values(val), settings={overheadPct:0,contingencyPct:0,discountPct:0,vatPct:10,...(pricingData[projectId]||{})};
+  const val=boqData[projectId]||{}, lines=Object.entries(val).filter(([id])=>!String(id).startsWith("__")).map(([,x])=>x), settings={overheadPct:0,contingencyPct:0,discountPct:0,vatPct:10,...(pricingData[projectId]||{})};
   let directNet=0,lineBid=0;
   lines.forEach(x=>{
     const qty=Number(x.qty||0),base=Number(x.materialUnit||0)+Number(x.laborUnit||0)+Number(x.subcontractUnit||0)+Number(x.otherUnit||0),netUnit=base*(1+Number(x.wastePct||0)/100),bidUnit=netUnit*(1+Number(x.markupPct||0)/100);
@@ -176,7 +176,7 @@ function newApproval(c){
       const p=getProfile();d.status="PENDING";d.submittedBy=p.uid;d.submittedByName=p.displayName||"";d.submittedByEmail=p.email||"";d.submittedDate=new Date().toISOString().slice(0,10);d.createdAt=ts();d.updatedAt=ts();
       const snapshotKey=refs.boqVersionsProject(d.projectId).push().key;
       const existingVersionsSnap=await refs.boqVersionsProject(d.projectId).once("value"),existingVersions=Object.values(existingVersionsSnap.val()||{}),nextBoqVersion=existingVersions.reduce((m,v)=>Math.max(m,Number(v.versionNo||0)),0)+1;
-      await refs.boqVersion(d.projectId,snapshotKey).set({versionNo:nextBoqVersion,versionLabel:`V${String(nextBoqVersion).padStart(2,"0")}`,name:`Trình duyệt giá V${String(d.version).padStart(2,"0")}`,note:"Snapshot tự động khi trình Giám đốc",source:"APPROVAL",locked:true,projectId:d.projectId,itemCount:b.count,items:boqData[d.projectId]||{},pricing:b.settings,totals:b,createdBy:p.uid,createdByName:p.displayName||p.email||"",createdAt:Date.now()});
+      await refs.boqVersion(d.projectId,snapshotKey).set({versionNo:nextBoqVersion,versionLabel:`V${String(nextBoqVersion).padStart(2,"0")}`,name:`Trình duyệt giá V${String(d.version).padStart(2,"0")}`,note:"Snapshot tự động khi trình Giám đốc",source:"APPROVAL",locked:true,projectId:d.projectId,itemCount:b.count,items:Object.fromEntries(Object.entries(boqData[d.projectId]||{}).filter(([id])=>!String(id).startsWith("__"))),pricing:b.settings,totals:b,createdBy:p.uid,createdByName:p.displayName||p.email||"",createdAt:Date.now()});
       d.boqVersionId=snapshotKey;d.boqVersionLabel=`V${String(nextBoqVersion).padStart(2,"0")}`;
       const key=refs.approvals().push().key;await refs.approval(key).set(d);
       await refs.project(d.projectId).update({tenderStatus:"APPROVAL",approvalStatus:"PENDING",updatedAt:ts()});

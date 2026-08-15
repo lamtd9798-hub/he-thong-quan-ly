@@ -1,8 +1,8 @@
 import {
   refs,arr,ts,logActivity,can,getProfile,esc,norm,fmtDate,fmtDateTime,daysUntil,
   EXEC_STAGES,execInfo,DISCIPLINES,setPage,loading,empty,badge,modal,closeModal,toast,confirmBox
-} from "../core.js?v=2.18.1";
-import {renderQuantityControl} from "./quantity-control.js?v=2.18.1";
+} from "../core.js?v=2.18.2";
+import {renderQuantityControl} from "./quantity-control.js?v=2.18.2";
 
 let projects=[], executions=[], users=[];
 let selectedProjectId="";

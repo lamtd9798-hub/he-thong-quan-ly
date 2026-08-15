@@ -1,0 +1,268 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "v2": {
+      "users": {
+        ".read": "auth != null",
+        "$uid": {
+          ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || (auth.uid === $uid && !data.exists() && newData.child('email').val() === auth.token.email && newData.child('role').val() === 'EMPLOYEE'))"
+        }
+      },
+      "projects": {
+        ".read": "auth != null",
+        ".indexOn": [
+          "code",
+          "phase",
+          "tenderStatus",
+          "tenderDeadline",
+          "updatedAt"
+        ],
+        "$id": {
+          ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TECHNICAL')"
+        }
+      },
+      "rfqs": {
+        ".read": "auth != null",
+        "$id": {
+          ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' || root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT')"
+        }
+      },
+      "approvals": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$id": {
+          ".write": "auth != null && ((auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR') || ((root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER') && ((!data.exists() && newData.child('status').val() === 'PENDING') || (data.exists() && data.child('status').val() === 'PENDING' && newData.child('status').val() === 'PENDING'))))"
+        }
+      },
+      "execution": {
+        ".read": "auth != null",
+        "$id": {
+          ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TECHNICAL' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')"
+        }
+      },
+      "reports": {
+        ".read": "auth != null",
+        "$id": {
+          ".write": "auth != null && ((auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN') || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' || root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT' || root.child('v2/users').child(auth.uid).child('role').val() === 'TECHNICAL' || root.child('v2/users').child(auth.uid).child('role').val() === 'EMPLOYEE')"
+        }
+      },
+      "activities": {
+        ".read": "auth != null",
+        "$id": {
+          ".write": "auth != null"
+        }
+      },
+      "boq": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$projectId": {
+          "$itemId": {
+            ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')"
+          }
+        }
+      },
+      "supplierQuotes": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' || root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT')",
+        "$projectId": {
+          "$itemId": {
+            "$quoteId": {
+              ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' || root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT')"
+            }
+          }
+        }
+      },
+      "pricingSettings": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$projectId": {
+          ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')"
+        }
+      },
+      "boqVersions": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$projectId": {
+          "$versionId": {
+            ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')"
+          }
+        }
+      },
+      "tasks": {
+        ".read": "auth != null",
+        ".indexOn": [
+          "projectId",
+          "assigneeUid",
+          "status",
+          "priority",
+          "dueDate",
+          "updatedAt"
+        ],
+        "$taskId": {
+          ".write": "auth != null && ((auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' || root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT' || root.child('v2/users').child(auth.uid).child('role').val() === 'TECHNICAL') || (root.child('v2/users').child(auth.uid).child('role').val() !== 'VIEWER' && !data.exists() && newData.child('assigneeUid').val() === auth.uid && newData.child('createdByUid').val() === auth.uid) || (root.child('v2/users').child(auth.uid).child('role').val() !== 'VIEWER' && data.exists() && data.child('assigneeUid').val() === auth.uid && newData.exists() && newData.child('assigneeUid').val() === auth.uid && newData.child('projectId').val() === data.child('projectId').val() && newData.child('createdByUid').val() === data.child('createdByUid').val()))"
+        }
+      },
+      "handover": {
+        ".read": "auth != null",
+        "$projectId": {
+          ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TECHNICAL')"
+        }
+      },
+      "executionDocs": {
+        ".read": "auth != null",
+        "$projectId": {
+          "$id": {
+            ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TECHNICAL')"
+          }
+        }
+      },
+      "procurement": {
+        ".read": "auth != null",
+        "$projectId": {
+          "$id": {
+            ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT' || root.child('v2/users').child(auth.uid).child('role').val() === 'TECHNICAL')"
+          }
+        }
+      },
+      "milestones": {
+        ".read": "auth != null",
+        "$projectId": {
+          "$id": {
+            ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TECHNICAL')"
+          }
+        }
+      },
+      "financeSettings": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$projectId": {
+          ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER')"
+        }
+      },
+      "budgets": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$projectId": {
+          ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER')"
+        }
+      },
+      "actualCosts": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$projectId": {
+          "$id": {
+            ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER')"
+          }
+        }
+      },
+      "supplierPayments": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$projectId": {
+          "$id": {
+            ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER')"
+          }
+        }
+      },
+      "variations": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$projectId": {
+          "$id": {
+            ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')"
+          }
+        }
+      },
+      "billings": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$projectId": {
+          "$id": {
+            ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER')"
+          }
+        }
+      },
+      "receipts": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$projectId": {
+          "$id": {
+            ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER')"
+          }
+        }
+      },
+      "cashFlowPlans": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$projectId": {
+          "$month": {
+            ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER')"
+          }
+        }
+      },
+      "financeAudit": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$projectId": {
+          ".indexOn": [
+            "createdAt"
+          ],
+          "$auditId": {
+            ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')"
+          }
+        }
+      },
+      "quantityBaseline": {
+        ".read": "auth != null",
+        "$projectId": {
+          ".write": "auth != null && ((auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER') || (root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' && !data.exists()))"
+        }
+      },
+      "quantityBaselineMeta": {
+        ".read": "auth != null",
+        "$projectId": {
+          ".write": "auth != null && ((auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER') || (root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' && !data.exists()))"
+        }
+      },
+      "orderRequests": {
+        ".read": "auth != null",
+        "$projectId": {
+          ".indexOn": [
+            "requestDate",
+            "status",
+            "requesterUid",
+            "updatedAt"
+          ],
+          "$requestId": {
+            ".write": "auth != null && ((auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER') || ((root.child('v2/users').child(auth.uid).child('role').val() === 'TECHNICAL' || root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT' || root.child('v2/users').child(auth.uid).child('role').val() === 'EMPLOYEE') && !data.exists() && newData.exists() && newData.child('requesterUid').val() === auth.uid && newData.child('status').val() === 'DRAFT') || ((root.child('v2/users').child(auth.uid).child('role').val() === 'TECHNICAL' || root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT' || root.child('v2/users').child(auth.uid).child('role').val() === 'EMPLOYEE') && data.exists() && data.child('requesterUid').val() === auth.uid && data.child('status').val() === 'DRAFT' && newData.exists() && newData.child('requesterUid').val() === auth.uid && (newData.child('status').val() === 'DRAFT' || newData.child('status').val() === 'PENDING')) || (root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT' && data.exists() && data.child('status').val() === 'APPROVED' && newData.exists() && newData.child('status').val() === 'ORDERED'))"
+          }
+        }
+      },
+      "quantityAudit": {
+        ".read": "auth != null",
+        "$projectId": {
+          ".indexOn": [
+            "createdAt"
+          ],
+          "$auditId": {
+            ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() !== 'VIEWER')"
+          }
+        }
+      },
+      "quantityBoqRevisions": {
+        ".read": "auth != null",
+        "$projectId": {
+          ".indexOn": [
+            "revisionNo",
+            "status",
+            "effectiveDate"
+          ],
+          "$revisionId": {
+            ".write": "auth != null && ((auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER') || (root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' && ((!data.exists() && newData.exists() && (newData.child('status').val() === 'DRAFT' || (newData.child('code').val() === 'R0' && newData.child('status').val() === 'ACTIVE'))) || (data.exists() && data.child('status').val() === 'DRAFT' && (!newData.exists() || newData.child('status').val() === 'DRAFT')))))"
+          }
+        }
+      },
+      "boqImportMeta": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')",
+        "$projectId": {
+          ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER')"
+        }
+      },
+      "materialPriceImports": {
+        ".read": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' || root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT')",
+        "$projectId": {
+          "$importId": {
+            ".write": "auth != null && (auth.token.email === 'lamtd9798@gmail.com' || root.child('v2/users').child(auth.uid).child('role').val() === 'ADMIN' || root.child('v2/users').child(auth.uid).child('role').val() === 'DIRECTOR' || root.child('v2/users').child(auth.uid).child('role').val() === 'MANAGER' || root.child('v2/users').child(auth.uid).child('role').val() === 'TENDER' || root.child('v2/users').child(auth.uid).child('role').val() === 'PROCUREMENT')"
+          }
+        }
+      }
+    }
+  }
+}

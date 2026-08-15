@@ -1,7 +1,7 @@
 import {
   refs,arr,ts,logActivity,getProfile,can,esc,norm,money,fmtDate,fmtDateTime,daysUntil,
   DISCIPLINES,setPage,loading,empty,badge,modal,toast,confirmBox
-} from "../core.js?v=2.18.1";
+} from "../core.js?v=2.18.2";
 
 let projects=[], selectedProjectId="", tab="OVERVIEW";
 let settings={}, budgets=[], costs=[], payments=[], variations=[], billings=[], receipts=[], procurement=[], boqItems=[], pricing={}, cashPlans=[], financeAudits=[];
@@ -63,7 +63,7 @@ async function loadProjectData(){
   billings=toArray(bi.val()).sort((a,b)=>String(b.billingDate||"").localeCompare(String(a.billingDate||"")));
   receipts=toArray(r.val()).sort((a,b)=>String(b.receiptDate||"").localeCompare(String(a.receiptDate||"")));
   procurement=toArray(proc.val());
-  boqItems=toArray(boq.val());
+  boqItems=toArray(boq.val()).filter(x=>!String(x.id||"").startsWith("__"));
   pricing=price.val()||{};
   cashPlans=toArray(cf.val()).map(x=>({...x,month:x.id})).sort((a,b)=>String(a.month).localeCompare(String(b.month)));
   financeAudits=toArray(audit.val()).sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
