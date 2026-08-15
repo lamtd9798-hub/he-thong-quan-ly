@@ -1,7 +1,7 @@
 import {
   refs,arr,ts,logActivity,getProfile,can,esc,norm,money,fmtDate,fmtDateTime,
   loading,empty,badge,modal,toast,confirmBox
-} from "../core.js?v=2.11.0";
+} from "../core.js?v=2.12.0";
 
 let projectId="";
 let mountEl=null;
@@ -121,6 +121,7 @@ function paint(){
       <div class="subtabs" style="margin:0">
         ${[
           ["SUMMARY","Tổng hợp BOQ"],
+          ["SOURCE","BOQ chi tiết"],
           ["REVISIONS","BOQ Revision"],
           ["REQUESTS","Phiếu đặt hàng"],
           ["OUTSIDE","Ngoài BOQ"],
@@ -132,6 +133,7 @@ function paint(){
 
     <div id="quantityViewBody">
       ${view==="SUMMARY"?summaryHtml(filtered):
+        view==="SOURCE"?sourceBoqHtml():
         view==="REVISIONS"?revisionsHtml():
         view==="REQUESTS"?requestsHtml():
         view==="OUTSIDE"?outsideHtml(rows):
@@ -157,6 +159,7 @@ function summaryHtml(rows){
   return `<div class="qty-info-strip">
     <b>Tách 2 loại chênh:</b> Δ HĐ = Baseline Revision hiện hành − Tender R0. 
     Vượt công trường = Tổng phiếu đã duyệt/đặt − Baseline hiện hành. Hai số này không cộng lẫn nhau.
+    ${revisionDisplayRows().length?` Cấu trúc hệ thống/khu vực/ghi chú từ Excel cũng được giữ lại.`:""}
   </div>
   <div class="table-wrap"><table class="table quantity-summary-table"><thead><tr>
     <th>MÃ BOQ</th><th>HỆ</th><th>VẬT TƯ / CÔNG VIỆC</th><th>ĐVT</th>
@@ -165,8 +168,56 @@ function summaryHtml(rows){
     <th>% SỬ DỤNG</th><th>GIÁ HĐ/ĐVT</th><th>GT Δ HĐ</th><th>GT VƯỢT CT</th>
     <th>CHI PHÍ VƯỢT</th><th>TRẠNG THÁI</th><th style="text-align:right">THAO TÁC</th>
   </tr></thead><tbody>
-    ${rows.length?rows.map(summaryRow).join(""):`<tr><td colspan="18">${empty("Không có dữ liệu","Không có đầu mục phù hợp bộ lọc.","▦")}</td></tr>`}
+    ${rows.length?structuredSummaryBody(rows):`<tr><td colspan="18">${empty("Không có dữ liệu","Không có đầu mục phù hợp bộ lọc.","▦")}</td></tr>`}
   </tbody></table></div>`;
+}
+
+function structuredSummaryBody(rows){
+  const structure=revisionDisplayRows();
+  if(q||!structure.length)return rows.map(summaryRow).join("");
+
+  const rowMap=new Map(rows.filter(r=>!r.isOutside).map(r=>[r.key,r]));
+  const used=new Set();
+  const html=[];
+
+  structure.forEach(sr=>{
+    if(sr.rowType==="ITEM"){
+      const r=rowMap.get(sr.stableItemId);
+      if(r){html.push(summaryRow(r));used.add(r.key)}
+      return;
+    }
+    html.push(structureSummaryRow(sr));
+  });
+
+  const removed=rows.filter(r=>!r.isOutside&&!used.has(r.key));
+  if(removed.length){
+    html.push(`<tr class="qty-structure-section removed"><td colspan="18"><b>ĐẦU MỤC KHÔNG CÒN TRONG REVISION HIỆN HÀNH</b></td></tr>`);
+    removed.forEach(r=>html.push(summaryRow(r)));
+  }
+
+  const outside=rows.filter(r=>r.isOutside);
+  if(outside.length){
+    html.push(`<tr class="qty-structure-section outside"><td colspan="18"><b>PHÁT SINH NGOÀI BOQ</b></td></tr>`);
+    outside.forEach(r=>html.push(summaryRow(r)));
+  }
+  return html.join("");
+}
+
+function structureSummaryRow(sr){
+  const level=structureLevel(sr.itemNo);
+  if(sr.rowType==="SECTION"){
+    return `<tr class="qty-structure-section level-${level}"><td><b>${esc(sr.itemNo||"")}</b></td><td colspan="17"><b>${esc(sr.description||"")}</b></td></tr>`;
+  }
+  if(sr.rowType==="NOTE_HEADER"){
+    return `<tr class="qty-structure-note-header"><td></td><td colspan="17"><b>${esc(sr.description||"GHI CHÚ CHUNG")}</b></td></tr>`;
+  }
+  return `<tr class="qty-structure-note"><td>${esc(sr.itemNo||"")}</td><td></td><td colspan="15">${esc(sr.description||"")}</td><td>${sr.sourceRow?`<span class="secondary-text">Dòng ${sr.sourceRow}</span>`:""}</td></tr>`;
+}
+
+function structureLevel(itemNo){
+  const no=String(itemNo||"").trim();
+  if(!no)return 1;
+  return Math.min(4,Math.max(1,no.split(".").filter(Boolean).length));
 }
 
 function summaryRow(r){
@@ -203,6 +254,119 @@ function usageHtml(r){
   const pctVal=r.baselineQty>0?r.confirmedQty/r.baselineQty*100:(r.confirmedQty>0?100:0);
   const cls=pctVal>100?"bar-danger":pctVal>=90?"bar-warning":"";
   return `<div class="qty-usage"><div><span>${num(pctVal,1)}%</span></div><div class="progress"><div class="bar ${cls}" style="width:${Math.min(100,pctVal)}%"></div></div></div>`;
+}
+
+function sourceBoqHtml(){
+  const structure=revisionDisplayRows();
+  if(!structure.length){
+    return `<div class="card"><div class="card-body">
+      ${empty(
+        "Revision này chưa lưu cấu trúc BOQ gốc",
+        "Revision được tạo ở phiên bản cũ chỉ lưu các dòng có khối lượng. Có thể nạp lại cấu trúc từ file Excel mà KHÔNG thay đổi khối lượng/đơn giá Baseline hiện tại.",
+        "▦"
+      )}
+      ${can("quantityRevisionActivate")?`<div style="text-align:center;margin-top:12px"><button class="btn primary" id="refreshBoqStructureBtn">Tải lại cấu trúc từ Excel / CSV</button></div>`:""}
+    </div></div>`;
+  }
+
+  const headers=revisionSourceHeaders();
+  const cols=sourceColumnIndexes(headers,structure);
+
+  return `<div class="page-head" style="margin-bottom:12px">
+    <div>
+      <h2 style="font-size:17px">BOQ chi tiết · ${esc(activeRevision?.code||"R0")}</h2>
+      <p>Giữ đúng thứ tự dòng và nội dung nguồn Excel. Dòng Hệ thống/Khu vực/Ghi chú không tham gia tính khối lượng đặt hàng.</p>
+    </div>
+    <div class="row-actions">
+      ${badge(`${structure.filter(x=>x.rowType==="ITEM").length} dòng KL`,"green")}
+      ${badge(`${structure.length} dòng cấu trúc`,"gray")}
+      ${can("quantityRevisionActivate")?`<button class="btn sm" id="refreshBoqStructureBtn">Nạp lại cấu trúc</button>`:""}
+    </div>
+  </div>
+  ${headers.length?sourceRawTableHtml(headers,cols,structure):sourceMappedTableHtml(structure)}`;
+}
+
+function sourceRawTableHtml(headers,cols,structure){
+  return `<div class="table-wrap"><table class="table boq-source-table raw"><thead><tr>
+    ${cols.map(i=>`<th>${esc(headers[i]||`Cột ${i+1}`)}</th>`).join("")}
+  </tr></thead><tbody>
+    ${structure.map(sr=>sourceRawRow(sr,cols)).join("")}
+  </tbody></table></div>`;
+}
+
+function sourceRawRow(sr,cols){
+  const values=Array.isArray(sr.sourceValues)?sr.sourceValues:Object.values(sr.sourceValues||{});
+  const cls=sr.rowType==="SECTION"?`boq-source-section level-${structureLevel(sr.itemNo)}`:
+    sr.rowType==="NOTE_HEADER"?"boq-source-note-header":
+    sr.rowType==="NOTE"?"boq-source-note":"boq-source-item";
+  return `<tr class="${cls}">
+    ${cols.map(i=>`<td>${formatSourceCell(values[i])}</td>`).join("")}
+  </tr>`;
+}
+
+function sourceMappedTableHtml(structure){
+  return `<div class="table-wrap"><table class="table boq-source-table"><thead><tr>
+    <th>MỤC</th><th>DIỄN GIẢI</th><th>ĐƠN VỊ</th><th>KHỐI LƯỢNG</th>
+    <th>MODEL/THÔNG SỐ</th><th>NHÃN HIỆU</th><th>XUẤT XỨ</th>
+    <th>VẬT TƯ CHÍNH</th><th>NC + VẬT TƯ PHỤ</th><th>TỔNG ĐƠN GIÁ</th><th>THÀNH TIỀN</th>
+  </tr></thead><tbody>${structure.map(sourceMappedRow).join("")}</tbody></table></div>`;
+}
+
+function sourceMappedRow(sr){
+  if(sr.rowType==="SECTION"){
+    const level=structureLevel(sr.itemNo);
+    return `<tr class="boq-source-section level-${level}"><td><b>${esc(sr.itemNo||"")}</b></td><td colspan="10"><b>${esc(sr.description||"")}</b></td></tr>`;
+  }
+  if(sr.rowType==="NOTE_HEADER"){
+    return `<tr class="boq-source-note-header"><td></td><td colspan="10"><b>${esc(sr.description||"GHI CHÚ CHUNG")}</b></td></tr>`;
+  }
+  if(sr.rowType==="NOTE"){
+    return `<tr class="boq-source-note"><td>${esc(sr.itemNo||"")}</td><td>${esc(sr.description||"")}</td><td>${esc(sr.unit||"")}</td><td colspan="8"></td></tr>`;
+  }
+
+  const totalUnit=Number(sr.bidUnit||0),qty=Number(sr.qty||0);
+  return `<tr class="boq-source-item">
+    <td><b>${esc(sr.itemNo||"")}</b></td><td>${esc(sr.description||"")}</td><td>${esc(sr.unit||"")}</td>
+    <td><b>${num(qty,3)}</b></td><td>${esc(sr.specification||"")}</td><td>${esc(sr.brand||"")}</td><td>${esc(sr.origin||"")}</td>
+    <td>${money(sr.materialUnit)}</td><td>${money(sr.laborUnit)}</td><td><b>${money(totalUnit)}</b></td><td><b>${money(qty*totalUnit)}</b></td>
+  </tr>`;
+}
+
+function revisionSourceHeaders(){
+  const raw=activeRevision?.sourceHeaders;
+  if(Array.isArray(raw))return raw.map(x=>String(x||""));
+  return Object.values(raw||{}).map(x=>String(x||""));
+}
+
+function sourceColumnIndexes(headers,structure){
+  const max=Math.max(
+    headers.length,
+    ...structure.map(r=>Array.isArray(r.sourceValues)?r.sourceValues.length:Object.keys(r.sourceValues||{}).length),
+    0
+  );
+  const out=[];
+  for(let i=0;i<max;i++){
+    const hasHeader=String(headers[i]||"").trim()!=="";
+    const hasData=structure.some(r=>{
+      const vals=Array.isArray(r.sourceValues)?r.sourceValues:Object.values(r.sourceValues||{});
+      return String(vals[i]??"").trim()!=="";
+    });
+    if(hasHeader||hasData)out.push(i);
+  }
+  return out;
+}
+
+function formatSourceCell(v){
+  if(v===null||v===undefined||v==="")return "";
+  if(typeof v==="number")return esc(v.toLocaleString("vi-VN",{maximumFractionDigits:4}));
+  return esc(String(v));
+}
+
+
+function revisionDisplayRows(){
+  const raw=activeRevision?.displayRows;
+  if(Array.isArray(raw))return raw.filter(Boolean).sort((a,b)=>Number(a.sourceOrder||0)-Number(b.sourceOrder||0));
+  return Object.values(raw||{}).filter(Boolean).sort((a,b)=>Number(a.sourceOrder||0)-Number(b.sourceOrder||0));
 }
 
 function requestsHtml(){
@@ -267,6 +431,7 @@ function bind(){
   mountEl.querySelector("#newOrderRequestBtn")?.addEventListener("click",()=>editRequest(null));
   mountEl.querySelector("#uploadRevisionBtn")?.addEventListener("click",()=>uploadRevisionDialog(false));
   mountEl.querySelector("#uploadRevisionInlineBtn")?.addEventListener("click",()=>uploadRevisionDialog(false));
+  mountEl.querySelector("#refreshBoqStructureBtn")?.addEventListener("click",refreshActiveRevisionStructure);
   mountEl.querySelector("#exportQtyCsvBtn")?.addEventListener("click",exportCsv);
   mountEl.querySelectorAll("[data-request-view]").forEach(b=>b.addEventListener("click",()=>viewRequest(b.dataset.requestView)));
   mountEl.querySelectorAll("[data-request-edit]").forEach(b=>b.addEventListener("click",()=>editRequest(b.dataset.requestEdit)));
@@ -403,7 +568,7 @@ function revisionRow(r){
 }
 
 const REVISION_HEADER_ALIASES={
-  itemNo:["stt","ma","mã","ma boq","mã boq","code","code gia","code giá","muc","mục","item no","item","no"],
+  itemNo:["muc","mục","stt","item no","item","no","ma boq","mã boq","ma","mã"],
   discipline:["he","hệ","he thong","hệ thống","system","discipline"],
   category:["nhom","nhóm","hang muc","hạng mục","category","group"],
   description:["dien giai","diễn giải","mo ta","mô tả","mo ta cong viec","mô tả công việc","noi dung","nội dung","noi dung cong viec","nội dung công việc","ten vat tu","tên vật tư","ten hang","tên hàng","description","item description","work description"],
@@ -497,6 +662,7 @@ function uploadRevisionDialog(isTenderR0=false){
         }
 
         const items=mapRevisionItems(parsed);
+        const displayRows=attachStableIdsToStructure(parsedInfo.structureRows,items);
         const u=getProfile()||{},revisionId=refs.quantityBoqRevisionsProject(projectId).push().key;
         const total=revisionTotal(items);
         const ext=fileExtension(file.name);
@@ -507,8 +673,10 @@ function uploadRevisionDialog(isTenderR0=false){
           notes:String(fd.get("notes")||""),status:isTenderR0?"ACTIVE":"DRAFT",
           source:sourceType,sourceFileName:file.name,sourceSheetName:parsedInfo.sheetName||"",
           sourceHeaderRow:parsedInfo.headerRow,sourceHeaderDepth:parsedInfo.headerDepth,
-          lineCount:Object.keys(items).length,totalBidValue:total,
-          createdAt:Date.now(),createdByUid:u.uid||"",createdByName:u.displayName||u.email||"",items
+          sourceHeaders:parsedInfo.sourceHeaders||[],
+          lineCount:Object.keys(items).length,structureLineCount:displayRows.length,totalBidValue:total,
+          createdAt:Date.now(),createdByUid:u.uid||"",createdByName:u.displayName||u.email||"",
+          displayRows,items
         };
 
         if(isTenderR0){
@@ -761,13 +929,98 @@ async function parseRevisionSpreadsheet(file,{sheetName="",headerRow=1,headerDep
     }
   }
 
+  const structureRows=parseRevisionStructure(aoa,usedRow,usedDepth);
+  const sourceHeaders=analyzeRevisionHeaders(aoa,usedRow,usedDepth).displayHeaders.map(x=>String(x||""));
   return {
     rows,
+    structureRows,
+    sourceHeaders,
     sheetName:inspection.kind==="EXCEL"?selected:"",
     headerRow:usedRow+1,
     headerDepth:usedDepth,
     autoCorrected
   };
+}
+
+function parseRevisionStructure(aoa,headerRowIndex,headerDepth=1){
+  const depth=Math.min(3,Math.max(1,Number(headerDepth||1)));
+  const analyzed=analyzeRevisionHeaders(aoa,headerRowIndex,depth);
+  const map=analyzed.map;
+  const out=[];
+
+  for(let i=headerRowIndex+depth;i<aoa.length;i++){
+    const r=aoa[i]||[];
+    if(!r.some(x=>String(x??"").trim()))continue;
+    const get=k=>map[k]>=0?(r[map[k]]??""):"";
+
+    const itemNo=String(get("itemNo")??"").trim();
+    const description=String(get("description")??"").trim();
+    const unit=String(get("unit")??"").trim();
+    const qtyPick=pickRevisionQtyValue(r,analyzed);
+    const qtyRaw=qtyPick.value;
+    const hasNumericQty=isRevisionNumeric(qtyRaw);
+    if(!itemNo&&!description)continue;
+
+    let rowType="NOTE";
+    if(description&&hasNumericQty)rowType="ITEM";
+    else if(/^ghi\s*chu\s*chung$/i.test(norm(description)))rowType="NOTE_HEADER";
+    else if(isRevisionSectionRow(itemNo,description,unit))rowType="SECTION";
+
+    out.push({
+      sourceRow:i+1,
+      sourceOrder:i-(headerRowIndex+depth),
+      sourceValues:r.map(sourceCellValue),
+      rowType,
+      itemNo,
+      discipline:String(get("discipline")||"").trim().toUpperCase(),
+      category:String(get("category")||"").trim(),
+      description,
+      specification:String(get("specification")||"").trim(),
+      brand:String(get("brand")||"").trim(),
+      origin:String(get("origin")||"").trim(),
+      unit,
+      qty:hasNumericQty?toNumber(qtyRaw):null,
+      qtySourceColumn:qtyPick.index,qtySourceHeader:analyzed.displayHeaders[qtyPick.index]||"",
+      bidUnit:toNumber(get("bidUnit")),
+      materialUnit:toNumber(get("materialUnit")),
+      laborUnit:toNumber(get("laborUnit")),
+      subcontractUnit:toNumber(get("subcontractUnit")),
+      otherUnit:toNumber(get("otherUnit"))
+    });
+  }
+  return out;
+}
+
+function sourceCellValue(v){
+  if(v===null||v===undefined)return "";
+  if(typeof v==="number"||typeof v==="boolean")return v;
+  return String(v);
+}
+
+function isRevisionSectionRow(itemNo,description,unit){
+  const no=String(itemNo||"").trim();
+  const desc=String(description||"").trim();
+  const u=norm(unit||"");
+  if(u==="note"||u==="ghi chu"||u==="ghi chú")return false;
+  if(/ghi\s*chu/i.test(norm(desc)))return false;
+  if(/^\d+(?:\.\d+)*\.?$/.test(no))return true;
+  if(no&&/^[A-ZIVX]+(?:\.\d+)*$/i.test(no))return true;
+
+  const letters=desc.replace(/[^A-Za-zÀ-ỹĐđ]/g,"");
+  const upperLetters=desc.replace(/[^A-ZÀ-ỸĐ]/g,"");
+  if(desc.length>3&&letters.length>0&&upperLetters.length/letters.length>=0.78&&!unit)return true;
+  return false;
+}
+
+function attachStableIdsToStructure(structureRows,items){
+  const bySourceRow=new Map();
+  Object.entries(items||{}).forEach(([id,x])=>{
+    if(Number(x.sourceRow||0)>0)bySourceRow.set(Number(x.sourceRow),id);
+  });
+  return (structureRows||[]).map(r=>({
+    ...r,
+    stableItemId:r.rowType==="ITEM"?(bySourceRow.get(Number(r.sourceRow))||""):""
+  }));
 }
 
 function parseRevisionAoa(aoa,headerRowIndex,headerDepth=1){
@@ -788,14 +1041,17 @@ function parseRevisionAoa(aoa,headerRowIndex,headerDepth=1){
     const description=String(get("description")??"").trim();
     if(!description)continue;
 
-    const qtyRaw=get("qty");
+    const qtyPick=pickRevisionQtyValue(r,analyzed);
+    const qtyRaw=qtyPick.value;
     if(qtyRaw===null||qtyRaw===undefined||String(qtyRaw).trim()==="")continue;
     const qty=toNumber(qtyRaw);
 
-    // Bỏ các dòng ghi chú/heading: có mô tả nhưng KL không phải số thực.
+    // Nếu cột KL chính trống, tự fallback sang KL/Số lượng khác có số trên cùng dòng.
     if(!isRevisionNumeric(qtyRaw))continue;
 
     const d={
+      sourceRow:i+1,sourceOrder:i-(headerRowIndex+depth),
+      qtySourceColumn:qtyPick.index,qtySourceHeader:analyzed.displayHeaders[qtyPick.index]||"",
       itemNo:String(get("itemNo")||out.length+1).trim(),
       discipline:String(get("discipline")||"KHÁC").trim().toUpperCase(),
       category:String(get("category")||"").trim(),
@@ -816,6 +1072,26 @@ function parseRevisionAoa(aoa,headerRowIndex,headerDepth=1){
     out.push(d);
   }
   return out;
+}
+
+function pickRevisionQtyValue(row,analyzed){
+  const primary=Number(analyzed?.map?.qty??-1);
+  if(primary>=0&&isRevisionNumeric(row?.[primary]))return {value:row[primary],index:primary};
+
+  const headers=analyzed?.headers||[];
+  const aliases=(REVISION_HEADER_ALIASES.qty||[]).map(cleanRevisionHeader).filter(Boolean);
+  const candidates=[];
+
+  headers.forEach((h,i)=>{
+    if(i===primary||!h)return;
+    let score=headerSemanticScore(h,aliases,"qty");
+    if(score<0)return;
+    if(isRevisionNumeric(row?.[i]))candidates.push({i,score});
+  });
+
+  candidates.sort((a,b)=>b.score-a.score);
+  if(candidates.length)return {value:row[candidates[0].i],index:candidates[0].i};
+  return {value:primary>=0?row?.[primary]:"",index:primary};
 }
 
 function analyzeRevisionHeaders(aoa,rowIndex,headerDepth=1){
@@ -1120,6 +1396,7 @@ function mapRevisionItems(parsed){
       netUnit:(materialUnit+laborUnit+subcontractUnit+otherUnit)*(1+wastePct/100),bidUnit,
       selectedSupplier:old.selectedSupplier||"",
       brand:d.brand||old.brand||"",origin:d.origin||old.origin||"",
+      sourceRow:Number(d.sourceRow||old.sourceRow||0),sourceOrder:Number(d.sourceOrder??old.sourceOrder??i),
       matchMethod:method,lineStatus:"ACTIVE",updatedAt:Date.now()
     };
   });

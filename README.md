@@ -1,4 +1,4 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.11
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.12
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
@@ -12,6 +12,90 @@
 
 
 
+
+## Nâng cấp V2.12 — Giữ nguyên cấu trúc BOQ khi upload
+
+V2.12 sửa việc import Excel chỉ lấy các dòng có khối lượng khiến BOQ sau upload không còn giống file gốc.
+
+### Dữ liệu được giữ
+
+Khi import BOQ Excel/CSV, hệ thống lưu:
+
+- Dòng `GHI CHÚ CHUNG`.
+- Các dòng note/thuyết minh.
+- Hệ thống, ví dụ `1.0 HỆ THỐNG CHỮA CHÁY...`.
+- Khu vực/nhóm, ví dụ `1.1 Khu vực hầm`.
+- Các đầu mục `1.101`, `1.102`...
+- Đúng thứ tự dòng nguồn.
+- Toàn bộ cột nguồn có dữ liệu, kể cả cột riêng của file như `KL Tuấn Nguyễn`, `CODE`, `Ghi chú`...
+
+Chỉ dòng `ITEM` có khối lượng mới tham gia:
+- Baseline.
+- Tổng đã đặt.
+- Còn lại.
+- Vượt BOQ.
+- Giá trị chênh.
+
+Dòng nhóm/note chỉ dùng để giữ cấu trúc và ngữ cảnh.
+
+### Tab BOQ chi tiết
+
+`Triển khai → Kiểm soát khối lượng → BOQ chi tiết`
+
+hiển thị lại bảng theo thứ tự Excel, dùng chính các cột nguồn đã upload.
+
+### Tổng hợp BOQ
+
+Bảng kiểm soát cũng chèn lại:
+- Hệ thống.
+- Khu vực.
+- Ghi chú.
+
+giữa các đầu mục vật tư để người dùng không mất ngữ cảnh.
+
+### Fallback nhiều cột khối lượng
+
+Nếu một dòng có:
+- `Khối lượng` trống,
+- nhưng `KL Tuấn Nguyễn` có số,
+
+hệ thống vẫn nhận đó là đầu mục vật tư và dùng cột KL có số của dòng đó.
+
+Ví dụ:
+`1.101 Tủ điều khiển bơm`
+- Khối lượng: trống
+- KL Tuấn Nguyễn: 2
+
+V2.12 nhận:
+`KL = 2`
+
+### Revision cũ V2.11
+
+Revision tạo trước V2.12 chưa có dữ liệu cấu trúc.
+
+Trong tab `BOQ chi tiết` sẽ có nút:
+
+`Tải lại cấu trúc từ Excel / CSV`
+
+Chức năng này:
+- KHÔNG thay đổi Baseline.
+- KHÔNG thay đổi khối lượng.
+- KHÔNG thay đổi đơn giá.
+- KHÔNG thay đổi phiếu đặt hàng.
+
+Nó chỉ lấy lại:
+- cấu trúc,
+- note,
+- khu vực,
+- thứ tự,
+- các cột nguồn,
+
+và map vào đầu mục hiện có.
+
+### Firebase
+
+V2.12 không thêm node mới và không đổi Rules.
+Dữ liệu `displayRows` và `sourceHeaders` nằm bên trong từng BOQ Revision.
 ## Nâng cấp V2.11 — Tự chọn đúng cột dữ liệu BOQ
 
 V2.11 sửa trường hợp Excel nhận đúng tên tiêu đề nhưng khi Lưu báo:

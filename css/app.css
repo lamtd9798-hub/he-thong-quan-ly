@@ -296,3 +296,27 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
 .revision-detected-map span{font-size:8px;border-radius:999px;padding:4px 7px}
 .revision-detected-map .ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d}
 .revision-detected-map .miss{background:#f8fafc;border:1px solid #e2e8f0;color:#94a3b8}
+
+
+/* =========================
+   V2.12 - GIỮ NGUYÊN CẤU TRÚC BOQ
+   ========================= */
+.qty-structure-section td{background:#eef4fb!important;border-top:1px solid #cbd5e1;border-bottom:1px solid #cbd5e1;color:#0f172a}
+.qty-structure-section.level-1 td{background:#dbeafe!important;font-size:10px}
+.qty-structure-section.level-2 td{background:#eff6ff!important}
+.qty-structure-section.level-3 td{background:#f8fafc!important}
+.qty-structure-section.removed td{background:#fef2f2!important;color:#991b1b}
+.qty-structure-section.outside td{background:#fff7ed!important;color:#9a3412}
+.qty-structure-note-header td{background:#f8fafc!important;font-size:9px}
+.qty-structure-note td{background:#fcfcfd!important;color:#64748b;font-size:9px;white-space:normal;line-height:1.45}
+
+.boq-source-table.raw{min-width:1900px}
+.boq-source-table.raw th{white-space:normal;min-width:90px;max-width:240px;line-height:1.25}
+.boq-source-table.raw td{white-space:normal;vertical-align:top;line-height:1.35}
+.boq-source-section td{background:#eaf2fb!important;font-weight:750;border-top:1px solid #bfd0e2;border-bottom:1px solid #bfd0e2}
+.boq-source-section.level-1 td{background:#d8e8f8!important}
+.boq-source-section.level-2 td{background:#edf5fc!important}
+.boq-source-note-header td{background:#f3f4f6!important;font-weight:750}
+.boq-source-note td{background:#fafafa!important;color:#475569}
+.boq-source-item td{background:#fff}
+.boq-source-item:hover td{background:#f8fbff}
