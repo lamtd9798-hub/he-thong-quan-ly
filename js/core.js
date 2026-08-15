@@ -1,4 +1,4 @@
-import { firebaseConfig, APP_ROOT, ADMIN_EMAIL } from "./config.js?v=2.5.0";
+import { firebaseConfig, APP_ROOT, ADMIN_EMAIL } from "./config.js?v=2.6.0";
 
 if (!window.firebase) throw new Error("Không tải được Firebase SDK.");
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
@@ -64,6 +64,14 @@ export const refs = {
   receiptsProject:projectId=>root.child(`receipts/${projectId}`),
   receipt:(projectId,id)=>root.child(`receipts/${projectId}/${id}`),
 
+  cashFlowPlansRoot:()=>root.child("cashFlowPlans"),
+  cashFlowPlansProject:projectId=>root.child(`cashFlowPlans/${projectId}`),
+  cashFlowPlan:(projectId,monthKey)=>root.child(`cashFlowPlans/${projectId}/${monthKey}`),
+
+  financeAuditRoot:()=>root.child("financeAudit"),
+  financeAuditProject:projectId=>root.child(`financeAudit/${projectId}`),
+  financeAuditItem:(projectId,id)=>root.child(`financeAudit/${projectId}/${id}`),
+
   reports:()=>root.child("reports"), report:id=>root.child(`reports/${id}`),
   tasks:()=>root.child("tasks"), task:id=>root.child(`tasks/${id}`),
   activities:()=>root.child("activities")
@@ -95,6 +103,8 @@ const PERMS = {
   financeCostEdit:["ADMIN","DIRECTOR","MANAGER"],
   financeVariationEdit:["ADMIN","DIRECTOR","MANAGER","TENDER"],
   financeBillingEdit:["ADMIN","DIRECTOR","MANAGER"],
+  financeAuditView:["ADMIN","DIRECTOR","MANAGER"],
+  cashFlowEdit:["ADMIN","DIRECTOR","MANAGER"],
   taskAssign:["ADMIN","DIRECTOR","MANAGER","TENDER","PROCUREMENT","TECHNICAL"],
   taskSelfEdit:["ADMIN","DIRECTOR","MANAGER","TENDER","PROCUREMENT","TECHNICAL","EMPLOYEE"],
   taskDelete:["ADMIN","DIRECTOR","MANAGER"],
@@ -209,7 +219,7 @@ export const TASK_TYPES=[
 
 export const DISCIPLINES=["PCCC","HVAC","CẤP THOÁT NƯỚC","ĐIỆN","ĐIỆN NHẸ","KHÁC"];
 export const projectCode=n=>`DA-${new Date().getFullYear()}-${String(n).padStart(3,"0")}`;
-export const appVersion="2.5.0";
+export const appVersion="2.6.0";
 export const weekKey=()=>{
   const d=new Date(), t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())), day=t.getUTCDay()||7;
   t.setUTCDate(t.getUTCDate()+4-day);const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1));

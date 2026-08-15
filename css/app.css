@@ -153,3 +153,40 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
 .positive-text{color:#15803d!important}.bar-danger{background:linear-gradient(90deg,#dc2626,#ef4444)!important}
 .finance-budget-table tfoot th{background:#f8fafc;border-top:2px solid #cbd5e1;font-size:10px;padding:11px;white-space:nowrap}
 @media(max-width:760px){.finance-alert-grid{grid-template-columns:1fr}}
+
+
+/* =========================
+   V2.6 - DASHBOARD GIÁM ĐỐC / CASH FLOW / HEALTH
+   ========================= */
+.finance-health-banner{display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:12px;padding:13px 15px;background:#fff}
+.finance-health-banner .health-light{width:14px;height:14px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 0 5px rgba(100,116,139,.10)}
+.finance-health-banner b{display:block;font-size:12px}
+.finance-health-banner span{display:block;font-size:10px;color:var(--muted);margin-top:3px;line-height:1.45}
+.finance-health-banner.green{background:#f0fdf4;border-color:#bbf7d0}.finance-health-banner.green .health-light{background:#16a34a;box-shadow:0 0 0 5px rgba(22,163,74,.11)}
+.finance-health-banner.yellow{background:#fff7ed;border-color:#fed7aa}.finance-health-banner.yellow .health-light{background:#d97706;box-shadow:0 0 0 5px rgba(217,119,6,.11)}
+.finance-health-banner.red{background:#fef2f2;border-color:#fecaca}.finance-health-banner.red .health-light{background:#dc2626;box-shadow:0 0 0 5px rgba(220,38,38,.11)}
+.finance-logic-alert{border:1px solid #bae6fd;background:#f0f9ff;color:#075985;border-radius:10px;padding:11px 13px;font-size:10px;line-height:1.55}
+.finance-deduction-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.finance-mini-alert.blue{background:#eff6ff;border-color:#bfdbfe}.finance-mini-alert.blue b{color:#1d4ed8}
+.mini-metric.orange{border-top:3px solid #d97706}
+.cashflow-table{min-width:1150px}.cashflow-edit-table{min-width:1050px}
+.cash-negative{background:#fff7f7!important}.cash-negative td:first-child{box-shadow:inset 3px 0 0 #dc2626}
+.billing-preview{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px}
+.billing-preview>div{background:#fff;border:1px solid var(--border);border-radius:8px;padding:9px}
+.billing-preview span{display:block;font-size:9px;color:var(--muted)}.billing-preview b{display:block;font-size:12px;margin-top:4px}
+.finance-billing-table{min-width:2050px}
+
+.executive-section{background:linear-gradient(180deg,#f8fbff,#f4f7fb);border:1px solid #dce6f3;border-radius:15px;padding:16px}
+.executive-title{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:14px}
+.executive-title h2{margin:3px 0 4px;font-size:20px}.executive-title p{margin:0;color:var(--muted);font-size:11px}
+.executive-table{min-width:1550px}
+.health-row-red{background:#fffafa!important}.health-row-red td:first-child{box-shadow:inset 4px 0 0 #dc2626}
+.health-row-yellow{background:#fffdf7!important}.health-row-yellow td:first-child{box-shadow:inset 4px 0 0 #d97706}
+.health-row-green td:first-child{box-shadow:inset 4px 0 0 #16a34a}
+.health-reasons{display:flex;flex-wrap:wrap;gap:4px;min-width:230px}.health-reasons span{font-size:8px;background:#f1f5f9;color:#475569;border-radius:999px;padding:3px 6px}
+
+@media(max-width:900px){
+  .billing-preview{grid-template-columns:1fr 1fr}
+  .finance-deduction-grid{grid-template-columns:1fr}
+  .executive-title{flex-direction:column}
+}

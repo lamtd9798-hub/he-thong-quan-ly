@@ -1,10 +1,127 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.5
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.6
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
 
 
 
+
+
+## Nâng cấp V2.6 — Chuẩn hóa tài chính + Dashboard Giám đốc
+
+V2.6 tập trung sửa logic quản trị thay vì mở thêm nhiều menu.
+
+### 1. Sửa Forecast Cost và lợi nhuận ảo
+
+Logic mới:
+
+`Forecast hiệu lực = MAX(Forecast kế hoạch, Actual Cost + PO còn cam kết)`
+
+- Nếu Forecast của một Budget để 0, hệ thống mặc định lấy Budget.
+- Actual Cost liên kết với PO sẽ tự giảm phần PO còn cam kết.
+- Forecast không thể thấp hơn phần chi phí đã thực tế phát sinh + phần PO chưa thành Actual.
+- Chấm dứt tình trạng Budget > 0 nhưng Forecast = 0 và lợi nhuận dự kiến = 100%.
+
+### 2. PO → Actual Cost
+
+Khi ghi nhận chi phí thực tế có thể chọn PO liên quan.
+
+Hệ thống tự lấy:
+- NCC.
+- Nội dung.
+- Giá trị tham khảo.
+- Số PO.
+
+Liên kết này giúp không cộng trùng:
+`PO cam kết + hóa đơn thực tế của cùng PO`.
+
+### 3. Dashboard Giám đốc
+
+Dashboard có **Bảng điều hành Giám đốc**:
+
+- Tổng giá trị hợp đồng.
+- Forecast Cost.
+- Lợi nhuận dự kiến.
+- Phải thu.
+- Số dự án Đỏ.
+- Số dự án Vàng.
+
+Mỗi dự án tự đánh giá:
+
+- **XANH**: trong ngưỡng kiểm soát.
+- **VÀNG**: cần theo dõi.
+- **ĐỎ**: cần can thiệp.
+
+Cảnh báo dựa trên:
+- Forecast lỗ.
+- Forecast vượt Budget.
+- Công nợ khách hàng quá hạn.
+- Tiến độ dự án trễ.
+- Công việc quá hạn.
+- Hồ sơ kỹ thuật trễ.
+- Vật tư trễ.
+
+### 4. Cash Flow 6 tháng
+
+Tự dự báo theo tháng từ:
+- Công nợ khách hàng đến hạn.
+- Công nợ NCC đến hạn.
+- PO còn cam kết chưa thành Actual.
+- Điều chỉnh thu/chi thủ công.
+
+Hiển thị:
+- Thu dự kiến.
+- Chi dự kiến.
+- Net Cash Flow tháng.
+- Số dư dự kiến.
+- Cảnh báo số dư âm.
+
+### 5. Nghiệm thu → Hóa đơn → Thu tiền
+
+Billing V2.6 tách rõ:
+
+`Giá trị nghiệm thu`
+`- Giữ lại bảo hành`
+`- Thu hồi tạm ứng`
+`= Giá trị đủ điều kiện xuất trước VAT`
+`+ VAT`
+`= Tổng hóa đơn`
+
+Theo dõi riêng:
+- Giá trị đã nghiệm thu.
+- Giữ lại bảo hành.
+- Thu hồi tạm ứng.
+- Giá trị đã xuất hóa đơn.
+- Đã thu.
+- Còn phải thu.
+
+### 6. Audit Log tài chính
+
+Tự lưu lịch sử:
+- Sửa hợp đồng.
+- Sửa Budget / Forecast.
+- Tạo/sửa chi phí.
+- Thanh toán NCC.
+- Tạo/sửa/duyệt Variation.
+- Tạo/sửa hóa đơn.
+- Thu tiền khách hàng.
+- Điều chỉnh Cash Flow.
+
+Mỗi log lưu:
+- Người thao tác.
+- Thời điểm.
+- Loại dữ liệu.
+- Dữ liệu trước.
+- Dữ liệu sau.
+
+### 7. Sửa cache giao diện
+
+CSS và JavaScript đều dùng version `2.6.0`.
+Khi nâng cấp sẽ hạn chế trường hợp GitHub đã có code mới nhưng trình duyệt vẫn hiển thị CSS/JS cũ.
+
+### Firebase mới
+- `/v2/cashFlowPlans/{projectId}/{YYYY-MM}`
+- `/v2/financeAudit/{projectId}/{auditId}`
 
 ## Nâng cấp V2.5 — Tài chính dự án
 

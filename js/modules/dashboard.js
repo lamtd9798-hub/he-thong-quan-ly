@@ -1,7 +1,7 @@
 import {
   refs,arr,getProfile,can,esc,money,fmtDate,fmtDateTime,daysUntil,stageInfo,
   TASK_PRIORITIES,setPage,loading,empty,badge
-} from "../core.js?v=2.5.0";
+} from "../core.js?v=2.6.0";
 
 export async function renderDashboard(container){
   setPage("Dashboard","Tổng quan");
@@ -21,7 +21,10 @@ export async function renderDashboard(container){
     refs.supplierPaymentsRoot().once("value"),
     refs.variationsRoot().once("value"),
     refs.billingsRoot().once("value"),
-    refs.receiptsRoot().once("value")
+    refs.receiptsRoot().once("value"),
+    refs.procurement().once("value"),
+    refs.executionDocs().once("value"),
+    refs.milestones().once("value")
   ]):Promise.resolve(null));
 
   const [projects,activities,execution,tasks,approvals,financeBundle]=await Promise.all(reads);
@@ -101,7 +104,7 @@ export async function renderDashboard(container){
       </div>
     </div>
 
-    ${can("financeProjectView")?portfolioFinanceHtml(projects,financeBundle):""}`;
+    ${can("financeProjectView")?executiveDashboardHtml(projects,execution,tasks,financeBundle):""}`;
 }
 
 function taskRow(t){
@@ -131,43 +134,110 @@ function taskSort(a,b){
 }
 
 
-function portfolioFinanceHtml(projects,bundle){
+function executiveDashboardHtml(projects,execution,tasks,bundle){
   if(!bundle)return"";
-  const [settingsSnap,budgetSnap,costSnap,paymentSnap,varSnap,billingSnap,receiptSnap]=bundle;
-  const settings=settingsSnap.val()||{}, budgets=budgetSnap.val()||{}, costs=costSnap.val()||{},
-    payments=paymentSnap.val()||{}, variations=varSnap.val()||{}, billings=billingSnap.val()||{}, receipts=receiptSnap.val()||{};
+  const [settingsSnap,budgetSnap,costSnap,paymentSnap,varSnap,billingSnap,receiptSnap,procSnap,docSnap,mileSnap]=bundle;
+
+  const settings=settingsSnap.val()||{},budgets=budgetSnap.val()||{},costs=costSnap.val()||{},
+    payments=paymentSnap.val()||{},variations=varSnap.val()||{},billings=billingSnap.val()||{},receipts=receiptSnap.val()||{},
+    procurement=procSnap.val()||{},docs=docSnap.val()||{},milestones=mileSnap.val()||{};
 
   const active=projects.filter(p=>p.phase==="EXECUTION"||p.phase==="CLOSED"||p.tenderStatus==="WON");
   const rows=active.map(p=>{
-    const st=settings[p.id]||{},bs=Object.values(budgets[p.id]||{}),cs=Object.values(costs[p.id]||{}),
-      ps=Object.values(payments[p.id]||{}),vs=Object.values(variations[p.id]||{}),bis=Object.values(billings[p.id]||{}),rs=Object.values(receipts[p.id]||{});
+    const st=settings[p.id]||{},bs=Object.values(budgets[p.id]||{}),cs=Object.entries(costs[p.id]||{}).map(([id,x])=>({id,...x})),
+      ps=Object.values(payments[p.id]||{}),vs=Object.values(variations[p.id]||{}),bis=Object.entries(billings[p.id]||{}).map(([id,x])=>({id,...x})),
+      rs=Object.values(receipts[p.id]||{}),pos=Object.entries(procurement[p.id]||{}).map(([id,x])=>({id,...x})),
+      ds=Object.values(docs[p.id]||{}),ms=Object.values(milestones[p.id]||{});
+
     const original=Number(st.contractValueExVat??p.approvedBidPrice??0);
     const variation=vs.filter(v=>v.status==="APPROVED").reduce((a,v)=>a+(v.direction==="DECREASE"?-1:1)*Number(v.amount||0),0);
     const contract=original+variation;
     const budget=bs.reduce((a,b)=>a+Number(b.budgetAmount||0),0);
+    const planned=bs.reduce((a,b)=>a+(Number(b.forecastAmount||0)>0?Number(b.forecastAmount):Number(b.budgetAmount||0)),0);
     const actual=cs.reduce((a,c)=>a+Number(c.amountExVat||0),0);
-    const forecast=bs.length?bs.reduce((a,b)=>a+Number(b.forecastAmount??b.budgetAmount??0),0):actual;
+
+    const actualByPo={};
+    cs.forEach(c=>{if(c.poId)actualByPo[c.poId]=(actualByPo[c.poId]||0)+Number(c.amountExVat||0)});
+    const committedRows=pos.filter(x=>["PO","DELIVERING","DELIVERED"].includes(x.status));
+    const openCommitted=committedRows.reduce((a,po)=>a+Math.max(0,Number(po.amount||0)-Number(actualByPo[po.id]||0)),0);
+    const forecast=bs.length?Math.max(planned,actual+openCommitted):actual+openCommitted;
+
     const billed=bis.reduce((a,b)=>a+Number(b.amountExVat||0)*(1+Number(b.vatPct||0)/100),0);
     const collected=rs.reduce((a,r)=>a+Number(r.amount||0),0);
+    const receivable=Math.max(0,billed-collected);
     const costGross=cs.reduce((a,c)=>a+Number(c.amountExVat||0)*(1+Number(c.vatPct||0)/100),0);
     const paid=ps.reduce((a,x)=>a+Number(x.amount||0),0);
-    return {p,contract,budget,forecast,actual,billed,collected,receivable:Math.max(0,billed-collected),payable:Math.max(0,costGross-paid),profit:contract-forecast,margin:contract?(contract-forecast)/contract*100:0};
+    const payable=Math.max(0,costGross-paid);
+    const profit=contract-forecast,margin=contract?profit/contract*100:0;
+
+    const receiptsByBilling={};
+    rs.forEach(r=>receiptsByBilling[r.billingId]=(receiptsByBilling[r.billingId]||0)+Number(r.amount||0));
+    const overdueAR=bis.filter(b=>{
+      const total=Number(b.amountExVat||0)*(1+Number(b.vatPct||0)/100);
+      return total-Number(receiptsByBilling[b.id]||0)>0&&b.dueDate&&daysUntil(b.dueDate)<0;
+    }).length;
+
+    const overdueTasks=tasks.filter(t=>t.projectId===p.id&&t.status!=="DONE"&&t.dueDate&&daysUntil(t.dueDate)<0).length;
+    const overdueDocs=ds.filter(d=>d.status!=="APPROVED"&&d.dueDate&&daysUntil(d.dueDate)<0).length;
+    const overdueProc=pos.filter(po=>po.status!=="DELIVERED"&&po.needDate&&daysUntil(po.needDate)<0).length;
+    const overdueMiles=ms.filter(m=>m.status!=="DONE"&&m.dueDate&&daysUntil(m.dueDate)<0).length;
+    const er=execution.find(e=>e.id===p.id)||{};
+    const scheduleLate=er.targetDate&&er.status!=="CLOSED"&&daysUntil(er.targetDate)<0;
+
+    const red=[],yellow=[];
+    if(profit<0)red.push("Forecast lỗ");
+    if(budget>0&&forecast>budget*1.10)red.push("Forecast vượt Budget >10%");
+    if(overdueAR>0)red.push(`${overdueAR} công nợ KH quá hạn`);
+    if(scheduleLate||overdueMiles>0)red.push("Tiến độ triển khai trễ");
+
+    if(profit>=0&&margin<8)yellow.push(`LN thấp ${margin.toFixed(1)}%`);
+    if(budget>0&&forecast>budget&&forecast<=budget*1.10)yellow.push("Forecast vượt Budget");
+    if(overdueTasks>0)yellow.push(`${overdueTasks} việc quá hạn`);
+    if(overdueDocs>0)yellow.push(`${overdueDocs} hồ sơ trễ`);
+    if(overdueProc>0)yellow.push(`${overdueProc} vật tư trễ`);
+
+    const health=red.length?["ĐỎ","red",red]:yellow.length?["VÀNG","orange",yellow]:["XANH","green",["Trong ngưỡng kiểm soát"]];
+
+    return {p,contract,budget,forecast,actual,billed,collected,receivable,payable,profit,margin,
+      progress:Number(er.progress||0),health,overdueAR,overdueTasks,overdueDocs,overdueProc,overdueMiles};
   });
 
-  const total=rows.reduce((a,r)=>{for(const k of ["contract","budget","forecast","actual","billed","collected","receivable","payable","profit"])a[k]+=r[k];return a},{contract:0,budget:0,forecast:0,actual:0,billed:0,collected:0,receivable:0,payable:0,profit:0});
+  const total=rows.reduce((a,r)=>{for(const k of ["contract","budget","forecast","actual","billed","collected","receivable","payable","profit"])a[k]+=r[k];return a},
+    {contract:0,budget:0,forecast:0,actual:0,billed:0,collected:0,receivable:0,payable:0,profit:0});
   const margin=total.contract?total.profit/total.contract*100:0;
+  const redCount=rows.filter(r=>r.health[0]==="ĐỎ").length,yellowCount=rows.filter(r=>r.health[0]==="VÀNG").length;
 
-  return `<div class="card mt">
-    <div class="card-head"><div><h3>Tài chính danh mục dự án</h3><div class="secondary-text">Tổng hợp nhanh các dự án trúng thầu / đang triển khai</div></div><a href="#/finance" class="btn sm">Mở Tài chính →</a></div>
-    <div class="card-body">
-      <div class="grid g5">
-        ${metric("Giá trị HĐ",money(total.contract,true),"HĐ","#2563eb","#eff6ff",`${rows.length} dự án`)}
-        ${metric("Forecast Cost",money(total.forecast,true),"F","#7c3aed","#f5f3ff",`Budget ${money(total.budget,true)}`)}
-        ${metric("LN dự kiến",`${margin.toFixed(1)}%`,"↗",total.profit>=0?"#16a34a":"#dc2626",total.profit>=0?"#f0fdf4":"#fef2f2",money(total.profit))}
-        ${metric("Phải thu KH",money(total.receivable,true),"AR","#dc2626","#fef2f2",`Đã thu ${money(total.collected,true)}`)}
-        ${metric("Phải trả NCC",money(total.payable,true),"AP","#d97706","#fff7ed",`Actual ${money(total.actual,true)}`)}
-      </div>
-      ${rows.length?`<div class="table-wrap mt"><table class="table" style="min-width:1100px"><thead><tr><th>DỰ ÁN</th><th>HỢP ĐỒNG</th><th>BUDGET</th><th>FORECAST</th><th>LN DỰ KIẾN</th><th>% LN</th><th>PHẢI THU</th><th>PHẢI TRẢ</th></tr></thead><tbody>${rows.sort((a,b)=>b.contract-a.contract).slice(0,8).map(r=>`<tr><td><div class="primary-text">${esc(r.p.code||"")} · ${esc(r.p.name||"")}</div></td><td>${money(r.contract)}</td><td>${money(r.budget)}</td><td>${money(r.forecast)}</td><td class="${r.profit>=0?"positive-text":"danger-text"}"><b>${money(r.profit)}</b></td><td>${r.margin.toFixed(1)}%</td><td>${money(r.receivable)}</td><td>${money(r.payable)}</td></tr>`).join("")}</tbody></table></div>`:""}
+  const healthOrder={ĐỎ:0,VÀNG:1,XANH:2};
+  rows.sort((a,b)=>healthOrder[a.health[0]]-healthOrder[b.health[0]]||b.contract-a.contract);
+
+  return `<div class="executive-section mt">
+    <div class="executive-title">
+      <div><div class="eyebrow">BẢNG ĐIỀU HÀNH GIÁM ĐỐC</div><h2>Sức khỏe danh mục dự án</h2><p>Tiến độ + tài chính + hồ sơ + vật tư + công nợ trên cùng một màn hình.</p></div>
+      <a href="#/finance" class="btn">Mở Tài chính dự án →</a>
+    </div>
+
+    <div class="grid g6">
+      ${metric("Giá trị HĐ",money(total.contract,true),"HĐ","#2563eb","#eff6ff",`${rows.length} dự án`)}
+      ${metric("Forecast Cost",money(total.forecast,true),"F","#7c3aed","#f5f3ff",`Budget ${money(total.budget,true)}`)}
+      ${metric("LN dự kiến",`${margin.toFixed(1)}%`,"↗",total.profit>=0?"#16a34a":"#dc2626",total.profit>=0?"#f0fdf4":"#fef2f2",money(total.profit))}
+      ${metric("Phải thu KH",money(total.receivable,true),"AR","#dc2626","#fef2f2",`Đã thu ${money(total.collected,true)}`)}
+      ${metric("Dự án ĐỎ",redCount,"!","#dc2626","#fef2f2","Cần can thiệp ngay")}
+      ${metric("Dự án VÀNG",yellowCount,"⚠","#d97706","#fff7ed","Cần theo dõi")}
+    </div>
+
+    <div class="card mt">
+      <div class="card-head"><h3>Danh sách ưu tiên xử lý</h3><span class="secondary-text">Đỏ → Vàng → Xanh</span></div>
+      ${rows.length?`<div class="table-wrap" style="border:0;border-radius:0 0 11px 11px"><table class="table executive-table"><thead><tr>
+        <th>SỨC KHỎE</th><th>DỰ ÁN</th><th>TIẾN ĐỘ</th><th>HỢP ĐỒNG</th><th>FORECAST</th><th>LN DỰ KIẾN</th><th>% LN</th><th>PHẢI THU</th><th>PHẢI TRẢ</th><th>CẢNH BÁO CHÍNH</th>
+      </tr></thead><tbody>${rows.map(r=>`<tr class="health-row-${r.health[0]==="ĐỎ"?"red":r.health[0]==="VÀNG"?"yellow":"green"}">
+        <td>${badge(r.health[0],r.health[1])}</td>
+        <td><div class="primary-text">${esc(r.p.code||"")} · ${esc(r.p.name||"")}</div><div class="secondary-text">${esc(r.p.client||"")}</div></td>
+        <td><div class="progress-label"><span>${r.progress}%</span></div><div class="progress" style="min-width:90px"><div class="bar" style="width:${Math.max(0,Math.min(100,r.progress))}%"></div></div></td>
+        <td>${money(r.contract)}</td><td>${money(r.forecast)}</td>
+        <td class="${r.profit>=0?"positive-text":"danger-text"}"><b>${money(r.profit)}</b></td><td>${r.margin.toFixed(1)}%</td>
+        <td class="${r.receivable>0?"danger-text":""}">${money(r.receivable)}</td><td>${money(r.payable)}</td>
+        <td><div class="health-reasons">${r.health[2].slice(0,3).map(x=>`<span>${esc(x)}</span>`).join("")}</div></td>
+      </tr>`).join("")}</tbody></table></div>`:empty("Chưa có dự án triển khai","Khi có dự án trúng thầu, sức khỏe dự án sẽ hiển thị ở đây.","▣")}
     </div>
   </div>`;
 }
