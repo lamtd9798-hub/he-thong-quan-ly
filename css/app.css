@@ -100,3 +100,28 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
 @media(max-width:640px){
   .g6{grid-template-columns:1fr}
 }
+
+
+/* =========================
+   V2.4 - QUẢN LÝ TRIỂN KHAI
+   ========================= */
+.exec-summary{display:grid;gap:0}
+.summary-row{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px dashed var(--border);font-size:11px}
+.summary-row:last-child{border-bottom:0}.summary-row span{color:var(--muted)}.summary-row b{text-align:right}
+.health-line{margin-bottom:13px}.health-line:last-child{margin-bottom:0}
+.health-line>div:first-child{display:flex;justify-content:space-between;gap:10px;font-size:10px;margin-bottom:5px}
+.health-line span{color:var(--muted)}.health-line b{font-size:10px}
+.handover-banner{background:#eff6ff;border:1px solid #dbeafe;color:#1d4ed8;border-radius:9px;padding:11px 12px;font-size:11px;line-height:1.5}
+.handover-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px}
+.handover-item{border:1px solid var(--border);border-radius:9px;background:#fff;padding:11px;display:flex;align-items:flex-start;gap:9px}
+.handover-item.done{background:#f0fdf4;border-color:#bbf7d0}
+.handover-item input{margin-top:2px}.handover-item span{display:flex;flex-direction:column}.handover-item b{font-size:11px}.handover-item small{font-size:9px;color:var(--muted);margin-top:3px}
+.handover-item.done small{color:#15803d}
+.mini-metric{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px}
+.mini-metric span{display:block;color:var(--muted);font-size:10px}.mini-metric b{display:block;font-size:20px;margin-top:5px}
+.mini-metric.red{border-top:3px solid #dc2626}.mini-metric.green{border-top:3px solid #16a34a}.mini-metric.blue{border-top:3px solid #2563eb}
+.execution-doc-table{min-width:1500px}.execution-proc-table{min-width:1500px}.execution-site-table{min-width:1450px}
+.divider{height:1px;background:var(--border);margin:14px 0}
+@media(max-width:780px){
+  .handover-grid{grid-template-columns:1fr}
+}

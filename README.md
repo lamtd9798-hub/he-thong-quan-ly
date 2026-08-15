@@ -1,8 +1,83 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.3
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.4
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
 
+
+
+## Nâng cấp V2.4 — Quản lý triển khai sau khi trúng thầu
+
+Module **Triển khai** được xây lại theo luồng:
+
+`Trúng thầu → Bàn giao Tender → Kỹ thuật → Hồ sơ kỹ thuật → Vật tư/Mua hàng → Thi công → Nghiệm thu → Hoàn thành`
+
+### 1. Bàn giao Tender → Kỹ thuật
+
+Checklist 8 nội dung:
+- Phạm vi hợp đồng.
+- BOQ / Giá trúng thầu.
+- Clarification / Exclusion.
+- Báo giá NCC / Thầu phụ.
+- Cơ sở thiết kế / Spec / Tiêu chuẩn.
+- Liên hệ CĐT / TVGS / Tổng thầu.
+- Yêu cầu tiến độ hợp đồng.
+- Điều kiện thương mại cần lưu ý.
+
+Có người bàn giao, người nhận, ngày bàn giao, link thư mục hồ sơ và ghi chú.
+
+### 2. Hồ sơ kỹ thuật
+
+Theo dõi:
+- Shopdrawing.
+- Material Submission.
+- RFI.
+- Biện pháp thi công.
+- Hồ sơ khác.
+
+Mỗi hồ sơ có mã, hệ, revision, người phụ trách, deadline, ngày trình, trạng thái và comment.
+
+Trạng thái:
+- Đang chuẩn bị.
+- Đã trình.
+- Yêu cầu sửa.
+- Đã duyệt.
+
+### 3. Vật tư & Mua hàng
+
+Theo dõi:
+- Hạng mục.
+- Hệ thống.
+- NCC.
+- Số PO.
+- Giá trị.
+- Ngày cần tại công trường.
+- Ngày PO.
+- Ngày dự kiến giao.
+- Trạng thái giao hàng.
+
+Cảnh báo tự động nếu quá ngày cần mà vật tư chưa về.
+
+### 4. Thi công & Nghiệm thu
+
+Theo dõi:
+- Mốc/công việc.
+- Nhóm.
+- Người phụ trách.
+- Ngày bắt đầu.
+- Deadline.
+- % tiến độ.
+- Trạng thái.
+- Vướng mắc.
+- Kết quả nghiệm thu / Biên bản.
+
+Có nút **Tạo bộ mốc triển khai** tự sinh 8 mốc chuẩn từ Kickoff đến ngày mục tiêu.
+
+### Dữ liệu mới
+
+- `/v2/handover/{projectId}`
+- `/v2/executionDocs/{projectId}/{id}`
+- `/v2/procurement/{projectId}/{id}`
+- `/v2/milestones/{projectId}/{id}`
 
 ## Nâng cấp V2.3 — Giao việc & Tiến độ
 
