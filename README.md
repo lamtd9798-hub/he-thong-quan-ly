@@ -1,4 +1,4 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.16
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.17
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
@@ -17,6 +17,18 @@
 
 
 
+
+## V2.17 — BOQ Professional Auto Layout
+
+- Chỉ giữ cột A → K.
+- Tự nhận và làm đẹp header BOQ.
+- Header chính nền xanh đậm/chữ trắng/in hoa/căn giữa.
+- Header phụ nền xanh nhạt.
+- Tự tô màu đầu mục lớn theo cấp.
+- Làm đẹp GHI CHÚ CHUNG và các dòng note.
+- Tự canh độ rộng cột theo loại dữ liệu.
+- Tự căn ĐVT/KL/Đơn giá.
+- Vẫn giữ resize cột, AutoFit, Ribbon, Freeze, Group và Insert của V2.16.
 ## V2.16 — Ribbon Excel cho BOQ gốc
 
 - Ribbon: Trang chủ / Chèn / Hiển thị / Dữ liệu.

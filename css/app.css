@@ -688,3 +688,179 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
   .boq-ribbon-panel{max-width:100%}
   .boq-ribbon-spacer{min-width:20px}
 }
+
+
+/* =========================
+   V2.17 - BOQ PROFESSIONAL AUTO LAYOUT
+   ========================= */
+.excel-boq-shell{
+  border:1px solid #cdd8e6;
+  border-radius:14px;
+  box-shadow:0 10px 30px rgba(15,23,42,.07);
+}
+.excel-boq-grid{
+  font-size:10.5px;
+  line-height:1.35;
+  color:#162033;
+}
+.excel-boq-grid th,.excel-boq-grid td{
+  border-color:#c8d3df;
+  padding:5px 7px;
+}
+.excel-boq-grid .excel-col-head th{
+  height:30px;
+  background:linear-gradient(#f8fafc,#e9eef5);
+  color:#475569;
+  border-color:#b8c4d1;
+  font-size:9px;
+}
+.excel-boq-grid .excel-row-head{
+  background:#f3f6fa;
+  color:#64748b;
+}
+
+/* Tiêu đề lớn của BOQ */
+.excel-boq-grid tr.boq-title-row td,
+.excel-boq-grid td.boq-title-row{
+  background:#edf4fb!important;
+  color:#153a63!important;
+  font-size:14px!important;
+  font-weight:800!important;
+  text-align:center!important;
+  vertical-align:middle!important;
+  text-transform:uppercase;
+  letter-spacing:.25px;
+  border-top:1px solid #9eb7d1!important;
+  border-bottom:2px solid #6f94bb!important;
+}
+.excel-boq-grid th.boq-title-row{
+  background:#dbe8f5!important;
+  color:#365f86!important;
+  font-weight:700!important;
+}
+
+/* Header chính của bảng: đậm, in hoa, căn giữa, xanh chuyên nghiệp */
+.excel-boq-grid tr.boq-header-main-row td,
+.excel-boq-grid td.boq-header-main-row{
+  background:#1f4e78!important;
+  color:#fff!important;
+  font-weight:800!important;
+  text-align:center!important;
+  vertical-align:middle!important;
+  text-transform:uppercase;
+  font-size:10px!important;
+  line-height:1.22;
+  border-color:#496f94!important;
+}
+.excel-boq-grid th.boq-header-main-row{
+  background:#173e62!important;
+  color:#fff!important;
+  font-weight:800!important;
+}
+
+/* Header tầng 2 */
+.excel-boq-grid tr.boq-header-sub-row td,
+.excel-boq-grid td.boq-header-sub-row{
+  background:#d9e8f6!important;
+  color:#163a5c!important;
+  font-weight:800!important;
+  text-align:center!important;
+  vertical-align:middle!important;
+  text-transform:uppercase;
+  font-size:9.5px!important;
+  border-color:#9eb7cf!important;
+}
+.excel-boq-grid th.boq-header-sub-row{
+  background:#c6dcef!important;
+  color:#234e73!important;
+  font-weight:800!important;
+}
+
+/* Đầu mục lớn */
+.excel-boq-grid tr.boq-section-row.level-1 td,
+.excel-boq-grid td.boq-section-row.level-1{
+  background:#cfe2f3!important;
+  color:#153b60!important;
+  font-weight:800!important;
+  border-top:2px solid #7fa5c8!important;
+  border-bottom:1px solid #9fb9d1!important;
+}
+.excel-boq-grid th.boq-section-row.level-1{
+  background:#bcd5eb!important;
+  color:#234e73!important;
+  font-weight:800!important;
+}
+.excel-boq-grid tr.boq-section-row.level-2 td,
+.excel-boq-grid td.boq-section-row.level-2{
+  background:#e7f1fa!important;
+  color:#244968!important;
+  font-weight:750!important;
+  border-top:1px solid #b4cce1!important;
+}
+.excel-boq-grid th.boq-section-row.level-2{
+  background:#dceaf6!important;
+  color:#365f80!important;
+  font-weight:750!important;
+}
+.excel-boq-grid tr.boq-section-row.level-3 td,
+.excel-boq-grid td.boq-section-row.level-3{
+  background:#f2f7fc!important;
+  color:#36546e!important;
+  font-weight:700!important;
+}
+
+/* Ghi chú */
+.excel-boq-grid tr.boq-note-header-row td,
+.excel-boq-grid td.boq-note-header-row{
+  background:#f3f4f6!important;
+  color:#374151!important;
+  font-weight:800!important;
+  text-transform:uppercase;
+  border-top:1px solid #cbd5e1!important;
+}
+.excel-boq-grid tr.boq-note-row td,
+.excel-boq-grid td.boq-note-row{
+  background:#fbfcfd!important;
+  color:#5b6777!important;
+  font-style:italic;
+}
+
+/* Dữ liệu thường */
+.excel-boq-grid tr.boq-detail-row td{
+  background:#fff;
+}
+.excel-boq-grid tr.boq-detail-row:hover td{
+  background:#f7fbff!important;
+}
+.excel-boq-grid td.boq-col-code{font-weight:650}
+.excel-boq-grid td.boq-col-description{text-align:left}
+.excel-boq-grid td.boq-col-unit{text-align:center}
+.excel-boq-grid td.boq-col-quantity,
+.excel-boq-grid td.boq-col-price{text-align:right;font-variant-numeric:tabular-nums}
+.excel-boq-grid td.boq-col-brand,
+.excel-boq-grid td.boq-col-origin{text-align:center}
+.excel-boq-grid td.boq-col-spec{text-align:left}
+
+/* Header luôn ưu tiên căn giữa dù vai trò cột là gì */
+.excel-boq-grid td.boq-header-main-row,
+.excel-boq-grid td.boq-header-sub-row{
+  text-align:center!important;
+}
+
+/* Ribbon gọn hơn */
+.boq-ribbon-tabs{
+  background:#f8fafc;
+  min-height:36px;
+}
+.boq-ribbon-panel{
+  min-height:58px;
+  background:#fff;
+}
+.boq-ribbon-group{
+  padding-left:9px;
+  padding-right:9px;
+}
+.boq-ribbon-label{
+  color:#7c8a9a;
+  font-weight:600;
+}

@@ -1,7 +1,7 @@
 import {
   refs, arr, ts, logActivity, can, getProfile, esc, norm, money, fmtDate, fmtDateTime,
   DISCIPLINES, setPage, loading, empty, badge, modal, toast, confirmBox
-} from "../core.js?v=2.16.0";
+} from "../core.js?v=2.17.0";
 
 let projects = [];
 let items = [];

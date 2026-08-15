@@ -1,7 +1,7 @@
 import {
   refs,arr,ts,logActivity,getProfile,can,esc,norm,money,fmtDate,fmtDateTime,
   loading,empty,badge,modal,toast,confirmBox
-} from "../core.js?v=2.16.0";
+} from "../core.js?v=2.17.0";
 
 let projectId="";
 let mountEl=null;
@@ -132,14 +132,16 @@ function boqMirrorRevision(){
 function revisionSourceGridFrom(rev){
   const g=rev?.sourceGrid;
   if(!g)return null;
-  return {
+  return prepareBoqGridV217({
     ...g,
     rows:normalizeIndexedArray(g.rows).map(r=>normalizeIndexedArray(r)),
     colWidths:normalizeIndexedArray(g.colWidths),
     rowHeights:normalizeIndexedArray(g.rowHeights),
     merges:normalizeIndexedArray(g.merges),
+    rowGroups:normalizeIndexedArray(g.rowGroups).filter(Boolean),
+    colGroups:normalizeIndexedArray(g.colGroups).filter(Boolean),
     styles:g.styles||{}
-  };
+  });
 }
 
 function uploadBoqMirrorDialog(){
@@ -188,7 +190,7 @@ function uploadBoqMirrorDialog(){
           return false;
         }
 
-        const grid={...meta.sourceGrid,sheetName:selected};
+        const grid=prepareBoqGridV217({...meta.sourceGrid,sheetName:selected});
         const now=Date.now();
         const u=getProfile()||{};
         let revisionId=current?.id||"";
@@ -198,6 +200,8 @@ function uploadBoqMirrorDialog(){
             sourceGrid:grid,
             sourceFileName:file.name,
             sourceSheetName:selected,
+            sourceHeaderRow:Number(meta.headerRow||0),
+            sourceHeaderDepth:Number(meta.headerDepth||1),
             sourceGridUpdatedAt:now,
             updatedAt:now
           });
@@ -212,6 +216,8 @@ function uploadBoqMirrorDialog(){
             source:"BOQ_MIRROR",
             sourceFileName:file.name,
             sourceSheetName:selected,
+            sourceHeaderRow:Number(meta.headerRow||0),
+            sourceHeaderDepth:Number(meta.headerDepth||1),
             sourceGrid:grid,
             lineCount:0,
             totalBidValue:0,
@@ -283,13 +289,14 @@ function uploadBoqMirrorDialog(){
 function showBoqMirrorPreview(inspection,sheetName,box){
   if(!box)return;
   const meta=inspection.sheets?.[sheetName]||inspection.sheets?.[inspection.defaultSheet];
-  const g=meta?.sourceGrid;
-  if(!g)return;
+  const raw=meta?.sourceGrid;
+  if(!raw)return;
+  const g=prepareBoqGridV217({...raw,sheetName});
   box.classList.remove("hidden");
   box.innerHTML=`<div class="revision-file-preview-head">
     <div>
       <b>${esc(inspection.fileName)}</b>
-      <span>Sheet: ${esc(sheetName)} · ${g.rowCount} hàng × ${g.colCount} cột · vùng ${esc(g.range||"")}</span>
+      <span>Sheet: ${esc(sheetName)} · ${g.rowCount} hàng × ${g.colCount} cột · trên web giữ ${esc(g.range||"")} (tối đa A→K)</span>
     </div>
     ${badge("Sẵn sàng tạo bảng","green")}
   </div>`;
@@ -457,6 +464,246 @@ function revisionSourceGrid(){
   };
 }
 
+function prepareBoqGridV217(input){
+  const g={...input};
+  g.rows=normalizeIndexedArray(g.rows).map(r=>normalizeIndexedArray(r));
+  g.colWidths=normalizeIndexedArray(g.colWidths);
+  g.rowHeights=normalizeIndexedArray(g.rowHeights);
+  g.merges=normalizeIndexedArray(g.merges).filter(Boolean);
+  g.rowGroups=normalizeIndexedArray(g.rowGroups).filter(Boolean);
+  g.colGroups=normalizeIndexedArray(g.colGroups).filter(Boolean);
+  g.styles=g.styles||{};
+
+  const startCol=Math.max(0,Number(g.startCol||0));
+  const currentCount=Math.max(0,Number(g.colCount||Math.max(0,...g.rows.map(r=>r.length))));
+  // Yêu cầu V2.17: bỏ cột L trở đi, chỉ giữ tối đa A:K.
+  const keepCount=Math.max(0,Math.min(currentCount,11-startCol));
+
+  if(currentCount>keepCount){
+    g.rows=g.rows.map(r=>r.slice(0,keepCount));
+    g.colWidths=g.colWidths.slice(0,keepCount);
+
+    const styles={};
+    Object.entries(g.styles||{}).forEach(([key,val])=>{
+      const m=key.match(/^(\d+)_(\d+)$/);
+      if(!m){styles[key]=val;return}
+      if(Number(m[2])<keepCount)styles[key]=val;
+    });
+    g.styles=styles;
+
+    g.merges=g.merges
+      .filter(m=>Number(m.c1)<keepCount)
+      .map(m=>({...m,c2:Math.min(Number(m.c2),keepCount-1)}))
+      .filter(m=>Number(m.c2)>=Number(m.c1));
+
+    g.colGroups=g.colGroups
+      .filter(x=>Number(x.start)<keepCount)
+      .map(x=>({...x,end:Math.min(Number(x.end),keepCount-1)}))
+      .filter(x=>Number(x.end)>Number(x.start));
+
+    g.colCount=keepCount;
+    g.range=boqGridRange(g);
+  }else{
+    g.colCount=currentCount;
+  }
+
+  return g;
+}
+
+function boqVisualMeta(grid,rev){
+  const expanded=expandBoqGridForDetection(grid);
+  let headerStart=-1,headerDepth=1;
+
+  const savedHeader=Number(rev?.sourceHeaderRow||0);
+  if(savedHeader>0){
+    const candidate=savedHeader-Number(grid.startRow||1);
+    if(candidate>=0&&candidate<Number(grid.rowCount||0)){
+      headerStart=candidate;
+      headerDepth=Math.min(3,Math.max(1,Number(rev?.sourceHeaderDepth||1)));
+    }
+  }
+
+  if(headerStart<0){
+    try{
+      const d=detectRevisionHeader(expanded);
+      headerStart=Math.max(0,Number(d?.headerRow||1)-1);
+      headerDepth=Math.min(3,Math.max(1,Number(d?.headerDepth||1)));
+    }catch{
+      headerStart=0;headerDepth=1;
+    }
+  }
+
+  // Không để nhận nhầm hàng mã phụ/filter như 0.2/1, T1/1... làm tầng tiêu đề.
+  while(headerDepth>1){
+    const last=expanded[headerStart+headerDepth-1]||[];
+    const labels=last.filter(x=>String(x??"").trim()!=="");
+    const numeric=labels.filter(isRevisionNumeric).length;
+    const keywordScore=boqHeaderKeywordScore(last);
+    if(keywordScore>0&&labels.length&&numeric<labels.length/2)break;
+    headerDepth--;
+  }
+
+  const titleRows=new Set();
+  const noteHeaderRows=new Set();
+  (grid.rows||[]).forEach((row,r)=>{
+    const text=norm(row.map(x=>String(x??"")).join(" "));
+    if(text.includes("bang khoi luong cong viec"))titleRows.add(r);
+    if(text.includes("ghi chu chung"))noteHeaderRows.add(r);
+  });
+
+  return {
+    headerStart,
+    headerDepth,
+    headerEnd:headerStart+headerDepth-1,
+    titleRows,
+    noteHeaderRows,
+    expanded
+  };
+}
+
+function boqHeaderKeywordScore(row){
+  const t=norm((row||[]).map(x=>String(x??"")).join(" "));
+  const words=[
+    "muc","stt","dien giai","mo ta","don vi","khoi luong","model","thong so",
+    "nhan hieu","xuat xu","don gia","vat tu chinh","nhan cong","tong cong",
+    "thanh tien","ghi chu"
+  ];
+  return words.reduce((n,w)=>n+(t.includes(w)?1:0),0);
+}
+
+function expandBoqGridForDetection(grid){
+  const rows=(grid.rows||[]).map(r=>[...r]);
+  (grid.merges||[]).forEach(m=>{
+    const r1=Number(m.r1),c1=Number(m.c1),r2=Number(m.r2),c2=Number(m.c2);
+    if(![r1,c1,r2,c2].every(Number.isFinite))return;
+    const value=rows[r1]?.[c1];
+    if(value===undefined||value===null||String(value).trim()==="")return;
+    for(let r=r1;r<=r2;r++){
+      if(!rows[r])rows[r]=[];
+      for(let c=c1;c<=c2;c++){
+        if(rows[r][c]===undefined||rows[r][c]===null||String(rows[r][c]).trim()==="")rows[r][c]=value;
+      }
+    }
+  });
+  return rows;
+}
+
+function boqRowVisual(grid,r,meta){
+  const row=grid.rows?.[r]||[];
+  const nonEmpty=row.map((v,c)=>({v:String(v??"").trim(),c})).filter(x=>x.v!=="");
+  const fullText=nonEmpty.map(x=>x.v).join(" ");
+
+  if(meta.titleRows.has(r))return {kind:"title",level:0};
+  if(r===meta.headerStart)return {kind:"header-main",level:0};
+  if(r>meta.headerStart&&r<=meta.headerEnd)return {kind:"header-sub",level:0};
+  if(meta.noteHeaderRows.has(r))return {kind:"note-header",level:0};
+
+  const unitText=norm(nonEmpty.map(x=>x.v).join(" "));
+  if(/\bnote\b/.test(unitText))return {kind:"note",level:0};
+
+  const codeCell=nonEmpty.find(x=>/^\d+(?:\.\d+)+$/.test(x.v));
+  if(codeCell){
+    const code=codeCell.v;
+    const parts=code.split(".");
+    const last=parts[parts.length-1]||"";
+    const desc=nonEmpty.find(x=>x.c>codeCell.c)?.v||"";
+    const hasUnitOrQty=row.some((v,c)=>{
+      if(c<=codeCell.c+1)return false;
+      const t=String(v??"").trim();
+      return t!==""&&(isRevisionNumeric(t)||/^(bo|bộ|m|m2|m²|m3|m³|cai|cái|tu|tủ|set|lot)$/i.test(norm(t)));
+    });
+
+    if(last==="0"&&!hasUnitOrQty)return {kind:"section",level:1};
+    if(last.length<=1&&!hasUnitOrQty)return {kind:"section",level:Math.min(3,parts.length)};
+    if(desc&&isMostlyUpper(desc)&&!hasUnitOrQty)return {kind:"section",level:1};
+  }
+
+  if(nonEmpty.length<=3){
+    const desc=nonEmpty.map(x=>x.v).sort((a,b)=>b.length-a.length)[0]||"";
+    if(desc.length>8&&isMostlyUpper(desc))return {kind:"section",level:1};
+  }
+
+  return {kind:"detail",level:0};
+}
+
+function isMostlyUpper(text){
+  const letters=String(text||"").replace(/[^A-Za-zÀ-ỹĐđ]/g,"");
+  if(letters.length<5)return false;
+  const upper=String(text||"").replace(/[^A-ZÀ-ỸĐ]/g,"");
+  return upper.length/letters.length>=0.72;
+}
+
+function boqRowClass(v){
+  if(v.kind==="section")return `boq-section-row level-${v.level}`;
+  return `boq-${v.kind}-row`;
+}
+
+function boqColumnRole(c,meta){
+  const parts=[];
+  for(let r=meta.headerStart;r<=meta.headerEnd;r++){
+    const t=String(meta.expanded?.[r]?.[c]??"").trim();
+    if(t&&!parts.some(x=>norm(x)===norm(t)))parts.push(t);
+  }
+  const h=norm(parts.join(" "));
+  if(/\bmuc\b|\bstt\b|\bcode\b/.test(h))return "code";
+  if(h.includes("dien giai")||h.includes("mo ta")||h.includes("noi dung"))return "description";
+  if(h.includes("don vi")||h==="dvt")return "unit";
+  if(h.includes("khoi luong")||h.startsWith("kl "))return "quantity";
+  if(h.includes("model")||h.includes("thong so")||h.includes("quy cach"))return "spec";
+  if(h.includes("nhan hieu")||h.includes("thuong hieu"))return "brand";
+  if(h.includes("xuat xu"))return "origin";
+  if(h.includes("don gia")||h.includes("vat tu chinh")||h.includes("nhan cong")||h.includes("tong cong"))return "price";
+  return "generic";
+}
+
+function boqSmartColumnWidth(grid,c,meta){
+  const headerParts=[];
+  for(let r=meta.headerStart;r<=meta.headerEnd;r++){
+    const t=String(meta.expanded?.[r]?.[c]??"").trim();
+    if(t&&!headerParts.some(x=>norm(x)===norm(t)))headerParts.push(t);
+  }
+  const header=norm(headerParts.join(" "));
+  if(/\bmuc\b|\bstt\b|\bcode\b/.test(header))return 82;
+  if(header.includes("dien giai")||header.includes("mo ta")||header.includes("noi dung"))return 320;
+  if(header.includes("don vi")||header==="dvt")return 72;
+  if(header.includes("khoi luong"))return 88;
+  if(header.includes("kl tuan")||header.startsWith("kl "))return 105;
+  if(header.includes("model")||header.includes("thong so")||header.includes("quy cach"))return 190;
+  if(header.includes("nhan hieu")||header.includes("thuong hieu"))return 100;
+  if(header.includes("xuat xu"))return 90;
+  if(header.includes("don gia")||header.includes("vat tu chinh")||header.includes("nhan cong")||header.includes("tong cong"))return 110;
+
+  let max=58;
+  const mergeInfo=buildGridMergeLookup(grid.merges||[]);
+  const limit=Math.min(Number(grid.rowCount||0),450);
+  for(let r=0;r<limit;r++){
+    if(meta.titleRows.has(r)||r>=meta.headerStart&&r<=meta.headerEnd)continue;
+    const key=`${r}_${c}`;
+    if(mergeInfo.covered.has(key))continue;
+    const merge=mergeInfo.starts.get(key);
+    if(merge&&Number(merge.c2)>Number(merge.c1))continue;
+    const text=String(grid.rows?.[r]?.[c]??"").trim();
+    if(!text)continue;
+    const sample=text.length>80?text.slice(0,80):text;
+    max=Math.max(max,measureBoqText(sample,false,10)+20);
+  }
+  return Math.max(60,Math.min(250,Math.ceil(max)));
+}
+
+function boqProfessionalRowHeight(grid,r,visual){
+  const original=gridRowHeight(grid.rowHeights?.[r]);
+  if(visual.kind==="title")return Math.max(original,34);
+  if(visual.kind==="header-main")return Math.max(original,42);
+  if(visual.kind==="header-sub")return Math.max(original,36);
+  if(visual.kind==="section")return Math.max(original,30);
+  if(visual.kind==="note-header")return Math.max(original,28);
+  if(visual.kind==="note"){
+    const len=(grid.rows?.[r]||[]).reduce((n,x)=>n+String(x??"").length,0);
+    return Math.max(original,len>110?48:36);
+  }
+  return Math.max(original,25);
+}
+
 function sourceExcelGridHtml(grid,rev=boqMirrorRevision()){
   const rows=grid.rows||[];
   const colCount=Number(grid.colCount||Math.max(0,...rows.map(r=>r.length)));
@@ -469,6 +716,7 @@ function sourceExcelGridHtml(grid,rev=boqMirrorRevision()){
   const prefs=loadBoqGridPrefs(grid,rev);
   const customWidths=prefs.widths||{};
   const zoom=clampBoqZoom(Number(prefs.zoom||1));
+  const visualMeta=boqVisualMeta(grid,rev);
   const hiddenRows=boqCollapsedIndexes(grid.rowGroups||[]);
   const hiddenCols=boqCollapsedIndexes(grid.colGroups||[]);
   const rowGroupStarts=boqGroupStartMap(grid.rowGroups||[]);
@@ -476,7 +724,7 @@ function sourceExcelGridHtml(grid,rev=boqMirrorRevision()){
 
   const colgroup=`<colgroup><col class="excel-row-number-col" style="width:48px">`+
     Array.from({length:colCount},(_,c)=>{
-      const width=hiddenCols.has(c)?0:(Number(customWidths[c]||customWidths[String(c)]||0)||gridColWidth(widths[c]));
+      const width=hiddenCols.has(c)?0:(Number(customWidths[c]||customWidths[String(c)]||0)||boqSmartColumnWidth(grid,c,visualMeta));
       return `<col data-boq-col="${c}" style="width:${Math.round(width)}px"${hiddenCols.has(c)?' class="boq-hidden-col"':""}>`;
     }).join("")+
     `</colgroup>`;
@@ -495,9 +743,11 @@ function sourceExcelGridHtml(grid,rev=boqMirrorRevision()){
 
   const body=Array.from({length:rowCount},(_,r)=>{
     const row=rows[r]||[];
-    const rowHeight=gridRowHeight(heights[r]);
+    const visual=boqRowVisual(grid,r,visualMeta);
+    const rowHeight=boqProfessionalRowHeight(grid,r,visual);
+    const rowClass=boqRowClass(visual);
     const rg=rowGroupStarts.get(r);
-    let cells=`<th class="excel-row-head" data-row-index="${r}">
+    let cells=`<th class="excel-row-head ${rowClass}" data-row-index="${r}">
       ${rg?`<button type="button" class="excel-group-toggle row" data-row-group="${r}" title="Thu gọn / mở rộng nhóm hàng">${rg.collapsed?"+":"−"}</button>`:""}
       <span>${startRow+r}</span>
     </th>`;
@@ -511,9 +761,11 @@ function sourceExcelGridHtml(grid,rev=boqMirrorRevision()){
       const colspan=merge?merge.c2-merge.c1+1:1;
       const value=row[c]??"";
       const style=sourceGridCellStyle(grid.styles?.[key]);
-      cells+=`<td data-grid-row="${r}" data-grid-col="${c}" class="${hiddenCols.has(c)?"boq-hidden-col-cell":""}"${rowspan>1?` rowspan="${rowspan}"`:""}${colspan>1?` colspan="${colspan}"`:""}${style?` style="${style}"`:""}>${formatGridCell(value)}</td>`;
+      const colRole=boqColumnRole(c,visualMeta);
+      const cellClasses=[rowClass,`boq-col-${colRole}`,hiddenCols.has(c)?"boq-hidden-col-cell":""].filter(Boolean).join(" ");
+      cells+=`<td data-grid-row="${r}" data-grid-col="${c}" class="${cellClasses}"${rowspan>1?` rowspan="${rowspan}"`:""}${colspan>1?` colspan="${colspan}"`:""}${style?` style="${style}"`:""}>${formatGridCell(value)}</td>`;
     }
-    return `<tr data-grid-row-wrap="${r}" class="${hiddenRows.has(r)?"boq-hidden-row":""}" style="height:${rowHeight}px">${cells}</tr>`;
+    return `<tr data-grid-row-wrap="${r}" class="${hiddenRows.has(r)?"boq-hidden-row ":""}${rowClass}" style="height:${rowHeight}px">${cells}</tr>`;
   }).join("");
 
   const canEdit=can("quantityRevisionManage")||can("quantityRevisionActivate");
@@ -623,6 +875,7 @@ function sourceExcelGridHtml(grid,rev=boqMirrorRevision()){
     <div class="excel-boq-meta">
       <span>Sheet: <b>${esc(grid.sheetName||"")}</b></span>
       <span>Vùng dữ liệu: <b>${esc(grid.range||"")}</b></span>
+      <span>Hiển thị: <b>A → ${excelColumnName(Number(grid.startCol||0)+Number(grid.colCount||1)-1)}</b></span>
       <span>Ô gộp: <b>${(grid.merges||[]).length}</b></span>
       <span data-boq-selection-label>Chưa chọn ô</span>
     </div>
@@ -645,6 +898,7 @@ function bindExcelBoqGrid(grid,rev){
 
   let prefs=loadBoqGridPrefs(grid,rev);
   let zoom=clampBoqZoom(Number(prefs.zoom||1));
+  const visualMeta=boqVisualMeta(grid,rev);
   let selection=null;
   let anchor=null;
 
@@ -722,7 +976,7 @@ function bindExcelBoqGrid(grid,rev){
       if(!col)return;
 
       const startX=e.clientX;
-      const startWidth=parseFloat(col.style.width)||gridColWidth(grid.colWidths?.[c]);
+      const startWidth=parseFloat(col.style.width)||boqSmartColumnWidth(grid,c,visualMeta);
       const currentZoom=Number(table.dataset.zoom||1)||1;
       document.body.classList.add("boq-column-resizing");
       handle.classList.add("dragging");
@@ -857,7 +1111,7 @@ function bindExcelBoqGrid(grid,rev){
       else if(action==="fit-width"){
         const widthsNow=Array.from({length:Number(grid.colCount||0)},(_,c)=>{
           const col=getCol(c);
-          return parseFloat(col?.style.width)||gridColWidth(grid.colWidths?.[c]);
+          return parseFloat(col?.style.width)||boqSmartColumnWidth(grid,c,visualMeta);
         });
         const natural=48+widthsNow.reduce((a,b)=>a+b,0);
         const available=Math.max(300,scroll.clientWidth-14);
@@ -866,7 +1120,7 @@ function bindExcelBoqGrid(grid,rev){
       }
       else if(action==="reset-widths"){
         prefs.widths={};
-        Array.from({length:Number(grid.colCount||0)},(_,c)=>setColWidth(c,gridColWidth(grid.colWidths?.[c]),false));
+        Array.from({length:Number(grid.colCount||0)},(_,c)=>setColWidth(c,boqSmartColumnWidth(grid,c,visualMeta),false));
         saveBoqGridPrefs(grid,rev,prefs);
         requestAnimationFrame(()=>applyBoqFreeze(shell,grid,prefs));
       }
@@ -1146,7 +1400,7 @@ function applyBoqFreeze(shell,grid,prefs){
   let left=48;
   for(let c=0;c<freezeCols;c++){
     const col=table.querySelector(`col[data-boq-col="${c}"]`);
-    const width=parseFloat(col?.style.width)||gridColWidth(grid.colWidths?.[c]);
+    const width=parseFloat(col?.style.width)||boqSmartColumnWidth(grid,c,boqVisualMeta(grid,boqMirrorRevision()));
     table.querySelector(`.excel-column-header[data-col-index="${c}"]`)?.classList.add("boq-frozen-col");
     const header=table.querySelector(`.excel-column-header[data-col-index="${c}"]`);
     if(header){header.style.left=`${left}px`;header.style.zIndex="8"}
@@ -1199,7 +1453,7 @@ function measureBoqText(text,bold=false,fontSize=10){
 function boqGridPreferenceKey(grid,rev){
   const revId=rev?.id||rev?.code||"boq";
   const sheet=grid?.sheetName||rev?.sourceSheetName||"sheet";
-  return `companyhub:boq-grid:v1:${projectId||"project"}:${revId}:${sheet}`;
+  return `companyhub:boq-grid:v2:${projectId||"project"}:${revId}:${sheet}`;
 }
 
 function loadBoqGridPrefs(grid,rev){
