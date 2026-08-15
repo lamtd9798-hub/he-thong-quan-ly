@@ -1,4 +1,4 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.10
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.11
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
@@ -11,6 +11,56 @@
 
 
 
+
+## Nâng cấp V2.11 — Tự chọn đúng cột dữ liệu BOQ
+
+V2.11 sửa trường hợp Excel nhận đúng tên tiêu đề nhưng khi Lưu báo:
+`Không có dòng BOQ hợp lệ trong Sheet đã chọn`.
+
+Nguyên nhân thường gặp:
+- Có 2 cột cùng/na ná tên `Diễn giải`.
+- Có nhiều cột khối lượng, ví dụ `Khối lượng` và `KL Tuấn Nguyễn`.
+- Bộ nhận diện cũ chọn đúng tên cột nhưng chọn nhầm cột không có dữ liệu thực tế.
+- Tự nhận số hàng tiêu đề 3 hàng trong khi dữ liệu thực tế phù hợp 2 hàng hơn.
+
+### Logic mới
+
+Hệ thống không chỉ nhìn tên tiêu đề.
+
+Đối với `Khối lượng`:
+- Tìm các cột có tên giống Khối lượng / KL / Số lượng.
+- Kiểm tra tối đa 500 dòng bên dưới.
+- Ưu tiên cột có nhiều dữ liệu số thực tế nhất.
+
+Đối với `Diễn giải`:
+- Nếu có nhiều cột trùng tên, ưu tiên cột có nhiều text.
+- Ưu tiên mạnh cột có text cùng hàng với cột Khối lượng thực tế.
+
+Các cột ĐVT, giá, model... cũng được chấm điểm dựa trên dữ liệu bên dưới.
+
+### Tự sửa cấu trúc tiêu đề khi Lưu
+
+Nếu người dùng đang chọn:
+`Dòng 7 + 3 hàng tiêu đề`
+
+nhưng cấu trúc đó đọc ra 0 dòng BOQ:
+
+1. Hệ thống tự quét lại 40 dòng đầu.
+2. Thử 1/2/3 hàng tiêu đề.
+3. Chọn cấu trúc đọc được nhiều dòng BOQ hợp lệ nhất.
+4. Tiếp tục import mà không bắt người dùng sửa tay.
+
+### Preview mới
+
+Preview không chỉ báo `Đã nhận BOQ`, mà hiển thị:
+
+`Đã nhận XXX dòng BOQ`
+
+Nếu chỉ nhận được tên cột nhưng chưa có dòng dữ liệu hợp lệ, hệ thống cảnh báo trước khi bấm Lưu.
+
+### Firebase
+
+V2.11 không thay đổi Rules hoặc cấu trúc Firebase.
 ## Nâng cấp V2.10 — Tự nhận BOQ có tiêu đề 1–3 hàng và ô gộp
 
 V2.10 nâng bộ đọc Excel cho các BOQ thực tế có cấu trúc phức tạp.

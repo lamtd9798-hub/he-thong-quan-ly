@@ -1,7 +1,7 @@
 import {
   refs,arr,ts,logActivity,getProfile,can,esc,norm,money,fmtDate,fmtDateTime,
   loading,empty,badge,modal,toast,confirmBox
-} from "../core.js?v=2.10.0";
+} from "../core.js?v=2.11.0";
 
 let projectId="";
 let mountEl=null;
@@ -411,7 +411,7 @@ const REVISION_HEADER_ALIASES={
   brand:["nhan hieu","nhãn hiệu","thuong hieu","thương hiệu","brand","manufacturer"],
   origin:["xuat xu","xuất xứ","origin","country of origin","co"],
   unit:["don vi","đơn vị","dvt","đvt","unit","uom"],
-  qty:["khoi luong","khối lượng","so luong","số lượng","qty","quantity","boq qty","contract quantity"],
+  qty:["khoi luong","khối lượng","kl","so luong","số lượng","qty","quantity","boq qty","contract quantity"],
   bidUnit:["don gia vnd tong cong","đơn giá vnd tổng cộng","tong cong","tổng cộng","gia chao/dvt","giá chào/đvt","gia chao","giá chào","don gia hd","đơn giá hđ","don gia hop dong","đơn giá hợp đồng","don gia","đơn giá","unit price","unit rate","bid unit price","gia ban","giá bán"],
   materialUnit:["don gia vnd vat tu chinh","đơn giá vnd vật tư chính","vat tu chinh","vật tư chính","gia vat tu","giá vật tư","material unit","material price"],
   laborUnit:["don gia vnd nhan cong va vat tu phu","đơn giá vnd nhân công và vật tư phụ","nhan cong va vat tu phu","nhân công và vật tư phụ","gia nhan cong","giá nhân công","nhan cong","nhân công","labor unit","labor price"],
@@ -491,7 +491,10 @@ function uploadRevisionDialog(isTenderR0=false){
         const headerDepth=Math.min(3,Math.max(1,Number(fd.get("revisionHeaderDepth")||1)));
         const parsedInfo=await parseRevisionSpreadsheet(file,{sheetName,headerRow,headerDepth});
         const parsed=parsedInfo.rows;
-        if(!parsed.length){toast("Không có dòng BOQ hợp lệ trong Sheet đã chọn.","error");return false}
+        if(!parsed.length){toast("Không có dòng BOQ hợp lệ trong Sheet đã chọn. Hệ thống đã thử tự nhận lại tiêu đề nhưng vẫn không đọc được Khối lượng.","error");return false}
+        if(parsedInfo.autoCorrected){
+          toast(`Đã tự sửa nhận diện tiêu đề thành dòng ${parsedInfo.headerRow}${parsedInfo.headerDepth>1?`–${parsedInfo.headerRow+parsedInfo.headerDepth-1}`:""} (${parsedInfo.headerDepth} hàng).`,"warning");
+        }
 
         const items=mapRevisionItems(parsed);
         const u=getProfile()||{},revisionId=refs.quantityBoqRevisionsProject(projectId).push().key;
@@ -699,7 +702,7 @@ function renderRevisionFilePreview(inspection,sheetName,headerRow,headerDepth=1)
       <div><b>${inspection.kind==="EXCEL"?"Excel":"CSV"} · ${esc(inspection.fileName)}</b>
         <span>${inspection.kind==="EXCEL"?`Sheet: ${esc(sheetName)} · `:""}Tiêu đề: dòng ${headerLabel} (${depth} hàng) · khoảng ${dataRows} dòng dữ liệu</span>
       </div>
-      ${analyzed.valid?badge("Đã nhận BOQ","green"):badge("Cần kiểm tra tiêu đề","orange")}
+      ${analyzed.valid&&analyzed.validRows>0?badge(`Đã nhận ${analyzed.validRows} dòng BOQ`,"green"):analyzed.valid?badge("Nhận tiêu đề nhưng chưa thấy dòng KL hợp lệ","orange"):badge("Cần kiểm tra tiêu đề","orange")}
     </div>
     <div class="revision-file-columns">${headers.slice(0,16).map(h=>`<span>${esc(h)}</span>`).join("")}${headers.length>16?`<span>+${headers.length-16} cột</span>`:""}</div>
     <div class="revision-detected-map">
@@ -713,7 +716,8 @@ function renderRevisionFilePreview(inspection,sheetName,headerRow,headerDepth=1)
       ${detectedFieldPill("Nhân công + VTP",analyzed.map.laborUnit,analyzed.displayHeaders)}
       ${detectedFieldPill("Tổng đơn giá",analyzed.map.bidUnit,analyzed.displayHeaders)}
     </div>
-    ${!analyzed.valid?`<div class="revision-file-warning">Chưa nhận ra đủ <b>Mô tả/Diễn giải</b> và <b>Khối lượng/Số lượng</b>. Hãy đổi “Dòng tiêu đề bắt đầu” hoặc “Số hàng tiêu đề”.</div>`:""}`;
+    ${!analyzed.valid?`<div class="revision-file-warning">Chưa nhận ra đủ <b>Mô tả/Diễn giải</b> và <b>Khối lượng/Số lượng</b>. Hãy đổi “Dòng tiêu đề bắt đầu” hoặc “Số hàng tiêu đề”.</div>`:
+      analyzed.validRows===0?`<div class="revision-file-warning">Đã nhận tên cột nhưng chưa tìm thấy dòng nào có đồng thời <b>Diễn giải + Khối lượng dạng số</b>. Khi bấm Lưu, hệ thống sẽ tự thử lại các cấu trúc tiêu đề khác.</div>`:""}`;
 }
 
 function detectedFieldPill(label,index,headers){
@@ -731,10 +735,39 @@ async function parseRevisionSpreadsheet(file,{sheetName="",headerRow=1,headerDep
   const inspection=document.querySelector("#revisionFile")?._revisionInspection||await inspectRevisionSpreadsheet(file);
   const selected=sheetName&&inspection.sheets?.[sheetName]?sheetName:inspection.defaultSheet;
   const aoa=inspection.sheets?.[selected]?.aoa||[];
-  const rowIndex=Math.max(0,Number(headerRow||1)-1);
-  const depth=Math.min(3,Math.max(1,Number(headerDepth||1)));
-  const rows=parseRevisionAoa(aoa,rowIndex,depth);
-  return {rows,sheetName:inspection.kind==="EXCEL"?selected:"",headerRow:rowIndex+1,headerDepth:depth};
+  const requestedRow=Math.max(0,Number(headerRow||1)-1);
+  const requestedDepth=Math.min(3,Math.max(1,Number(headerDepth||1)));
+
+  let rows=[];
+  let usedRow=requestedRow,usedDepth=requestedDepth,autoCorrected=false;
+
+  try{
+    rows=parseRevisionAoa(aoa,requestedRow,requestedDepth);
+  }catch(e){
+    rows=[];
+  }
+
+  // Nếu cấu hình đang chọn đọc ra 0 dòng, tự quét lại 40 dòng đầu + 1–3 hàng tiêu đề.
+  if(!rows.length){
+    const detected=detectRevisionHeader(aoa);
+    const altRow=Math.max(0,Number(detected.headerRow||1)-1);
+    const altDepth=Math.min(3,Math.max(1,Number(detected.headerDepth||1)));
+    const altRows=parseRevisionAoa(aoa,altRow,altDepth);
+    if(altRows.length){
+      rows=altRows;
+      usedRow=altRow;
+      usedDepth=altDepth;
+      autoCorrected=altRow!==requestedRow||altDepth!==requestedDepth;
+    }
+  }
+
+  return {
+    rows,
+    sheetName:inspection.kind==="EXCEL"?selected:"",
+    headerRow:usedRow+1,
+    headerDepth:usedDepth,
+    autoCorrected
+  };
 }
 
 function parseRevisionAoa(aoa,headerRowIndex,headerDepth=1){
@@ -789,14 +822,29 @@ function analyzeRevisionHeaders(aoa,rowIndex,headerDepth=1){
   const depth=Math.min(3,Math.max(1,Number(headerDepth||1)));
   const displayHeaders=buildCombinedRevisionHeaders(aoa,rowIndex,depth);
   const headers=displayHeaders.map(cleanRevisionHeader);
+  const dataStart=rowIndex+depth;
   const map={};
 
-  Object.entries(REVISION_HEADER_ALIASES).forEach(([key,aliases])=>{
-    const normalized=aliases.map(cleanRevisionHeader).filter(Boolean);
-    map[key]=findBestHeaderMatch(headers,normalized,key);
-  });
+  // Chọn Khối lượng trước dựa trên cả tên cột lẫn số lượng ô số phía dưới.
+  map.qty=findBestHeaderMatchDataAware(headers,REVISION_HEADER_ALIASES.qty,"qty",aoa,dataStart,-1);
 
-  return {map,valid:map.description>=0&&map.qty>=0,headers,displayHeaders,headerDepth:depth};
+  // Mô tả ưu tiên cột có text cùng hàng với cột KL thực tế.
+  map.description=findBestHeaderMatchDataAware(headers,REVISION_HEADER_ALIASES.description,"description",aoa,dataStart,map.qty);
+
+  // Các cột còn lại ưu tiên dữ liệu cùng các dòng BOQ có KL.
+  for(const key of ["itemNo","discipline","category","specification","brand","origin","unit","bidUnit","materialUnit","laborUnit","subcontractUnit","otherUnit","wastePct","markupPct"]){
+    map[key]=findBestHeaderMatchDataAware(headers,REVISION_HEADER_ALIASES[key]||[],key,aoa,dataStart,map.qty);
+  }
+
+  const validRows=countRevisionValidRows(aoa,dataStart,map);
+  return {
+    map,
+    valid:map.description>=0&&map.qty>=0,
+    validRows,
+    headers,
+    displayHeaders,
+    headerDepth:depth
+  };
 }
 
 function buildCombinedRevisionHeaders(aoa,rowIndex,depth){
@@ -816,64 +864,130 @@ function buildCombinedRevisionHeaders(aoa,rowIndex,depth){
   return out;
 }
 
-function findBestHeaderMatch(headers,aliases,key){
-  let best=-1,bestScore=-1;
+function findBestHeaderMatchDataAware(headers,aliases,key,aoa,dataStart,qtyIndex=-1){
+  const normalized=(aliases||[]).map(cleanRevisionHeader).filter(Boolean);
+  let best=-1,bestScore=-Infinity;
+
   headers.forEach((h,i)=>{
     if(!h)return;
-    aliases.forEach(a=>{
-      if(!a)return;
-      let score=-1;
-      if(h===a)score=100+a.length;
-      else if(h.endsWith(` ${a}`)||h.startsWith(`${a} `))score=80+a.length;
-      else if(h.includes(a)&&a.length>=5)score=60+a.length;
+    let headerScore=headerSemanticScore(h,normalized,key);
+    if(headerScore<0)return;
 
-      // Một số cột tổng hợp cần ưu tiên subheader cụ thể trong tiêu đề 2 tầng.
-      if(key==="bidUnit"&&h.includes("tong cong"))score=Math.max(score,130);
-      if(key==="materialUnit"&&h.includes("vat tu chinh"))score=Math.max(score,130);
-      if(key==="laborUnit"&&h.includes("nhan cong")&&h.includes("vat tu phu"))score=Math.max(score,135);
-      if(key==="description"&&h.includes("dien giai"))score=Math.max(score,135);
-      if(key==="qty"&&h==="khoi luong")score=Math.max(score,135);
-      if(key==="unit"&&h==="don vi")score=Math.max(score,135);
+    const stats=columnDataStats(aoa,i,dataStart,qtyIndex);
+    let dataScore=0;
 
-      if(score>bestScore){bestScore=score;best=i}
-    });
+    if(key==="qty"){
+      dataScore=stats.numeric*7 + stats.nonEmpty*0.5;
+      // Các cột dạng "KL xxx" cũng là ứng viên số lượng.
+      if(h==="khoi luong")headerScore+=18;
+      else if(h==="kl"||h.startsWith("kl "))headerScore+=8;
+    }else if(key==="description"){
+      dataScore=stats.text*3 + stats.coNumericQty*8 + stats.nonEmpty*0.5;
+    }else if(key==="unit"){
+      dataScore=stats.coNumericQty*4 + stats.shortText*2 + stats.nonEmpty*0.25;
+    }else if(["bidUnit","materialUnit","laborUnit","subcontractUnit","otherUnit"].includes(key)){
+      dataScore=stats.numeric*2 + stats.coNumericQty*3;
+    }else{
+      dataScore=stats.coNumericQty*2 + stats.nonEmpty*0.5;
+    }
+
+    const score=headerScore+dataScore;
+    if(score>bestScore){bestScore=score;best=i}
   });
+
   return best;
 }
 
+function headerSemanticScore(h,aliases,key){
+  let best=-1;
+  for(const a of aliases){
+    if(!a)continue;
+    let score=-1;
+    if(h===a)score=120+a.length;
+    else if(h.endsWith(` ${a}`)||h.startsWith(`${a} `))score=95+a.length;
+    else if(h.includes(a)&&a.length>=4)score=75+a.length;
+    best=Math.max(best,score);
+  }
+
+  // Heuristic thêm cho các BOQ thực tế.
+  if(key==="qty"&&(h==="kl"||h.startsWith("kl ")||h.includes("khoi luong")))best=Math.max(best,105);
+  if(key==="description"&&h.includes("dien giai"))best=Math.max(best,135);
+  if(key==="unit"&&h.includes("don vi"))best=Math.max(best,130);
+  if(key==="specification"&&(h.includes("model")||h.includes("thong so")))best=Math.max(best,120);
+  if(key==="brand"&&h.includes("nhan hieu"))best=Math.max(best,125);
+  if(key==="origin"&&h.includes("xuat xu"))best=Math.max(best,125);
+  if(key==="materialUnit"&&h.includes("vat tu chinh"))best=Math.max(best,140);
+  if(key==="laborUnit"&&h.includes("nhan cong")&&h.includes("vat tu phu"))best=Math.max(best,145);
+  if(key==="bidUnit"&&h.includes("tong cong"))best=Math.max(best,140);
+
+  return best;
+}
+
+function columnDataStats(aoa,col,start,qtyIndex=-1){
+  let numeric=0,nonEmpty=0,text=0,shortText=0,coNumericQty=0;
+  const end=Math.min(aoa.length,start+500);
+
+  for(let r=start;r<end;r++){
+    const row=aoa[r]||[];
+    const v=row[col];
+    const raw=String(v??"").trim();
+    if(!raw)continue;
+    nonEmpty++;
+    if(isRevisionNumeric(v))numeric++;
+    else{
+      text++;
+      if(raw.length<=20)shortText++;
+    }
+    if(qtyIndex>=0&&isRevisionNumeric(row[qtyIndex]))coNumericQty++;
+  }
+  return {numeric,nonEmpty,text,shortText,coNumericQty};
+}
+
+function countRevisionValidRows(aoa,start,map){
+  if(map.description<0||map.qty<0)return 0;
+  let count=0;
+  const end=aoa.length;
+  for(let r=start;r<end;r++){
+    const row=aoa[r]||[];
+    const desc=String(row[map.description]??"").trim();
+    const qty=row[map.qty];
+    if(desc&&isRevisionNumeric(qty))count++;
+  }
+  return count;
+}
+
 function detectRevisionHeader(aoa){
-  let best={headerRow:1,headerDepth:1,score:-1};
+  let best={headerRow:1,headerDepth:1,score:-Infinity,validRows:0};
   const limit=Math.min(40,aoa.length);
 
   for(let i=0;i<limit;i++){
     const firstRowNonEmpty=(aoa[i]||[]).filter(x=>String(x??"").trim()!=="").length;
-    // Không cho block tiêu đề bắt đầu ở một dòng trắng phía trên bảng.
     if(firstRowNonEmpty===0)continue;
 
     for(let depth=1;depth<=3;depth++){
       if(i+depth>aoa.length)break;
       const analyzed=analyzeRevisionHeaders(aoa,i,depth);
+
       let score=0;
       Object.values(analyzed.map).forEach(idx=>{if(idx>=0)score+=2});
-      if(analyzed.map.description>=0)score+=12;
-      if(analyzed.map.qty>=0)score+=12;
+      if(analyzed.map.description>=0)score+=14;
+      if(analyzed.map.qty>=0)score+=14;
       if(analyzed.map.unit>=0)score+=4;
       if(analyzed.map.specification>=0)score+=2;
       if(analyzed.map.materialUnit>=0)score+=3;
       if(analyzed.map.laborUnit>=0)score+=3;
       if(analyzed.map.bidUnit>=0)score+=3;
 
-      // Kiểm tra vài dòng sau header có thực sự giống BOQ hay không.
-      score+=revisionDataLikelihood(aoa,i+depth,analyzed.map);
+      // Quan trọng nhất: cấu trúc nào đọc ra được nhiều dòng BOQ hợp lệ hơn sẽ thắng.
+      score+=Math.min(80,analyzed.validRows*2);
 
-      // Nếu cùng điểm, ưu tiên block tiêu đề ngắn hơn; nhưng tiêu đề 2 tầng
-      // sẽ thắng khi nhận thêm được các cột giá con.
       if(
         score>best.score ||
-        (score===best.score && (i+1)<best.headerRow) ||
-        (score===best.score && (i+1)===best.headerRow && depth<best.headerDepth)
+        (score===best.score && analyzed.validRows>best.validRows) ||
+        (score===best.score && analyzed.validRows===best.validRows && (i+1)<best.headerRow) ||
+        (score===best.score && analyzed.validRows===best.validRows && (i+1)===best.headerRow && depth<best.headerDepth)
       ){
-        best={headerRow:i+1,headerDepth:depth,score};
+        best={headerRow:i+1,headerDepth:depth,score,validRows:analyzed.validRows};
       }
     }
   }

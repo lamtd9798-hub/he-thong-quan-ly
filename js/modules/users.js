@@ -1,4 +1,4 @@
-import {refs,arr,ts,logActivity,getProfile,ROLES,esc,fmtDateTime,setPage,loading,empty,badge,toast} from "../core.js?v=2.10.0";
+import {refs,arr,ts,logActivity,getProfile,ROLES,esc,fmtDateTime,setPage,loading,empty,badge,toast} from "../core.js?v=2.11.0";
 
 let users=[];
 export async function renderUsers(container){
