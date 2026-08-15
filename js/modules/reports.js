@@ -1,44 +1,268 @@
-import {refs,arr,ts,logActivity,getProfile,can,esc,norm,fmtDateTime,weekKey,monthKey,setPage,loading,empty,badge,modal,toast,confirmBox} from "../core.js?v=2.2.0";
+import {
+  refs,arr,ts,logActivity,getProfile,can,esc,norm,fmtDate,fmtDateTime,
+  weekKey,monthKey,setPage,loading,empty,badge,modal,toast,confirmBox
+} from "../core.js?v=2.3.0";
 
-let reports=[],projects=[],type="WEEK",q="";
+let reports=[],projects=[],tasks=[],type="WEEK",q="";
+
 export async function renderReports(container){
-  setPage("Báo cáo tuần / tháng","Công việc / Báo cáo");container.innerHTML=loading();
-  [reports,projects]=await Promise.all([arr(refs.reports()),arr(refs.projects())]);reports.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));paint(container);
+  setPage("Báo cáo tuần / tháng","Công việc / Báo cáo");
+  container.innerHTML=loading();
+
+  [reports,projects,tasks]=await Promise.all([
+    arr(refs.reports()),arr(refs.projects()),arr(refs.tasks())
+  ]);
+
+  reports.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  paint(container);
 }
+
 function paint(c){
   const p=getProfile(),all=["ADMIN","DIRECTOR","MANAGER"].includes(p.role);
   const list=reports.filter(r=>{
     const pr=projects.find(x=>x.id===r.projectId);
-    return r.type===type&&(all||r.userId===p.uid)&&(!q||norm(`${pr?.code} ${pr?.name} ${r.userName} ${r.completed} ${r.ongoing}`).includes(norm(q)));
+    return r.type===type &&
+      (all||r.userId===p.uid) &&
+      (!q||norm(`${pr?.code} ${pr?.name} ${r.userName} ${r.completed} ${r.ongoing} ${r.nextPlan} ${r.issues}`).includes(norm(q)));
   });
-  c.innerHTML=`<div class="page-head"><div><h2>Báo cáo tuần / tháng</h2><p>Nhân viên cập nhật một lần; quản lý xem tổng hợp toàn bộ phòng ban.</p></div><button id="newReport" class="btn primary">＋ Tạo báo cáo</button></div>
-  <div class="toolbar"><div class="subtabs" style="margin:0"><button class="subtab ${type==="WEEK"?"active":""}" data-type="WEEK">Theo tuần</button><button class="subtab ${type==="MONTH"?"active":""}" data-type="MONTH">Theo tháng</button></div><div class="search"><input id="qReport" value="${esc(q)}" placeholder="Tìm dự án, người báo cáo, nội dung..."></div>${badge(`${list.length} báo cáo`)}</div>
-  ${list.length?`<div class="grid g2">${list.map(card).join("")}</div>`:empty("Chưa có báo cáo",`Chưa có báo cáo ${type==="WEEK"?"tuần":"tháng"} phù hợp bộ lọc.`,"▥")}`;
-  c.querySelector("#newReport").addEventListener("click",()=>edit(null,c));c.querySelectorAll("[data-type]").forEach(b=>b.addEventListener("click",()=>{type=b.dataset.type;paint(c)}));
-  c.querySelector("#qReport")?.addEventListener("input",e=>{q=e.target.value;paint(c);requestAnimationFrame(()=>{const i=c.querySelector("#qReport");i?.focus();i?.setSelectionRange(i.value.length,i.value.length)})});
-  c.querySelectorAll("[data-report-edit]").forEach(b=>b.addEventListener("click",()=>edit(b.dataset.reportEdit,c)));c.querySelectorAll("[data-report-del]").forEach(b=>b.addEventListener("click",()=>del(b.dataset.reportDel,c)));
+
+  c.innerHTML=`
+    <div class="page-head">
+      <div>
+        <h2>Báo cáo tuần / tháng</h2>
+        <p>Báo cáo có thể tự tổng hợp từ module Giao việc & Tiến độ để tránh nhập cùng một nội dung hai lần.</p>
+      </div>
+      <div class="actions">
+        <button id="autoReport" class="btn soft">⚡ Tự tổng hợp từ Giao việc</button>
+        <button id="newReport" class="btn primary">＋ Tạo báo cáo thủ công</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="subtabs" style="margin:0">
+        <button class="subtab ${type==="WEEK"?"active":""}" data-type="WEEK">Theo tuần</button>
+        <button class="subtab ${type==="MONTH"?"active":""}" data-type="MONTH">Theo tháng</button>
+      </div>
+      <div class="search"><input id="qReport" value="${esc(q)}" placeholder="Tìm dự án, người báo cáo, nội dung..."></div>
+      ${badge(`${list.length} báo cáo`)}
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-body report-auto-help">
+        <div>
+          <b>Luồng khuyến nghị:</b>
+          Nhân viên chỉ cập nhật trạng thái, % hoàn thành và vướng mắc ở <a href="#/tasks">Giao việc & Tiến độ</a>.
+          Cuối tuần/tháng bấm <b>Tự tổng hợp từ Giao việc</b>, kiểm tra lại nội dung rồi lưu báo cáo.
+        </div>
+      </div>
+    </div>
+
+    ${list.length?`<div class="grid g2">${list.map(card).join("")}</div>`:
+      empty("Chưa có báo cáo",`Chưa có báo cáo ${type==="WEEK"?"tuần":"tháng"} phù hợp bộ lọc.`,"▥")}
+  `;
+
+  c.querySelector("#newReport").addEventListener("click",()=>edit(null,c));
+  c.querySelector("#autoReport").addEventListener("click",()=>autoReport(c));
+
+  c.querySelectorAll("[data-type]").forEach(b=>b.addEventListener("click",()=>{
+    type=b.dataset.type;paint(c);
+  }));
+
+  c.querySelector("#qReport")?.addEventListener("input",e=>{
+    q=e.target.value;paint(c);
+    requestAnimationFrame(()=>{
+      const i=c.querySelector("#qReport");i?.focus();i?.setSelectionRange(i.value.length,i.value.length);
+    });
+  });
+
+  c.querySelectorAll("[data-report-edit]").forEach(b=>b.addEventListener("click",()=>edit(b.dataset.reportEdit,c)));
+  c.querySelectorAll("[data-report-del]").forEach(b=>b.addEventListener("click",()=>del(b.dataset.reportDel,c)));
 }
+
 function card(r){
   const p=projects.find(x=>x.id===r.projectId),me=getProfile(),editable=r.userId===me.uid||can("reportsEditAll");
-  return `<div class="card report-card"><div class="report-head"><div><h3>${esc(p?.code||"Không gắn dự án")} · ${esc(p?.name||"Công việc chung")}</h3><div class="secondary-text">${esc(r.userName||"")} · ${esc(r.period||"")}</div></div>${badge(r.type==="WEEK"?"Tuần":"Tháng",r.type==="WEEK"?"blue":"purple")}</div>
-  <div class="report-block"><b>Đã hoàn thành</b><p>${esc(r.completed||"—")}</p></div><div class="report-block"><b>Đang thực hiện</b><p>${esc(r.ongoing||"—")}</p></div><div class="report-block"><b>Kế hoạch tiếp theo</b><p>${esc(r.nextPlan||"—")}</p></div>${r.issues?`<div class="report-block"><b>Vướng mắc / Kiến nghị</b><p style="color:#c2410c">${esc(r.issues)}</p></div>`:""}
-  <div class="report-foot"><span class="secondary-text">Cập nhật ${fmtDateTime(r.updatedAt)}</span>${editable?`<div class="row-actions"><button class="btn sm" data-report-edit="${r.id}">Sửa</button><button class="btn red sm" data-report-del="${r.id}">Xóa</button></div>`:""}</div></div>`;
+  return `<div class="card report-card">
+    <div class="report-head">
+      <div>
+        <h3>${esc(p?.code||"TỔNG HỢP")} · ${esc(p?.name||"Báo cáo công việc")}</h3>
+        <div class="secondary-text">${esc(r.userName||"")} · ${esc(r.period||"")}${r.autoGenerated?" · Tự tổng hợp":""}</div>
+      </div>
+      ${badge(r.type==="WEEK"?"Tuần":"Tháng",r.type==="WEEK"?"blue":"purple")}
+    </div>
+
+    <div class="report-block"><b>Đã hoàn thành</b><p>${esc(r.completed||"—")}</p></div>
+    <div class="report-block"><b>Đang thực hiện</b><p>${esc(r.ongoing||"—")}</p></div>
+    <div class="report-block"><b>Kế hoạch tiếp theo</b><p>${esc(r.nextPlan||"—")}</p></div>
+    ${r.issues?`<div class="report-block"><b>Vướng mắc / Kiến nghị</b><p style="color:#c2410c">${esc(r.issues)}</p></div>`:""}
+
+    <div class="report-foot">
+      <span class="secondary-text">Cập nhật ${fmtDateTime(r.updatedAt)}</span>
+      ${editable?`<div class="row-actions">
+        <button class="btn sm" data-report-edit="${r.id}">Sửa</button>
+        <button class="btn red sm" data-report-del="${r.id}">Xóa</button>
+      </div>`:""}
+    </div>
+  </div>`;
 }
-function edit(id,c){
-  const r=reports.find(x=>x.id===id)||{},p=getProfile(),defaultPeriod=type==="WEEK"?weekKey():monthKey();
-  modal({title:id?"Cập nhật báo cáo":"Tạo báo cáo",eyebrow:"BÁO CÁO CÔNG VIỆC",size:"lg",body:`<div class="form-grid">
-    <label class="field"><span>Loại báo cáo</span><select name="type"><option value="WEEK" ${(!r.type&&type==="WEEK")||r.type==="WEEK"?"selected":""}>Tuần</option><option value="MONTH" ${(!r.type&&type==="MONTH")||r.type==="MONTH"?"selected":""}>Tháng</option></select></label>
-    <label class="field"><span>Kỳ báo cáo *</span><input required name="period" value="${esc(r.period||defaultPeriod)}"></label>
-    <label class="field span2"><span>Dự án</span><select name="projectId"><option value="">Công việc chung</option>${projects.map(x=>`<option value="${x.id}" ${r.projectId===x.id?"selected":""}>${esc(x.code)} - ${esc(x.name)}</option>`).join("")}</select></label>
-    <label class="field span2"><span>Công việc đã hoàn thành</span><textarea name="completed">${esc(r.completed||"")}</textarea></label>
-    <label class="field span2"><span>Công việc đang thực hiện</span><textarea name="ongoing">${esc(r.ongoing||"")}</textarea></label>
-    <label class="field span2"><span>Kế hoạch kỳ tiếp theo</span><textarea name="nextPlan">${esc(r.nextPlan||"")}</textarea></label>
-    <label class="field span2"><span>Vướng mắc / Kiến nghị</span><textarea name="issues">${esc(r.issues||"")}</textarea></label></div>`,onSubmit:async fd=>{
-      const d=Object.fromEntries(fd.entries());d.userId=r.userId||p.uid;d.userName=r.userName||p.displayName||p.email;d.userEmail=r.userEmail||p.email;d.updatedAt=ts();
-      if(id)await refs.report(id).update(d);else{const key=refs.reports().push().key;d.createdAt=ts();await refs.report(key).set(d)}
-      await logActivity("REPORT_SAVED",`${id?"Cập nhật":"Tạo"} báo cáo ${d.period}`,{projectId:d.projectId||""});toast("Đã lưu báo cáo.");await renderReports(c);return true;
-    }});
+
+function autoReport(c){
+  const period=type==="WEEK"?weekKey():monthKey();
+  const summary=buildTaskSummary(getProfile().uid,type,period);
+
+  if(summary.taskCount===0){
+    toast("Chưa có công việc nào của bạn để tổng hợp trong kỳ này. Hãy cập nhật Giao việc & Tiến độ trước.","warning");
+  }
+
+  edit(null,c,{
+    type,
+    period,
+    projectId:"",
+    completed:summary.completed,
+    ongoing:summary.ongoing,
+    nextPlan:summary.nextPlan,
+    issues:summary.issues,
+    autoGenerated:true,
+    sourceTaskCount:summary.taskCount
+  });
 }
+
+function edit(id,c,prefill=null){
+  const r=reports.find(x=>x.id===id)||prefill||{};
+  const p=getProfile(),defaultPeriod=type==="WEEK"?weekKey():monthKey();
+
+  modal({
+    title:id?"Cập nhật báo cáo":r.autoGenerated?"Báo cáo tự tổng hợp":"Tạo báo cáo",
+    eyebrow:r.autoGenerated?"TỪ GIAO VIỆC & TIẾN ĐỘ":"BÁO CÁO CÔNG VIỆC",
+    size:"lg",
+    body:`<div class="form-grid">
+      ${r.autoGenerated?`<div class="span2 alert" style="background:#eff6ff;border:1px solid #dbeafe;color:#1d4ed8">
+        Hệ thống đã tổng hợp ${Number(r.sourceTaskCount||0)} công việc. Anh/chị có thể chỉnh sửa nội dung trước khi lưu.
+      </div>`:""}
+
+      <label class="field"><span>Loại báo cáo</span><select name="type">
+        <option value="WEEK" ${(!r.type&&type==="WEEK")||r.type==="WEEK"?"selected":""}>Tuần</option>
+        <option value="MONTH" ${(!r.type&&type==="MONTH")||r.type==="MONTH"?"selected":""}>Tháng</option>
+      </select></label>
+
+      <label class="field"><span>Kỳ báo cáo *</span><input required name="period" value="${esc(r.period||defaultPeriod)}"></label>
+
+      <label class="field span2"><span>Dự án</span><select name="projectId">
+        <option value="">Tổng hợp nhiều dự án / Công việc chung</option>
+        ${projects.map(x=>`<option value="${x.id}" ${r.projectId===x.id?"selected":""}>${esc(x.code)} - ${esc(x.name)}</option>`).join("")}
+      </select></label>
+
+      <label class="field span2"><span>Công việc đã hoàn thành</span><textarea name="completed">${esc(r.completed||"")}</textarea></label>
+      <label class="field span2"><span>Công việc đang thực hiện</span><textarea name="ongoing">${esc(r.ongoing||"")}</textarea></label>
+      <label class="field span2"><span>Kế hoạch kỳ tiếp theo</span><textarea name="nextPlan">${esc(r.nextPlan||"")}</textarea></label>
+      <label class="field span2"><span>Vướng mắc / Kiến nghị</span><textarea name="issues">${esc(r.issues||"")}</textarea></label>
+
+      <input type="hidden" name="autoGenerated" value="${r.autoGenerated?"true":"false"}">
+      <input type="hidden" name="sourceTaskCount" value="${Number(r.sourceTaskCount||0)}">
+    </div>`,
+    onSubmit:async fd=>{
+      const d=Object.fromEntries(fd.entries());
+      d.userId=r.userId||p.uid;d.userName=r.userName||p.displayName||p.email;d.userEmail=r.userEmail||p.email;
+      d.autoGenerated=d.autoGenerated==="true";d.sourceTaskCount=Number(d.sourceTaskCount||0);
+      d.updatedAt=ts();
+
+      if(id)await refs.report(id).update(d);
+      else{
+        const key=refs.reports().push().key;d.createdAt=ts();await refs.report(key).set(d);
+      }
+
+      await logActivity("REPORT_SAVED",`${id?"Cập nhật":"Tạo"} báo cáo ${d.period}${d.autoGenerated?" từ Giao việc":""}`,{projectId:d.projectId||""});
+      toast("Đã lưu báo cáo.");await renderReports(c);return true;
+    }
+  });
+}
+
+function buildTaskSummary(uid,reportType,period){
+  const {start,end,nextEnd}=periodRange(reportType,period);
+  const mine=tasks.filter(t=>t.assigneeUid===uid);
+
+  const completed=mine.filter(t=>{
+    if(t.status!=="DONE")return false;
+    const when=Number(t.completedAt||t.updatedAt||0);
+    return when>=start.getTime() && when<=end.getTime();
+  });
+
+  const ongoing=mine.filter(t=>{
+    if(t.status==="DONE")return false;
+    const startDate=t.startDate?new Date(`${t.startDate}T00:00:00`):new Date(Number(t.createdAt||0));
+    return startDate<=end;
+  });
+
+  const next=mine.filter(t=>{
+    if(t.status==="DONE"||!t.dueDate)return false;
+    const due=new Date(`${t.dueDate}T23:59:59`);
+    return due>end && due<=nextEnd;
+  });
+
+  const blocked=mine.filter(t=>t.status==="BLOCKED");
+  const overdue=mine.filter(t=>t.status!=="DONE"&&t.dueDate&&new Date(`${t.dueDate}T23:59:59`)<new Date());
+
+  return {
+    taskCount:new Set([...completed,...ongoing,...next,...blocked,...overdue].map(x=>x.id)).size,
+    completed:formatTaskLines(completed,"done") || "Không có công việc hoàn thành trong kỳ.",
+    ongoing:formatTaskLines(ongoing,"ongoing") || "Không có công việc đang thực hiện.",
+    nextPlan:formatTaskLines(next,"next") || "Chưa có công việc đến hạn trong kỳ tiếp theo.",
+    issues:formatIssues(blocked,overdue) || ""
+  };
+}
+
+function formatTaskLines(list,mode){
+  if(!list.length)return "";
+  return list
+    .sort((a,b)=>String(a.dueDate||"9999").localeCompare(String(b.dueDate||"9999")))
+    .map(t=>{
+      const p=projects.find(x=>x.id===t.projectId);
+      const prefix=p?.code?`[${p.code}] `:"";
+      if(mode==="done")return `- ${prefix}${t.title} — Hoàn thành 100%`;
+      if(mode==="ongoing")return `- ${prefix}${t.title} — ${Number(t.progress||0)}% — Hạn ${fmtDate(t.dueDate)}`;
+      return `- ${prefix}${t.title} — Hạn ${fmtDate(t.dueDate)}`;
+    }).join("\n");
+}
+
+function formatIssues(blocked,overdue){
+  const lines=[];
+  blocked.forEach(t=>{
+    const p=projects.find(x=>x.id===t.projectId);
+    lines.push(`- VƯỚNG: ${p?.code?`[${p.code}] `:""}${t.title}${t.blocker?` — ${t.blocker}`:""}`);
+  });
+  overdue.filter(t=>!blocked.some(b=>b.id===t.id)).forEach(t=>{
+    const p=projects.find(x=>x.id===t.projectId);
+    lines.push(`- QUÁ HẠN: ${p?.code?`[${p.code}] `:""}${t.title} — Hạn ${fmtDate(t.dueDate)}`);
+  });
+  return lines.join("\n");
+}
+
+function periodRange(reportType,period){
+  if(reportType==="MONTH"){
+    const [y,m]=String(period).split("-").map(Number);
+    const start=new Date(y,m-1,1,0,0,0,0);
+    const end=new Date(y,m,0,23,59,59,999);
+    const nextEnd=new Date(y,m+1,0,23,59,59,999);
+    return {start,end,nextEnd};
+  }
+
+  const match=String(period).match(/^(\d{4})-W(\d{2})$/);
+  const year=Number(match?.[1]||new Date().getFullYear());
+  const week=Number(match?.[2]||1);
+
+  const jan4=new Date(year,0,4);
+  const jan4Day=jan4.getDay()||7;
+  const monday=new Date(jan4);
+  monday.setDate(jan4.getDate()-(jan4Day-1)+(week-1)*7);
+  monday.setHours(0,0,0,0);
+
+  const end=new Date(monday);end.setDate(end.getDate()+6);end.setHours(23,59,59,999);
+  const nextEnd=new Date(end);nextEnd.setDate(nextEnd.getDate()+7);
+
+  return {start:monday,end,nextEnd};
+}
+
 async function del(id,c){
-  const r=reports.find(x=>x.id===id);if(!await confirmBox("Xóa báo cáo",`Xóa báo cáo ${r?.period||""}?`,"Xóa"))return;await refs.report(id).remove();toast("Đã xóa báo cáo.","warning");await renderReports(c);
+  const r=reports.find(x=>x.id===id);
+  if(!await confirmBox("Xóa báo cáo",`Xóa báo cáo ${r?.period||""}?`,"Xóa"))return;
+  await refs.report(id).remove();toast("Đã xóa báo cáo.","warning");await renderReports(c);
 }

@@ -52,3 +52,51 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
   .matrix-table .matrix-sticky{min-width:220px;max-width:220px}
   .pricing-line{gap:10px}.pricing-line b{font-size:11px}
 }
+
+
+/* =========================
+   V2.3 - GIAO VIỆC & TIẾN ĐỘ
+   ========================= */
+.g6{grid-template-columns:repeat(6,minmax(0,1fr))}
+.task-board-wrap{overflow-x:auto;padding-bottom:10px}
+.task-board{display:grid;grid-template-columns:repeat(4,minmax(285px,1fr));gap:12px;min-width:1180px;align-items:start}
+.task-column{background:#edf2f7;border:1px solid #dde5ef;border-radius:12px;min-height:520px;overflow:hidden}
+.task-column-head{display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid #dce4ed;background:#f4f7fb}
+.task-column-head>div{display:flex;align-items:center;gap:7px}.task-column-head b{font-size:11px;color:#475569}
+.task-status-dot{width:8px;height:8px;border-radius:50%;background:#94a3b8}
+.task-status-doing .task-status-dot{background:#2563eb}.task-status-blocked .task-status-dot{background:#d97706}.task-status-done .task-status-dot{background:#16a34a}
+.task-count{font-size:9px;border:1px solid var(--border);background:#fff;border-radius:999px;padding:2px 7px;color:#64748b}
+.task-column-body{padding:9px;display:grid;gap:9px}
+.task-column-empty{text-align:center;color:#94a3b8;font-size:10px;padding:26px 8px}
+.task-card{background:#fff;border:1px solid #dfe6ef;border-radius:10px;padding:11px;box-shadow:0 2px 7px rgba(15,23,42,.035);position:relative}
+.task-card:hover{border-color:#b9c9e0;box-shadow:0 5px 16px rgba(15,23,42,.06)}
+.task-card.task-overdue{border-color:#fecaca;box-shadow:inset 3px 0 0 #dc2626}
+.task-card-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.task-project{font-size:9px;font-weight:850;color:#2563eb;letter-spacing:.3px}
+.task-card h4{font-size:12px;line-height:1.4;margin:6px 0 4px}
+.task-type{font-size:9px;color:#64748b;margin-bottom:10px}
+.task-assignee{display:flex;align-items:center;gap:8px;border-top:1px dashed #e2e8f0;border-bottom:1px dashed #e2e8f0;padding:8px 0;margin:8px 0}
+.mini-avatar{width:27px;height:27px;border-radius:8px;display:grid;place-items:center;background:#dbeafe;color:#1d4ed8;font-size:9px;font-weight:850;flex:0 0 auto}
+.task-assignee div{min-width:0}.task-assignee b{font-size:10px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.task-assignee small{font-size:9px;color:#94a3b8;display:block;margin-top:2px}
+.task-progress-line{display:flex;justify-content:space-between;font-size:9px;color:#64748b;margin-bottom:5px}
+.bar-warning{background:linear-gradient(90deg,#d97706,#f59e0b)!important}.bar-green{background:linear-gradient(90deg,#16a34a,#4ade80)!important}
+.task-deadline{display:flex;justify-content:space-between;gap:8px;font-size:9px;color:#64748b;margin-top:8px}
+.task-blocker{margin-top:8px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:7px 8px;border-radius:7px;font-size:9px;line-height:1.45}
+.task-next{margin-top:7px;background:#f8fafc;border:1px solid #e2e8f0;color:#475569;padding:7px 8px;border-radius:7px;font-size:9px;line-height:1.45}
+.task-actions{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:9px}
+.task-list-table{min-width:1450px}
+.overdue-row{background:#fffafa!important}.overdue-row td:first-child{box-shadow:inset 3px 0 0 #dc2626}
+.task-detail p{font-size:11px;margin:0 0 10px;line-height:1.5}.task-detail p:last-child{margin-bottom:0}
+.prewrap{font-size:11px;line-height:1.6;white-space:pre-wrap}
+.blocker-card{border-color:#fed7aa;background:#fffbeb}
+.report-auto-help{font-size:11px;color:#475569;line-height:1.55}.report-auto-help a{color:#2563eb;font-weight:750}
+
+@media(max-width:1450px){
+  .g6{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:1000px){
+  .g6{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:640px){
+  .g6{grid-template-columns:1fr}
+}

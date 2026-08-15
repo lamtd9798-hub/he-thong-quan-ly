@@ -1,7 +1,45 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.2
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.3
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
+
+
+## Nâng cấp V2.3 — Giao việc & Tiến độ
+
+Đã bổ sung module **Giao việc & Tiến độ**:
+
+- Giao việc theo dự án hoặc công việc chung.
+- Chọn người phụ trách từ danh sách người dùng V2.
+- Nhóm công việc: kiểm tra hồ sơ, BOQ, RFQ, lập giá, trình duyệt, nộp thầu, kỹ thuật, vật tư, thi công...
+- Ngày bắt đầu và deadline.
+- Ưu tiên: Thấp / Bình thường / Cao / Khẩn cấp.
+- Trạng thái: Chưa thực hiện / Đang thực hiện / Đang vướng / Hoàn thành.
+- % hoàn thành.
+- Ghi rõ vướng mắc và hành động tiếp theo.
+- Kanban 4 cột và chế độ danh sách.
+- Cảnh báo công việc quá hạn.
+- Lọc theo dự án, nhân viên, trạng thái, ưu tiên.
+- Nút **Tạo bộ việc đấu thầu** tự sinh 6 mốc:
+  1. Kiểm tra hồ sơ.
+  2. Bóc / rà BOQ.
+  3. RFQ / hỏi giá.
+  4. Tổng hợp & lập giá.
+  5. Trình duyệt.
+  6. Nộp thầu.
+- Deadline 6 mốc được chia tự động từ ngày hiện tại đến hạn nộp thầu.
+- Dashboard hiển thị việc quá hạn, việc đang vướng và việc của người đang đăng nhập.
+- Báo cáo tuần/tháng có nút **Tự tổng hợp từ Giao việc**:
+  - Việc đã hoàn thành.
+  - Việc đang thực hiện.
+  - Kế hoạch tiếp theo.
+  - Vướng mắc.
+  - Việc quá hạn.
+- Nhân viên có thể cập nhật công việc được giao cho chính mình.
+- Role VIEWER chỉ được xem.
+
+Dữ liệu mới:
+
+- `/v2/tasks/{taskId}`
 
 ## Nâng cấp V2.2
 
@@ -80,6 +118,7 @@ Dữ liệu mới lưu riêng dưới:
 - `/v2/execution`
 - `/v2/reports`
 - `/v2/activities`
+- `/v2/tasks`
 
 Dữ liệu cũ không bị ghi đè.
 

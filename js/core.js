@@ -1,4 +1,4 @@
-import { firebaseConfig, APP_ROOT, ADMIN_EMAIL } from "./config.js?v=2.2.0";
+import { firebaseConfig, APP_ROOT, ADMIN_EMAIL } from "./config.js?v=2.3.0";
 
 if (!window.firebase) throw new Error("Không tải được Firebase SDK.");
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
@@ -27,6 +27,7 @@ export const refs = {
   approvals:()=>root.child("approvals"), approval:id=>root.child(`approvals/${id}`),
   execution:()=>root.child("execution"), executionProject:id=>root.child(`execution/${id}`),
   reports:()=>root.child("reports"), report:id=>root.child(`reports/${id}`),
+  tasks:()=>root.child("tasks"), task:id=>root.child(`tasks/${id}`),
   activities:()=>root.child("activities")
 };
 
@@ -47,6 +48,9 @@ const PERMS = {
   approvalSubmit:["ADMIN","DIRECTOR","MANAGER","TENDER"],
   approvalDecide:["ADMIN","DIRECTOR"],
   executionEdit:["ADMIN","DIRECTOR","MANAGER","TECHNICAL"],
+  taskAssign:["ADMIN","DIRECTOR","MANAGER","TENDER","PROCUREMENT","TECHNICAL"],
+  taskSelfEdit:["ADMIN","DIRECTOR","MANAGER","TENDER","PROCUREMENT","TECHNICAL","EMPLOYEE"],
+  taskDelete:["ADMIN","DIRECTOR","MANAGER"],
   reportsEditAll:["ADMIN","DIRECTOR","MANAGER"],
   usersManage:["ADMIN"],
   finance:["ADMIN","DIRECTOR","MANAGER","TENDER"]
@@ -131,9 +135,34 @@ export const EXEC_STAGES=[
 ];
 export const stageInfo=k=>{const x=TENDER_STAGES.find(s=>s[0]===k)||TENDER_STAGES[0];return{key:x[0],label:x[1],color:x[2]}};
 export const execInfo=k=>{const x=EXEC_STAGES.find(s=>s[0]===k)||EXEC_STAGES[0];return{key:x[0],label:x[1]}};
+export const TASK_STATUSES=[
+  ["TODO","Chưa thực hiện","gray"],
+  ["DOING","Đang thực hiện","blue"],
+  ["BLOCKED","Đang vướng","orange"],
+  ["DONE","Hoàn thành","green"]
+];
+export const TASK_PRIORITIES=[
+  ["LOW","Thấp","gray"],
+  ["NORMAL","Bình thường","blue"],
+  ["HIGH","Cao","orange"],
+  ["URGENT","Khẩn cấp","red"]
+];
+export const TASK_TYPES=[
+  ["REVIEW","Kiểm tra hồ sơ"],
+  ["BOQ","Bóc / Rà BOQ"],
+  ["RFQ","RFQ / Hỏi giá"],
+  ["PRICING","Lập giá"],
+  ["APPROVAL","Trình duyệt"],
+  ["SUBMIT","Nộp thầu"],
+  ["TECHNICAL","Kỹ thuật / Shopdrawing"],
+  ["MATERIAL","Vật tư / Mua hàng"],
+  ["CONSTRUCTION","Thi công"],
+  ["OTHER","Khác"]
+];
+
 export const DISCIPLINES=["PCCC","HVAC","CẤP THOÁT NƯỚC","ĐIỆN","ĐIỆN NHẸ","KHÁC"];
 export const projectCode=n=>`DA-${new Date().getFullYear()}-${String(n).padStart(3,"0")}`;
-export const appVersion="2.2.0";
+export const appVersion="2.3.0";
 export const weekKey=()=>{
   const d=new Date(), t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())), day=t.getUTCDay()||7;
   t.setUTCDate(t.getUTCDate()+4-day);const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1));

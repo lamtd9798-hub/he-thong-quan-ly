@@ -1,4 +1,4 @@
-import {refs,arr,ts,logActivity,can,esc,fmtDate,EXEC_STAGES,execInfo,setPage,loading,empty,badge,modal,toast} from "../core.js?v=2.2.0";
+import {refs,arr,ts,logActivity,can,esc,fmtDate,EXEC_STAGES,execInfo,setPage,loading,empty,badge,modal,toast} from "../core.js?v=2.3.0";
 
 let projects=[],executions=[];
 export async function renderExecution(container){
