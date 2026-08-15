@@ -1,4 +1,4 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.13
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.14
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
@@ -14,6 +14,57 @@
 
 
 
+
+## V2.14 — Xây lại chức năng Kiểm soát khối lượng từ BOQ gốc
+
+Theo yêu cầu, V2.14 tạm bỏ toàn bộ giao diện quản lý cũ trong mục Kiểm soát khối lượng:
+
+- Tổng hợp BOQ.
+- Tender R0.
+- Baseline R1/R2.
+- Δ HĐ.
+- Đã duyệt/đặt.
+- Chờ duyệt.
+- Còn lại.
+- Vượt CT.
+- % sử dụng.
+- Giá trị chênh.
+- Các tab Revision/Phiếu đặt hàng/Ngoài BOQ/Lịch sử trên màn hình này.
+
+Mục tiêu hiện tại chỉ còn:
+
+`Tải file Excel/CSV → chọn Sheet → tạo bảng BOQ giống Sheet upload`
+
+### Bảng BOQ gốc
+
+Bảng hiển thị:
+
+- nguyên vùng dữ liệu Sheet;
+- nguyên số hàng;
+- nguyên số cột;
+- nguyên vị trí nội dung;
+- merged cells;
+- độ rộng cột;
+- chiều cao dòng;
+- giá trị hiển thị của ô;
+- chữ cột A/B/C...;
+- số hàng 1/2/3...;
+- cuộn ngang/dọc.
+
+Không có cột quản lý nào được chèn vào bảng BOQ.
+
+### Nạp lại file
+
+Nếu dự án đã có BOQ:
+`Thay / Nạp lại BOQ`
+
+Chọn file và Sheet mới.
+
+Nếu Revision hiện tại đã tồn tại, chức năng chỉ cập nhật `sourceGrid`, không thay Baseline/đơn giá/phiếu đặt hàng cũ.
+
+### Hướng phát triển sau
+
+Sau khi phần BOQ gốc hiển thị chuẩn, chức năng kiểm soát khối lượng sẽ được xây tiếp dựa trên các cột có sẵn của chính BOQ, thay vì dựng một bảng khác làm mất cấu trúc gốc.
 ## Nâng cấp V2.13 — BOQ gốc phải giống Sheet upload trước
 
 V2.13 đổi ưu tiên xử lý BOQ:

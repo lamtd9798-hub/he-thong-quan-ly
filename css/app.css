@@ -335,3 +335,21 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
 .excel-boq-grid .excel-row-head{position:sticky;left:0;z-index:3;background:#e5e7eb;text-align:right;width:46px;min-width:46px;padding-right:6px;color:#64748b;font-weight:500;border-color:#aeb7c2}
 .excel-boq-grid .excel-corner{position:sticky;left:0;top:0;z-index:5;background:#d1d5db!important}
 .excel-boq-grid tbody tr:hover td{outline:1px solid rgba(37,99,235,.16);outline-offset:-1px}
+
+
+/* =========================
+   V2.14 - KIỂM SOÁT KL: XÂY LẠI TỪ BOQ GỐC
+   ========================= */
+.boq-mirror-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px}
+.boq-mirror-head h2{margin:0 0 4px;font-size:18px}
+.boq-mirror-head p{margin:0;color:var(--muted);font-size:10px}
+.boq-mirror-filebar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 11px;margin-bottom:9px;background:#f8fafc;border:1px solid var(--border);border-radius:9px}
+.boq-mirror-filebar b{display:block;font-size:10px}
+.boq-mirror-filebar span{display:block;font-size:9px;color:var(--muted);margin-top:2px}
+.boq-mirror-empty{text-align:center;padding:34px 12px}
+.boq-mirror-empty .btn{margin-top:12px}
+
+/* Bảng BOQ là bản sao Sheet, không chèn các cột quản lý. */
+.boq-mirror-head + .boq-mirror-filebar + .excel-boq-shell{margin-top:0}
+.excel-boq-scroll{max-height:72vh}
+.excel-boq-grid td{font-family:Arial,Helvetica,sans-serif}

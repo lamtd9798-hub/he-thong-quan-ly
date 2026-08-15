@@ -1,7 +1,7 @@
 import {
   refs,arr,ts,logActivity,getProfile,can,esc,norm,money,fmtDate,fmtDateTime,
   loading,empty,badge,modal,toast,confirmBox
-} from "../core.js?v=2.13.0";
+} from "../core.js?v=2.14.0";
 
 let projectId="";
 let mountEl=null;
@@ -73,75 +73,223 @@ async function loadData(){
 
 function paint(){
   if(!mountEl)return;
-  if(!baseline.length){
-    mountEl.innerHTML=baselineEmptyHtml();
-    mountEl.querySelector("#initQuantityBaselineBtn")?.addEventListener("click",initializeBaseline);
-    mountEl.querySelector("#uploadTenderR0Btn")?.addEventListener("click",()=>uploadRevisionDialog(true));
-    return;
-  }
 
-  const rows=aggregateRows();
-  const totals=summaryTotals(rows);
-  const filtered=rows.filter(r=>!q||norm(`${r.itemNo} ${r.discipline} ${r.description} ${r.specification} ${r.unit}`).includes(norm(q)));
+  const rev=boqMirrorRevision();
+  const grid=revisionSourceGridFrom(rev);
 
   mountEl.innerHTML=`
-    <div class="quantity-head">
+    <div class="boq-mirror-head">
       <div>
-        <h2>Kiểm soát khối lượng đặt hàng</h2>
-        <p>Baseline BOQ trúng thầu → cộng dồn phiếu công trường → cảnh báo vượt → tính giá trị chênh và chi phí vượt.</p>
+        <h2>BOQ dự án</h2>
+        <p>Tải file BOQ lên và hiển thị nguyên bảng theo Sheet Excel. Không thêm cột quản lý, không đổi thứ tự hàng/cột.</p>
       </div>
       <div class="actions">
-        <button class="btn" id="exportQtyCsvBtn">Xuất CSV</button>
-        ${can("quantityRevisionManage")?`<button class="btn" id="uploadRevisionBtn">＋ Tải BOQ Revision</button>`:""}
-        ${can("quantityRequestCreate")?`<button class="btn primary" id="newOrderRequestBtn">＋ Tạo phiếu đặt hàng</button>`:""}
+        ${can("quantityRevisionManage")||can("quantityRevisionActivate")?`
+          <button class="btn primary" id="boqMirrorUploadBtn">${grid?"Thay / Nạp lại BOQ":"＋ Tải BOQ Excel / CSV"}</button>
+        `:""}
       </div>
     </div>
 
-    <div class="quantity-baseline-note">
-      <div>
-        <b>Baseline đang áp dụng: ${esc(activeRevision?.code||baselineMeta.activeRevisionCode||"R0")} · ${esc(activeRevision?.name||baselineMeta.activeRevisionName||"BOQ trúng thầu")}</b>
-        <span>${baseline.length} đầu mục · hiệu lực ${fmtDate(activeRevision?.effectiveDate||baselineMeta.activeEffectiveDate)} · kích hoạt ${fmtDateTime(baselineMeta.activatedAt||baselineMeta.frozenAt)}</span>
+    ${grid?`
+      <div class="boq-mirror-filebar">
+        <div>
+          <b>${esc(rev?.sourceFileName||"BOQ")}</b>
+          <span>Sheet: ${esc(grid.sheetName||rev?.sourceSheetName||"—")} · ${Number(grid.rowCount||0)} hàng × ${Number(grid.colCount||0)} cột</span>
+        </div>
+        <div>${badge("BOQ GỐC","blue")}</div>
       </div>
-      <div class="baseline-badges">
-        ${badge(`Tender: ${tenderRevision?.code||"R0"}`,"blue")}
-        ${badge(`${revisions.length} phiên bản BOQ`,"gray")}
+      ${sourceExcelGridHtml(grid)}
+    `:`
+      <div class="boq-mirror-empty">
+        ${empty(
+          "Chưa có BOQ",
+          "Tải file Excel/CSV lên. Hệ thống sẽ tạo lại nguyên bảng theo Sheet anh chọn trước, chưa thêm các cột quản lý khác.",
+          "▦"
+        )}
+        ${can("quantityRevisionManage")||can("quantityRevisionActivate")?`
+          <button class="btn primary" id="boqMirrorUploadEmptyBtn">＋ Tải BOQ Excel / CSV</button>
+        `:""}
       </div>
-    </div>
-
-    <div class="grid g6 mt">
-      ${metric("Baseline hiện hành",money(totals.baselineValue,true),activeRevision?.code||"BOQ","#2563eb","#eff6ff",`${baseline.length} đầu mục`)}
-      ${metric("Δ HĐ so Tender",signedMoney(totals.contractDeltaValue),"Δ",totals.contractDeltaValue>=0?"#7c3aed":"#16a34a",totals.contractDeltaValue>=0?"#f5f3ff":"#f0fdf4",`${totals.contractChangedCount} đầu mục thay đổi`)}
-      ${metric("Giá trị đã đặt",money(totals.orderedValue,true),"ĐH","#7c3aed","#f5f3ff",`${totals.confirmedRequests} phiếu được tính`)}
-      ${metric("Vượt do công trường",money(totals.excessBidValue,true),"!","#dc2626","#fef2f2",`${totals.overCount} đầu mục vượt/ngoài BOQ`)}
-      ${metric("Chi phí vượt dự kiến",money(totals.excessCost,true),"C","#d97706","#fff7ed","Theo giá mua dự kiến")}
-      ${metric("Gần hết BOQ",totals.nearCount,"⚠","#d97706","#fff7ed","Từ 90% đến 100%")}
-    </div>
-
-    <div class="quantity-toolbar mt">
-      <div class="subtabs" style="margin:0">
-        ${[
-          ["SUMMARY","Tổng hợp BOQ"],
-          ["SOURCE","BOQ gốc"],
-          ["REVISIONS","BOQ Revision"],
-          ["REQUESTS","Phiếu đặt hàng"],
-          ["OUTSIDE","Ngoài BOQ"],
-          ["HISTORY","Lịch sử"]
-        ].map(x=>`<button class="subtab ${view===x[0]?"active":""}" data-qty-view="${x[0]}">${x[1]}</button>`).join("")}
-      </div>
-      ${view==="SUMMARY"?`<div class="search"><input id="qtySearch" value="${esc(q)}" placeholder="Tìm mã BOQ, vật tư, hệ, thông số..."></div>`:""}
-    </div>
-
-    <div id="quantityViewBody">
-      ${view==="SUMMARY"?summaryHtml(filtered):
-        view==="SOURCE"?sourceBoqHtml():
-        view==="REVISIONS"?revisionsHtml():
-        view==="REQUESTS"?requestsHtml():
-        view==="OUTSIDE"?outsideHtml(rows):
-        historyHtml()}
-    </div>
+    `}
   `;
 
-  bind();
+  mountEl.querySelector("#boqMirrorUploadBtn")?.addEventListener("click",uploadBoqMirrorDialog);
+  mountEl.querySelector("#boqMirrorUploadEmptyBtn")?.addEventListener("click",uploadBoqMirrorDialog);
+}
+
+function boqMirrorRevision(){
+  const withGrid=revisions.filter(r=>r?.sourceGrid);
+  if(activeRevision?.sourceGrid)return activeRevision;
+  if(withGrid.length)return [...withGrid].sort((a,b)=>(b.sourceGridUpdatedAt||b.updatedAt||b.createdAt||0)-(a.sourceGridUpdatedAt||a.updatedAt||a.createdAt||0))[0];
+  if(activeRevision)return activeRevision;
+  if(revisions.length)return revisions[0];
+  return null;
+}
+
+function revisionSourceGridFrom(rev){
+  const g=rev?.sourceGrid;
+  if(!g)return null;
+  return {
+    ...g,
+    rows:normalizeIndexedArray(g.rows).map(r=>normalizeIndexedArray(r)),
+    colWidths:normalizeIndexedArray(g.colWidths),
+    rowHeights:normalizeIndexedArray(g.rowHeights),
+    merges:normalizeIndexedArray(g.merges),
+    styles:g.styles||{}
+  };
+}
+
+function uploadBoqMirrorDialog(){
+  if(!(can("quantityRevisionManage")||can("quantityRevisionActivate")))return;
+
+  const current=boqMirrorRevision();
+
+  modal({
+    title:current?.sourceGrid?"Thay / nạp lại BOQ":"Tải BOQ dự án",
+    eyebrow:"BOQ GỐC",
+    size:"lg",
+    submitText:"Tạo bảng BOQ",
+    body:`<div class="revision-upload-note">
+      <b>Chức năng này chỉ tạo bảng BOQ giống file upload.</b>
+      Chọn đúng file và đúng Sheet. Hệ thống không thêm Tender/Baseline/Đã đặt/Vượt... vào bảng này.
+    </div>
+
+    <div class="form-grid mt">
+      <label class="field span2"><span>File BOQ Excel / CSV *</span>
+        <input required type="file" name="boqFile" id="boqMirrorFile"
+          accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv">
+        <small>Hỗ trợ .xlsx, .xls và .csv</small>
+      </label>
+
+      <label class="field span2 hidden" id="boqMirrorSheetWrap"><span>Sheet cần tạo bảng *</span>
+        <select name="boqSheet" id="boqMirrorSheet"></select>
+        <small>Nếu file có nhiều Sheet, chọn đúng Sheet BOQ cần hiển thị.</small>
+      </label>
+
+      <div class="span2 hidden revision-file-preview" id="boqMirrorPreview"></div>
+    </div>`,
+    onSubmit:async fd=>{
+      try{
+        const file=fd.get("boqFile");
+        if(!(file instanceof File)||!file.size){
+          toast("Vui lòng chọn file Excel hoặc CSV.","error");
+          return false;
+        }
+
+        const input=document.querySelector("#boqMirrorFile");
+        const inspection=input?._boqInspection||await inspectRevisionSpreadsheet(file);
+        const selected=String(fd.get("boqSheet")||inspection.defaultSheet||"");
+        const meta=inspection.sheets?.[selected]||inspection.sheets?.[inspection.defaultSheet];
+        if(!meta?.sourceGrid){
+          toast("Không đọc được Sheet đã chọn.","error");
+          return false;
+        }
+
+        const grid={...meta.sourceGrid,sheetName:selected};
+        const now=Date.now();
+        const u=getProfile()||{};
+        let revisionId=current?.id||"";
+
+        if(revisionId){
+          await refs.quantityBoqRevision(projectId,revisionId).update({
+            sourceGrid:grid,
+            sourceFileName:file.name,
+            sourceSheetName:selected,
+            sourceGridUpdatedAt:now,
+            updatedAt:now
+          });
+        }else{
+          revisionId=refs.quantityBoqRevisionsProject(projectId).push().key;
+          await refs.quantityBoqRevision(projectId,revisionId).set({
+            code:"R0",
+            revisionNo:0,
+            name:"BOQ gốc",
+            type:"TENDER",
+            status:"ACTIVE",
+            source:"BOQ_MIRROR",
+            sourceFileName:file.name,
+            sourceSheetName:selected,
+            sourceGrid:grid,
+            lineCount:0,
+            totalBidValue:0,
+            createdAt:now,
+            updatedAt:now,
+            createdByUid:u.uid||"",
+            createdByName:u.displayName||u.email||""
+          });
+        }
+
+        try{
+          await audit(
+            current?.sourceGrid?"BOQ_MIRROR_RELOADED":"BOQ_MIRROR_CREATED",
+            `${current?.sourceGrid?"Nạp lại":"Tạo"} BOQ gốc từ ${file.name} / ${selected} · ${grid.rowCount} hàng × ${grid.colCount} cột`,
+            {revisionId,fileName:file.name,sheetName:selected,rowCount:grid.rowCount,colCount:grid.colCount}
+          );
+        }catch(auditError){
+          console.warn("Không ghi được audit BOQ:",auditError);
+        }
+
+        toast(`Đã tạo bảng BOQ: ${grid.rowCount} hàng × ${grid.colCount} cột.`);
+        await reload();
+        paint();
+        return true;
+      }catch(e){
+        console.error(e);
+        toast(e.message||"Không thể tạo bảng BOQ.","error");
+        return false;
+      }
+    }
+  });
+
+  const input=document.querySelector("#boqMirrorFile");
+  const sheetWrap=document.querySelector("#boqMirrorSheetWrap");
+  const sheet=document.querySelector("#boqMirrorSheet");
+  const preview=document.querySelector("#boqMirrorPreview");
+
+  input?.addEventListener("change",async()=>{
+    const file=input.files?.[0];
+    if(!file)return;
+    try{
+      const inspection=await inspectRevisionSpreadsheet(file);
+      input._boqInspection=inspection;
+
+      if(inspection.kind==="EXCEL"){
+        sheetWrap?.classList.remove("hidden");
+        if(sheet)sheet.innerHTML=Object.keys(inspection.sheets).map(name=>{
+          const g=inspection.sheets[name]?.sourceGrid;
+          return `<option value="${esc(name)}" ${name===inspection.defaultSheet?"selected":""}>${esc(name)}${g?` · ${g.rowCount}×${g.colCount}`:""}</option>`;
+        }).join("");
+      }else{
+        sheetWrap?.classList.add("hidden");
+        if(sheet)sheet.innerHTML=`<option value="CSV">CSV</option>`;
+      }
+
+      showBoqMirrorPreview(inspection,sheet?.value||inspection.defaultSheet,preview);
+    }catch(e){
+      console.error(e);
+      toast(e.message||"Không thể đọc file.","error");
+    }
+  });
+
+  sheet?.addEventListener("change",()=>{
+    const inspection=input?._boqInspection;
+    if(inspection)showBoqMirrorPreview(inspection,sheet.value,preview);
+  });
+}
+
+function showBoqMirrorPreview(inspection,sheetName,box){
+  if(!box)return;
+  const meta=inspection.sheets?.[sheetName]||inspection.sheets?.[inspection.defaultSheet];
+  const g=meta?.sourceGrid;
+  if(!g)return;
+  box.classList.remove("hidden");
+  box.innerHTML=`<div class="revision-file-preview-head">
+    <div>
+      <b>${esc(inspection.fileName)}</b>
+      <span>Sheet: ${esc(sheetName)} · ${g.rowCount} hàng × ${g.colCount} cột · vùng ${esc(g.range||"")}</span>
+    </div>
+    ${badge("Sẵn sàng tạo bảng","green")}
+  </div>`;
 }
 
 function baselineEmptyHtml(){
