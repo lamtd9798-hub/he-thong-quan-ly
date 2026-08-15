@@ -1,4 +1,4 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.6
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.7
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
@@ -6,6 +6,161 @@
 
 
 
+
+
+## Nâng cấp V2.7 — Kiểm soát khối lượng đặt hàng công trường
+
+V2.7 bổ sung tab **Kiểm soát khối lượng** bên trong menu **Triển khai**.
+
+Luồng:
+
+`BOQ trúng thầu → Baseline BOQ → Phiếu đặt hàng lần 1/2/3... → Cộng dồn → Cảnh báo vượt → Giá trị chênh → Variation/VO`
+
+### 1. Baseline BOQ được khóa tại thời điểm trúng thầu
+
+Khi bấm **Bàn giao** từ Đấu thầu sang Triển khai:
+
+- Hệ thống tự snapshot BOQ hiện tại.
+- Lưu khối lượng BOQ.
+- ĐVT.
+- Giá vật tư.
+- NET/ĐVT.
+- Giá chào/ĐVT.
+- NCC/Hãng đã chọn.
+- Người khóa và thời điểm khóa.
+
+Sau khi đã khóa, Baseline không tự thay đổi nếu BOQ đấu thầu bị sửa về sau.
+
+Các dự án đã bàn giao từ phiên bản cũ có nút:
+**Khởi tạo Baseline từ BOQ hiện tại**.
+
+### 2. Phiếu đặt hàng công trường
+
+Mỗi lần công trường yêu cầu vật tư được lưu thành một phiếu riêng:
+
+- Mã phiếu: DDH-YYYY-XXX.
+- Ngày đề nghị.
+- Người đề nghị.
+- Khu vực / Tầng / Zone.
+- Ghi chú.
+- Nhiều dòng vật tư.
+
+Trạng thái:
+
+`Nháp → Chờ duyệt → Đã duyệt → Đã đặt hàng`
+
+Ngoài ra có trạng thái `Đã hủy`.
+
+Chỉ phiếu **Đã duyệt** và **Đã đặt hàng** mới cộng vào tổng kiểm soát.
+
+### 3. Quy đổi đơn vị đặt hàng
+
+Mỗi dòng có:
+
+- ĐVT BOQ.
+- ĐVT đặt hàng.
+- Hệ số quy đổi.
+- Số lượng đặt.
+- Khối lượng quy đổi.
+
+Ví dụ:
+
+`BOQ = m`
+`Đặt = cây`
+`1 cây = 6 m`
+`20 cây = 120 m BOQ`
+
+Có thể áp dụng tương tự:
+
+- Cuộn → m.
+- Hộp → cái.
+- Bộ → cái.
+- Kiện → cái.
+
+### 4. Bảng kiểm soát BOQ
+
+Tự hiển thị:
+
+- KL BOQ.
+- Tổng đã duyệt/đặt.
+- Khối lượng chờ duyệt.
+- Khối lượng còn lại.
+- Tăng/Giảm so với BOQ.
+- % sử dụng.
+- Giá chào/ĐVT.
+- Giá trị chênh.
+- Chi phí vượt dự kiến.
+
+Màu:
+
+- Xám: chưa đặt.
+- Xanh: trong BOQ.
+- Vàng: đạt từ 90% hoặc phiếu chờ duyệt sắp/vượt BOQ.
+- Đỏ: đã vượt BOQ.
+
+### 5. Giá trị vượt
+
+Hệ thống tính hai loại:
+
+**Giá trị thương mại vượt**
+`= KL vượt × Giá chào BOQ`
+
+Dùng làm cơ sở xem xét phát sinh với khách hàng.
+
+**Chi phí vượt dự kiến**
+`= phần KL thực sự vượt × Giá mua dự kiến tại từng lần đặt`
+
+Chi phí vượt được tính theo đúng thứ tự các phiếu được duyệt, nên khi một phiếu chỉ có một phần vượt Baseline thì chỉ phần vượt mới tính vào chi phí tăng.
+
+### 6. Đầu mục ngoài BOQ
+
+Khi công trường yêu cầu vật tư không tồn tại trong Baseline:
+
+- Chọn `+ ĐẦU MỤC NGOÀI BOQ`.
+- Nhập mô tả/spec/ĐVT.
+- Giá chào dự kiến.
+- Giá mua dự kiến.
+- Lý do.
+
+Toàn bộ khối lượng này được cảnh báo là phát sinh ngoài BOQ.
+
+### 7. Lý do vượt
+
+Các lý do chuẩn:
+
+- Thay đổi thiết kế.
+- BOQ thiếu.
+- Khách hàng yêu cầu bổ sung.
+- Điều kiện thực tế công trường.
+- Hao hụt thi công.
+- Thi công sai / làm lại.
+- Khác.
+
+### 8. Tạo Variation / VO
+
+Dòng vượt BOQ hoặc ngoài BOQ có nút **Tạo VO**.
+
+Hệ thống tự tạo Variation nháp trong:
+
+`Tài chính dự án → Phát sinh`
+
+với giá trị dựa trên phần tăng theo giá chào BOQ.
+
+### 9. Dashboard Giám đốc
+
+Dashboard tự cộng:
+
+- Số đầu mục vượt BOQ.
+- Giá trị vượt BOQ.
+
+Nếu dự án có khối lượng vượt, cảnh báo này được đưa vào sức khỏe dự án và có thể làm dự án chuyển sang **ĐỎ** để quản lý xử lý.
+
+### Firebase mới
+
+- `/v2/quantityBaseline/{projectId}/{boqItemId}`
+- `/v2/quantityBaselineMeta/{projectId}`
+- `/v2/orderRequests/{projectId}/{requestId}`
+- `/v2/quantityAudit/{projectId}/{auditId}`
 
 ## Nâng cấp V2.6 — Chuẩn hóa tài chính + Dashboard Giám đốc
 

@@ -1,7 +1,7 @@
 import {
   refs,arr,getProfile,can,esc,money,fmtDate,fmtDateTime,daysUntil,stageInfo,
   TASK_PRIORITIES,setPage,loading,empty,badge
-} from "../core.js?v=2.6.0";
+} from "../core.js?v=2.7.0";
 
 export async function renderDashboard(container){
   setPage("Dashboard","Tổng quan");
@@ -24,7 +24,9 @@ export async function renderDashboard(container){
     refs.receiptsRoot().once("value"),
     refs.procurement().once("value"),
     refs.executionDocs().once("value"),
-    refs.milestones().once("value")
+    refs.milestones().once("value"),
+    refs.quantityBaselineRoot().once("value"),
+    refs.orderRequestsRoot().once("value")
   ]):Promise.resolve(null));
 
   const [projects,activities,execution,tasks,approvals,financeBundle]=await Promise.all(reads);
@@ -136,11 +138,12 @@ function taskSort(a,b){
 
 function executiveDashboardHtml(projects,execution,tasks,bundle){
   if(!bundle)return"";
-  const [settingsSnap,budgetSnap,costSnap,paymentSnap,varSnap,billingSnap,receiptSnap,procSnap,docSnap,mileSnap]=bundle;
+  const [settingsSnap,budgetSnap,costSnap,paymentSnap,varSnap,billingSnap,receiptSnap,procSnap,docSnap,mileSnap,qtyBaseSnap,orderSnap]=bundle;
 
   const settings=settingsSnap.val()||{},budgets=budgetSnap.val()||{},costs=costSnap.val()||{},
     payments=paymentSnap.val()||{},variations=varSnap.val()||{},billings=billingSnap.val()||{},receipts=receiptSnap.val()||{},
-    procurement=procSnap.val()||{},docs=docSnap.val()||{},milestones=mileSnap.val()||{};
+    procurement=procSnap.val()||{},docs=docSnap.val()||{},milestones=mileSnap.val()||{},
+    quantityBaseline=qtyBaseSnap.val()||{},orderRequests=orderSnap.val()||{};
 
   const active=projects.filter(p=>p.phase==="EXECUTION"||p.phase==="CLOSED"||p.tenderStatus==="WON");
   const rows=active.map(p=>{
@@ -184,11 +187,35 @@ function executiveDashboardHtml(projects,execution,tasks,bundle){
     const er=execution.find(e=>e.id===p.id)||{};
     const scheduleLate=er.targetDate&&er.status!=="CLOSED"&&daysUntil(er.targetDate)<0;
 
+    const qb=quantityBaseline[p.id]||{},qreq=orderRequests[p.id]||{};
+    const qtyUsed={},outsideKeys=new Set();let outsideValue=0;
+    Object.values(qreq).forEach(req=>{
+      if(!["APPROVED","ORDERED"].includes(req?.status))return;
+      Object.values(req?.lines||{}).forEach(line=>{
+        const qty=Number(line?.boqQty||0);
+        if(line?.isOutsideBoq){
+          outsideKeys.add(line.outsideKey||`${line.description||""}|${line.specification||""}|${line.unit||""}`);
+          outsideValue+=qty*Number(line.bidUnit||0);
+        }else if(line?.baselineItemId){
+          qtyUsed[line.baselineItemId]=(qtyUsed[line.baselineItemId]||0)+qty;
+        }
+      });
+    });
+    let quantityOverCount=outsideKeys.size,quantityExcessValue=outsideValue;
+    Object.entries(qb).forEach(([id,b])=>{
+      const used=Number(qtyUsed[id]||0),base=Number(b?.qty||0);
+      if(used>base){
+        quantityOverCount++;
+        quantityExcessValue+=(used-base)*Number(b?.bidUnit||0);
+      }
+    });
+
     const red=[],yellow=[];
     if(profit<0)red.push("Forecast lỗ");
     if(budget>0&&forecast>budget*1.10)red.push("Forecast vượt Budget >10%");
     if(overdueAR>0)red.push(`${overdueAR} công nợ KH quá hạn`);
     if(scheduleLate||overdueMiles>0)red.push("Tiến độ triển khai trễ");
+    if(quantityOverCount>0)red.push(`${quantityOverCount} đầu mục vượt BOQ · ${money(quantityExcessValue,true)}`);
 
     if(profit>=0&&margin<8)yellow.push(`LN thấp ${margin.toFixed(1)}%`);
     if(budget>0&&forecast>budget&&forecast<=budget*1.10)yellow.push("Forecast vượt Budget");
@@ -199,11 +226,12 @@ function executiveDashboardHtml(projects,execution,tasks,bundle){
     const health=red.length?["ĐỎ","red",red]:yellow.length?["VÀNG","orange",yellow]:["XANH","green",["Trong ngưỡng kiểm soát"]];
 
     return {p,contract,budget,forecast,actual,billed,collected,receivable,payable,profit,margin,
-      progress:Number(er.progress||0),health,overdueAR,overdueTasks,overdueDocs,overdueProc,overdueMiles};
+      progress:Number(er.progress||0),health,overdueAR,overdueTasks,overdueDocs,overdueProc,overdueMiles,
+      quantityOverCount,quantityExcessValue};
   });
 
-  const total=rows.reduce((a,r)=>{for(const k of ["contract","budget","forecast","actual","billed","collected","receivable","payable","profit"])a[k]+=r[k];return a},
-    {contract:0,budget:0,forecast:0,actual:0,billed:0,collected:0,receivable:0,payable:0,profit:0});
+  const total=rows.reduce((a,r)=>{for(const k of ["contract","budget","forecast","actual","billed","collected","receivable","payable","profit","quantityExcessValue"])a[k]+=r[k];a.quantityOverCount+=Number(r.quantityOverCount||0);return a},
+    {contract:0,budget:0,forecast:0,actual:0,billed:0,collected:0,receivable:0,payable:0,profit:0,quantityExcessValue:0,quantityOverCount:0});
   const margin=total.contract?total.profit/total.contract*100:0;
   const redCount=rows.filter(r=>r.health[0]==="ĐỎ").length,yellowCount=rows.filter(r=>r.health[0]==="VÀNG").length;
 
@@ -221,20 +249,21 @@ function executiveDashboardHtml(projects,execution,tasks,bundle){
       ${metric("Forecast Cost",money(total.forecast,true),"F","#7c3aed","#f5f3ff",`Budget ${money(total.budget,true)}`)}
       ${metric("LN dự kiến",`${margin.toFixed(1)}%`,"↗",total.profit>=0?"#16a34a":"#dc2626",total.profit>=0?"#f0fdf4":"#fef2f2",money(total.profit))}
       ${metric("Phải thu KH",money(total.receivable,true),"AR","#dc2626","#fef2f2",`Đã thu ${money(total.collected,true)}`)}
-      ${metric("Dự án ĐỎ",redCount,"!","#dc2626","#fef2f2","Cần can thiệp ngay")}
-      ${metric("Dự án VÀNG",yellowCount,"⚠","#d97706","#fff7ed","Cần theo dõi")}
+      ${metric("Dự án ĐỎ",redCount,"!","#dc2626","#fef2f2",`${yellowCount} dự án VÀNG cần theo dõi`)}
+      ${metric("GT vượt BOQ",money(total.quantityExcessValue,true),"KL","#dc2626","#fef2f2",`${total.quantityOverCount} đầu mục vượt/ngoài BOQ`)}
     </div>
 
     <div class="card mt">
       <div class="card-head"><h3>Danh sách ưu tiên xử lý</h3><span class="secondary-text">Đỏ → Vàng → Xanh</span></div>
       ${rows.length?`<div class="table-wrap" style="border:0;border-radius:0 0 11px 11px"><table class="table executive-table"><thead><tr>
-        <th>SỨC KHỎE</th><th>DỰ ÁN</th><th>TIẾN ĐỘ</th><th>HỢP ĐỒNG</th><th>FORECAST</th><th>LN DỰ KIẾN</th><th>% LN</th><th>PHẢI THU</th><th>PHẢI TRẢ</th><th>CẢNH BÁO CHÍNH</th>
+        <th>SỨC KHỎE</th><th>DỰ ÁN</th><th>TIẾN ĐỘ</th><th>HỢP ĐỒNG</th><th>FORECAST</th><th>LN DỰ KIẾN</th><th>% LN</th><th>VƯỢT BOQ</th><th>PHẢI THU</th><th>PHẢI TRẢ</th><th>CẢNH BÁO CHÍNH</th>
       </tr></thead><tbody>${rows.map(r=>`<tr class="health-row-${r.health[0]==="ĐỎ"?"red":r.health[0]==="VÀNG"?"yellow":"green"}">
         <td>${badge(r.health[0],r.health[1])}</td>
         <td><div class="primary-text">${esc(r.p.code||"")} · ${esc(r.p.name||"")}</div><div class="secondary-text">${esc(r.p.client||"")}</div></td>
         <td><div class="progress-label"><span>${r.progress}%</span></div><div class="progress" style="min-width:90px"><div class="bar" style="width:${Math.max(0,Math.min(100,r.progress))}%"></div></div></td>
         <td>${money(r.contract)}</td><td>${money(r.forecast)}</td>
         <td class="${r.profit>=0?"positive-text":"danger-text"}"><b>${money(r.profit)}</b></td><td>${r.margin.toFixed(1)}%</td>
+        <td class="${r.quantityExcessValue>0?"danger-text":""}"><b>${money(r.quantityExcessValue)}</b><div class="secondary-text">${r.quantityOverCount} đầu mục</div></td>
         <td class="${r.receivable>0?"danger-text":""}">${money(r.receivable)}</td><td>${money(r.payable)}</td>
         <td><div class="health-reasons">${r.health[2].slice(0,3).map(x=>`<span>${esc(x)}</span>`).join("")}</div></td>
       </tr>`).join("")}</tbody></table></div>`:empty("Chưa có dự án triển khai","Khi có dự án trúng thầu, sức khỏe dự án sẽ hiển thị ở đây.","▣")}

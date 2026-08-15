@@ -190,3 +190,57 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
   .finance-deduction-grid{grid-template-columns:1fr}
   .executive-title{flex-direction:column}
 }
+
+
+/* =========================
+   V2.7 - KIỂM SOÁT KHỐI LƯỢNG ĐẶT HÀNG
+   ========================= */
+.quantity-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:12px}
+.quantity-head h2{font-size:18px;margin:0 0 4px}.quantity-head p{font-size:10px;color:var(--muted);margin:0}
+.quantity-baseline-note{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px}
+.quantity-baseline-note b{display:block;font-size:10px;color:#1d4ed8}.quantity-baseline-note span{display:block;font-size:9px;color:#64748b;margin-top:2px}
+.quantity-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.quantity-toolbar .search{min-width:320px;flex:1;max-width:520px}
+.quantity-empty{padding:10px 0 30px}
+
+.quantity-summary-table{min-width:2050px}
+.quantity-request-table{min-width:1350px}
+.quantity-outside-table{min-width:1450px}
+.request-lines-table{min-width:1650px}
+.qty-history-table{min-width:1350px}
+
+.qty-row-red{background:#fff7f7!important}.qty-row-red td:first-child{box-shadow:inset 4px 0 0 #dc2626}
+.qty-row-yellow{background:#fffdf5!important}.qty-row-yellow td:first-child{box-shadow:inset 4px 0 0 #d97706}
+.qty-row-green td:first-child{box-shadow:inset 4px 0 0 #16a34a}
+.qty-row-gray td:first-child{box-shadow:inset 4px 0 0 #cbd5e1}
+.qty-pending{display:inline-block;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:999px;padding:2px 6px;font-weight:750}
+.qty-usage{min-width:105px}.qty-usage>div:first-child{font-size:9px;margin-bottom:4px}
+.qty-warning-box{display:flex;flex-direction:column;gap:3px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:11px 13px}
+.qty-warning-box b{font-size:11px}.qty-warning-box span{font-size:9px;line-height:1.5}
+
+.qty-line-baseline{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px}
+.qty-line-baseline>div{background:#fff;border:1px solid var(--border);border-radius:8px;padding:9px}
+.qty-line-baseline span{display:block;font-size:8px;color:var(--muted)}.qty-line-baseline b{display:block;font-size:11px;margin-top:3px}
+.qty-line-baseline .qty-outside-warning{grid-column:1/-1;background:#fef2f2;border-color:#fecaca}
+.qty-line-baseline .qty-outside-warning b{color:#b91c1c}.qty-line-baseline .qty-outside-warning span{color:#991b1b}
+
+.qty-line-preview{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:10px}
+.qty-line-preview>div{background:#fff;border:1px solid var(--border);border-radius:8px;padding:9px}
+.qty-line-preview span{display:block;font-size:8px;color:var(--muted)}.qty-line-preview b{display:block;font-size:11px;margin-top:3px}
+
+.quantity-audit-list{display:grid;gap:0}
+.quantity-audit-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--border)}
+.quantity-audit-item:last-child{border-bottom:0}.audit-dot{width:8px;height:8px;border-radius:50%;background:#7c3aed;flex:0 0 auto}
+.audit-main{flex:1;min-width:0}.audit-main b{display:block;font-size:10px}.audit-main span{display:block;font-size:9px;color:var(--muted);margin-top:2px}
+
+.executive-table{min-width:1700px}
+
+@media(max-width:900px){
+  .quantity-head{flex-direction:column}
+  .quantity-baseline-note{align-items:flex-start;flex-direction:column}
+  .qty-line-baseline{grid-template-columns:1fr 1fr}
+  .qty-line-preview{grid-template-columns:1fr 1fr}
+}
+
+.qty-info-strip{background:#f8fafc;border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-bottom:9px;font-size:9px;color:#64748b;line-height:1.45}
+.qty-info-strip b{color:#334155}

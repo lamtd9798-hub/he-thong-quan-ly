@@ -1,4 +1,4 @@
-import { firebaseConfig, APP_ROOT, ADMIN_EMAIL } from "./config.js?v=2.6.0";
+import { firebaseConfig, APP_ROOT, ADMIN_EMAIL } from "./config.js?v=2.7.0";
 
 if (!window.firebase) throw new Error("Không tải được Firebase SDK.");
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
@@ -36,6 +36,22 @@ export const refs = {
   milestones:()=>root.child("milestones"),
   milestonesProject:projectId=>root.child(`milestones/${projectId}`),
   milestone:(projectId,id)=>root.child(`milestones/${projectId}/${id}`),
+
+  quantityBaselineRoot:()=>root.child("quantityBaseline"),
+  quantityBaselineProject:projectId=>root.child(`quantityBaseline/${projectId}`),
+  quantityBaselineItem:(projectId,itemId)=>root.child(`quantityBaseline/${projectId}/${itemId}`),
+  quantityBaselineMetaRoot:()=>root.child("quantityBaselineMeta"),
+  quantityBaselineMeta:projectId=>root.child(`quantityBaselineMeta/${projectId}`),
+
+  orderRequestsRoot:()=>root.child("orderRequests"),
+  orderRequestsProject:projectId=>root.child(`orderRequests/${projectId}`),
+  orderRequest:(projectId,requestId)=>root.child(`orderRequests/${projectId}/${requestId}`),
+  orderRequestLines:(projectId,requestId)=>root.child(`orderRequests/${projectId}/${requestId}/lines`),
+  orderRequestLine:(projectId,requestId,lineId)=>root.child(`orderRequests/${projectId}/${requestId}/lines/${lineId}`),
+
+  quantityAuditRoot:()=>root.child("quantityAudit"),
+  quantityAuditProject:projectId=>root.child(`quantityAudit/${projectId}`),
+  quantityAuditItem:(projectId,id)=>root.child(`quantityAudit/${projectId}/${id}`),
 
   financeSettingsRoot:()=>root.child("financeSettings"),
   financeSettings:projectId=>root.child(`financeSettings/${projectId}`),
@@ -98,6 +114,12 @@ const PERMS = {
   executionDocsEdit:["ADMIN","DIRECTOR","MANAGER","TECHNICAL"],
   procurementEdit:["ADMIN","DIRECTOR","MANAGER","PROCUREMENT","TECHNICAL"],
   milestoneEdit:["ADMIN","DIRECTOR","MANAGER","TECHNICAL"],
+  quantityBaselineCreate:["ADMIN","DIRECTOR","MANAGER","TENDER"],
+  quantityRequestCreate:["ADMIN","DIRECTOR","MANAGER","TECHNICAL","PROCUREMENT","EMPLOYEE"],
+  quantityRequestApprove:["ADMIN","DIRECTOR","MANAGER"],
+  quantityRequestOrder:["ADMIN","DIRECTOR","MANAGER","PROCUREMENT"],
+  quantityRequestCancel:["ADMIN","DIRECTOR","MANAGER"],
+  quantityVariationCreate:["ADMIN","DIRECTOR","MANAGER","TENDER"],
   financeProjectView:["ADMIN","DIRECTOR","MANAGER","TENDER"],
   financeProjectEdit:["ADMIN","DIRECTOR","MANAGER"],
   financeCostEdit:["ADMIN","DIRECTOR","MANAGER"],
@@ -219,7 +241,7 @@ export const TASK_TYPES=[
 
 export const DISCIPLINES=["PCCC","HVAC","CẤP THOÁT NƯỚC","ĐIỆN","ĐIỆN NHẸ","KHÁC"];
 export const projectCode=n=>`DA-${new Date().getFullYear()}-${String(n).padStart(3,"0")}`;
-export const appVersion="2.6.0";
+export const appVersion="2.7.0";
 export const weekKey=()=>{
   const d=new Date(), t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())), day=t.getUTCDay()||7;
   t.setUTCDate(t.getUTCDate()+4-day);const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1));

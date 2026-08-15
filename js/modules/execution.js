@@ -1,7 +1,8 @@
 import {
   refs,arr,ts,logActivity,can,getProfile,esc,norm,fmtDate,fmtDateTime,daysUntil,
   EXEC_STAGES,execInfo,DISCIPLINES,setPage,loading,empty,badge,modal,closeModal,toast,confirmBox
-} from "../core.js?v=2.6.0";
+} from "../core.js?v=2.7.0";
+import {renderQuantityControl} from "./quantity-control.js?v=2.7.0";
 
 let projects=[], executions=[], users=[];
 let selectedProjectId="";
@@ -116,6 +117,7 @@ function paint(c){
           ["HANDOVER","Bàn giao Tender → Kỹ thuật"],
           ["DOCS","Hồ sơ kỹ thuật"],
           ["PROCUREMENT","Vật tư & Mua hàng"],
+          ["QUANTITY","Kiểm soát khối lượng"],
           ["SITE","Thi công & Nghiệm thu"]
         ].map(x=>`<button class="subtab ${tab===x[0]?"active":""}" data-exec-tab="${x[0]}">${x[1]}</button>`).join("")}
       </div>
@@ -125,6 +127,7 @@ function paint(c){
           tab==="HANDOVER"?handoverHtml(p,e):
           tab==="DOCS"?docsHtml(p):
           tab==="PROCUREMENT"?procurementHtml(p):
+          tab==="QUANTITY"?`<div id="quantityControlMount">${loading()}</div>`:
           siteHtml(p)}
       </div>
     `:empty("Chưa có dự án triển khai","Ở Pipeline đấu thầu, chuyển dự án sang Trúng thầu rồi bấm Bàn giao.","▤")}
@@ -155,6 +158,10 @@ function bind(c){
   c.querySelectorAll("[data-mile-edit]").forEach(b=>b.addEventListener("click",()=>editMilestone(b.dataset.mileEdit,c)));
   c.querySelectorAll("[data-mile-del]").forEach(b=>b.addEventListener("click",()=>deleteMilestone(b.dataset.mileDel,c)));
   c.querySelectorAll("[data-mile-status]").forEach(b=>b.addEventListener("click",()=>quickMilestoneStatus(b.dataset.mileStatus,b.dataset.status,c)));
+
+  if(tab==="QUANTITY"){
+    renderQuantityControl(c.querySelector("#quantityControlMount"),selectedProjectId);
+  }
 }
 
 function overviewHtml(p,e){

@@ -1,4 +1,4 @@
-import {refs,arr,ts,logActivity,can,getProfile,esc,money,fmtDate,daysUntil,TENDER_STAGES,stageInfo,setPage,loading,empty,badge,modal,toast,confirmBox} from "../core.js?v=2.6.0";
+import {refs,arr,ts,logActivity,can,getProfile,esc,money,fmtDate,daysUntil,TENDER_STAGES,stageInfo,setPage,loading,empty,badge,modal,toast,confirmBox} from "../core.js?v=2.7.0";
 
 let projects=[],rfqs=[],approvals=[],boqData={},pricingData={},tab="pipeline";
 
@@ -36,10 +36,62 @@ function changeStage(id,c){
   }});
 }
 async function handover(id,c){
-  const p=projects.find(x=>x.id===id);if(!p)return;if(!await confirmBox("Bàn giao sang kỹ thuật",`Chuyển ${p.code} - ${p.name} sang giai đoạn triển khai?`,"Bàn giao"))return;
+  const p=projects.find(x=>x.id===id);if(!p)return;
+  if(!await confirmBox("Bàn giao sang kỹ thuật",`Chuyển ${p.code} - ${p.name} sang giai đoạn triển khai? Hệ thống sẽ khóa BOQ hiện tại làm Baseline kiểm soát khối lượng.`,"Bàn giao"))return;
+
+  const baselineResult=await freezeQuantityBaseline(id);
   await refs.project(id).update({phase:"EXECUTION",tenderStatus:"WON",updatedAt:ts()});
-  const snap=await refs.executionProject(id).once("value");if(!snap.exists())await refs.executionProject(id).set({projectId:id,status:"HANDOVER",progress:0,createdAt:ts(),updatedAt:ts()});
-  await logActivity("HANDOVER",`Bàn giao ${p.code} sang phòng kỹ thuật`,{projectId:id});toast("Đã bàn giao dự án.");await renderTender(c);
+  const snap=await refs.executionProject(id).once("value");
+  if(!snap.exists())await refs.executionProject(id).set({projectId:id,status:"HANDOVER",progress:0,createdAt:ts(),updatedAt:ts()});
+
+  await logActivity("HANDOVER",`Bàn giao ${p.code} sang phòng kỹ thuật${baselineResult.count?` · khóa Baseline ${baselineResult.count} đầu mục`:""}`,{projectId:id});
+  toast(baselineResult.count?`Đã bàn giao dự án và khóa Baseline BOQ ${baselineResult.count} đầu mục.`:"Đã bàn giao dự án. Chưa có BOQ để khóa Baseline.",baselineResult.count?"success":"warning");
+  await renderTender(c);
+}
+
+async function freezeQuantityBaseline(projectId){
+  const current=await refs.quantityBaselineProject(projectId).once("value");
+  if(current.exists()){
+    const existing=current.val()||{};
+    return {count:Object.keys(existing).length,existing:true};
+  }
+
+  const boq=await arr(refs.boqProject(projectId));
+  if(!boq.length)return {count:0,existing:false};
+
+  const items={};
+  let totalBidValue=0;
+  boq.forEach(x=>{
+    const base=Number(x.materialUnit||0)+Number(x.laborUnit||0)+Number(x.subcontractUnit||0)+Number(x.otherUnit||0);
+    const netUnit=base*(1+Number(x.wastePct||0)/100);
+    const bidUnit=netUnit*(1+Number(x.markupPct||0)/100);
+    items[x.id]={
+      sourceBoqId:x.id,itemNo:x.itemNo||"",discipline:x.discipline||"KHÁC",category:x.category||"",
+      description:x.description||"",specification:x.specification||"",unit:x.unit||"",
+      qty:Number(x.qty||0),materialUnit:Number(x.materialUnit||0),netUnit,bidUnit,
+      selectedSupplier:x.selectedSupplier||"",brand:x.brand||"",createdAt:Date.now()
+    };
+    totalBidValue+=Number(x.qty||0)*bidUnit;
+  });
+
+  const u=getProfile()||{};
+  const meta={
+    source:"BOQ_AT_HANDOVER",frozenAt:Date.now(),frozenByUid:u.uid||"",frozenByName:u.displayName||"",frozenByEmail:u.email||"",
+    lineCount:boq.length,totalBidValue
+  };
+
+  await Promise.all([
+    refs.quantityBaselineProject(projectId).set(items),
+    refs.quantityBaselineMeta(projectId).set(meta)
+  ]);
+
+  const auditKey=refs.quantityAuditProject(projectId).push().key;
+  await refs.quantityAuditItem(projectId,auditKey).set({
+    action:"BASELINE_CREATED",message:`Tự khóa Baseline BOQ khi bàn giao · ${boq.length} đầu mục · ${money(totalBidValue)}`,
+    userUid:u.uid||"",userName:u.displayName||"",userEmail:u.email||"",createdAt:ts()
+  });
+
+  return {count:boq.length,existing:false};
 }
 function rfqView(body,c){
   const list=[...rfqs].sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
