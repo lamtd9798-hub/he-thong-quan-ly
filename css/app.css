@@ -887,3 +887,95 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
 .match-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:11px 12px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:#f8fafc}.match-stat{display:flex;align-items:baseline;gap:8px;padding:10px 12px;border-radius:9px;background:#fff;border:1px solid #e2e8f0}.match-stat b{font-size:18px}.match-stat span{font-size:8px;color:#64748b}.match-stat.green b{color:#15803d}.match-stat.orange b{color:#d97706}.match-stat.red b{color:#dc2626}.material-match-wrap{border:0;border-radius:0;max-height:62vh}.material-match-table{min-width:1500px}.material-match-table thead th{position:sticky;top:0;z-index:3;background:#f5f8fc}.match-reason{max-width:190px;white-space:normal;line-height:1.35;margin-top:3px}
 .price-source-detail{display:grid;grid-template-columns:1fr 1fr;gap:8px}.price-source-detail>div{display:flex;flex-direction:column;gap:3px;padding:9px 10px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc}.price-source-detail span{font-size:8px;color:#64748b}.price-source-detail b{font-size:9px;line-height:1.4}.price-source-detail .span2{grid-column:1/-1}
 @media(max-width:900px){.tender-project-toolbar,.pricing-filterbar{align-items:stretch;flex-direction:column}.pricing-filterbar .search{min-width:0;max-width:none}.pricing-hint{text-align:left}.material-import-card{grid-template-columns:40px 1fr}.material-file-time,.material-import-card .btn{grid-column:2}.match-summary{grid-template-columns:1fr}}
+
+
+/* =========================
+   V2.19 - LẬP GIÁ TRỰC TIẾP TRÊN BOQ GỐC
+   ========================= */
+.pricing-boq-original-note{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:9px 12px;border-top:1px solid #e4eaf1;border-bottom:1px solid #e4eaf1;
+  background:#f8fbff;font-size:9px;color:#607086
+}
+.pricing-boq-original-note>b{
+  color:#1d4ed8;background:#eaf2ff;border:1px solid #cfe0ff;
+  border-radius:999px;padding:4px 8px;font-size:8px
+}
+.pricing-excel-shell{
+  margin:0;border-top:0;background:#fff;overflow:hidden
+}
+.pricing-excel-meta{
+  display:flex;gap:18px;align-items:center;flex-wrap:wrap;
+  min-height:34px;padding:7px 10px;background:#f8fafc;
+  border-bottom:1px solid #d9e2ec;color:#64748b;font-size:8px
+}
+.pricing-excel-scroll{
+  overflow:auto;max-height:68vh;background:#eef2f6;
+  scrollbar-width:thin;scrollbar-color:#aab6c4 #edf1f5
+}
+.pricing-excel-scroll::-webkit-scrollbar{width:11px;height:11px}
+.pricing-excel-scroll::-webkit-scrollbar-track{background:#edf1f5}
+.pricing-excel-scroll::-webkit-scrollbar-thumb{background:#acb8c5;border:2px solid #edf1f5;border-radius:10px}
+.pricing-excel-grid{
+  border-collapse:collapse;table-layout:fixed;width:max-content;min-width:100%;
+  background:#fff;font-family:Arial,Helvetica,sans-serif;font-size:9px;line-height:1.28
+}
+.pricing-excel-grid th,.pricing-excel-grid td{
+  box-sizing:border-box;border:1px solid #bfcbd8;padding:4px 6px;
+  overflow:hidden;white-space:pre-wrap;word-break:break-word;vertical-align:middle;color:#172033
+}
+.pricing-excel-col-head th{
+  position:sticky;top:0;z-index:6;height:27px;padding:0;
+  background:linear-gradient(#f7f9fc,#e8edf3);color:#5b6878;
+  text-align:center;font-weight:700;border-color:#adb9c7
+}
+.pricing-excel-row-head{
+  position:sticky;left:0;z-index:5;width:44px;min-width:44px;
+  padding:0 5px!important;background:#eef2f6!important;color:#64748b!important;
+  text-align:right;font-weight:550!important;font-size:8px
+}
+.pricing-excel-grid td.pricing-boq-title{
+  background:#eaf2f9!important;color:#153d63!important;
+  font-weight:800!important;text-align:center!important;text-transform:uppercase;
+  font-size:12px!important
+}
+.pricing-excel-grid td.pricing-boq-header{
+  background:#2f75b5!important;color:#fff!important;font-weight:800!important;
+  text-align:center!important;text-transform:uppercase;font-size:8.5px!important
+}
+.pricing-excel-grid td.pricing-boq-subheader{
+  background:#d9e8f6!important;color:#173d60!important;font-weight:800!important;
+  text-align:center!important
+}
+.pricing-excel-grid td.pricing-boq-section-1{
+  background:#dcebf7!important;color:#173e61!important;font-weight:800!important;
+  border-top:2px solid #7da7ca!important
+}
+.pricing-excel-grid td.pricing-boq-section-2{
+  background:#edf5fb!important;color:#2d506c!important;font-weight:750!important
+}
+.pricing-excel-grid td.pricing-boq-note-header{
+  background:#f1f5f9!important;color:#334155!important;font-weight:800!important
+}
+.pricing-excel-grid tbody tr:hover td:not(.pricing-boq-header):not(.pricing-boq-subheader){
+  background-color:#f8fbff
+}
+.pricing-grid-input{
+  width:100%;min-width:0;height:26px;box-sizing:border-box;
+  border:1px solid transparent;border-radius:4px;background:transparent;
+  padding:2px 5px;text-align:right;font:inherit;color:#0f172a
+}
+.pricing-grid-input:hover{border-color:#bfd2e8;background:#fff}
+.pricing-grid-input:focus{
+  outline:0;border-color:#2563eb;background:#fff;
+  box-shadow:0 0 0 2px rgba(37,99,235,.12)
+}
+.pricing-col-qty,.pricing-col-material{padding:2px!important;background:#fbfdff!important}
+.pricing-col-material{background:#f8fcf7!important}
+.pricing-grid-price-cell{display:flex;align-items:center;gap:3px;width:100%}
+.pricing-grid-source-dot{
+  flex:0 0 18px;width:18px;height:18px;padding:0;border:0;border-radius:50%;
+  background:#dcfce7;color:#16a34a;font-size:10px;cursor:pointer
+}
+.pricing-grid-source-dot:hover{background:#bbf7d0}
+.pricing-boq-migrate{padding:18px}

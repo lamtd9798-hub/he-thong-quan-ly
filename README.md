@@ -1,4 +1,12 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.18.2
+## V2.19 — Lập giá trực tiếp trên BOQ gốc
+
+- Tab BOQ không còn dựng bảng dữ liệu riêng.
+- Giữ nguyên Sheet BOQ gốc A→K, merge, hàng/cột và bố cục.
+- Khối lượng và Vật tư chính được nhập ngay trên đúng ô BOQ.
+- Giá tự ráp từ NCC đổ vào đúng cột Vật tư chính.
+- Parser Diễn giải/Khối lượng/Giá vật tư được nâng độ chính xác.
+
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.18
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
@@ -18,15 +26,6 @@
 
 
 
-
-
-## V2.18.2 — Hotfix quyền Firebase cho Lập giá đấu thầu
-
-- Module Lập giá chỉ đọc một lần từ `/v2/boq/{projectId}`.
-- Metadata BOQ và kho file giá nằm trong `/v2/boq/{projectId}/__PRICING_DATA__`.
-- Nhánh hệ thống bị lọc khỏi BOQ, tài chính, snapshot duyệt giá và Baseline bàn giao.
-- Không còn đọc/ghi `pricingSettings` cho metadata/file giá của module này.
-- Không cần publish Firebase Rules mới nếu BOQ hiện tại đã hoạt động.
 
 ## V2.18 — Lập giá đấu thầu: BOQ + tự ráp giá vật tư
 

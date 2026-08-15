@@ -1,4 +1,4 @@
-import {refs,arr,ts,logActivity,can,esc,norm,fmtDate,TENDER_STAGES,DISCIPLINES,stageInfo,projectCode,setPage,loading,empty,badge,modal,toast,confirmBox} from "../core.js?v=2.18.2";
+import {refs,arr,ts,logActivity,can,esc,norm,fmtDate,TENDER_STAGES,DISCIPLINES,stageInfo,projectCode,setPage,loading,empty,badge,modal,toast,confirmBox} from "../core.js?v=2.19.0";
 
 let data=[],filter={q:"",phase:"ALL",stage:"ALL"};
 
