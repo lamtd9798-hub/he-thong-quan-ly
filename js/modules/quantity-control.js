@@ -1,7 +1,7 @@
 import {
   refs,arr,ts,logActivity,getProfile,can,esc,norm,money,fmtDate,fmtDateTime,
   loading,empty,badge,modal,toast,confirmBox
-} from "../core.js?v=2.12.0";
+} from "../core.js?v=2.13.0";
 
 let projectId="";
 let mountEl=null;
@@ -121,7 +121,7 @@ function paint(){
       <div class="subtabs" style="margin:0">
         ${[
           ["SUMMARY","Tổng hợp BOQ"],
-          ["SOURCE","BOQ chi tiết"],
+          ["SOURCE","BOQ gốc"],
           ["REVISIONS","BOQ Revision"],
           ["REQUESTS","Phiếu đặt hàng"],
           ["OUTSIDE","Ngoài BOQ"],
@@ -257,51 +257,165 @@ function usageHtml(r){
 }
 
 function sourceBoqHtml(){
+  const grid=revisionSourceGrid();
   const structure=revisionDisplayRows();
+
+  if(grid?.rows?.length){
+    return `<div class="page-head" style="margin-bottom:10px">
+      <div>
+        <h2 style="font-size:17px">BOQ gốc · ${esc(activeRevision?.code||"R0")}</h2>
+        <p>Hiển thị trực tiếp theo Sheet đã upload: giữ hàng, cột, ô gộp, thứ tự, độ rộng cột và chiều cao dòng. Cuộn ngang để xem toàn bộ bảng.</p>
+      </div>
+      <div class="row-actions">
+        ${badge(esc(grid.sheetName||activeRevision?.sourceSheetName||"Sheet"),"blue")}
+        ${badge(`${grid.rowCount||grid.rows.length} hàng × ${grid.colCount||0} cột`,"gray")}
+        ${can("quantityRevisionActivate")?`<button class="btn sm" id="refreshBoqStructureBtn">Nạp lại BOQ gốc</button>`:""}
+      </div>
+    </div>
+    ${sourceExcelGridHtml(grid)}`;
+  }
+
   if(!structure.length){
     return `<div class="card"><div class="card-body">
       ${empty(
-        "Revision này chưa lưu cấu trúc BOQ gốc",
-        "Revision được tạo ở phiên bản cũ chỉ lưu các dòng có khối lượng. Có thể nạp lại cấu trúc từ file Excel mà KHÔNG thay đổi khối lượng/đơn giá Baseline hiện tại.",
+        "Revision này chưa lưu bảng BOQ gốc",
+        "Revision được tạo ở phiên bản cũ. Hãy nạp lại đúng file Excel/CSV để tạo lại nguyên hàng và cột của BOQ mà không thay đổi Baseline.",
         "▦"
       )}
-      ${can("quantityRevisionActivate")?`<div style="text-align:center;margin-top:12px"><button class="btn primary" id="refreshBoqStructureBtn">Tải lại cấu trúc từ Excel / CSV</button></div>`:""}
+      ${can("quantityRevisionActivate")?`<div style="text-align:center;margin-top:12px"><button class="btn primary" id="refreshBoqStructureBtn">Tải lại BOQ gốc từ Excel / CSV</button></div>`:""}
     </div></div>`;
   }
 
-  const headers=revisionSourceHeaders();
-  const cols=sourceColumnIndexes(headers,structure);
-
   return `<div class="page-head" style="margin-bottom:12px">
-    <div>
-      <h2 style="font-size:17px">BOQ chi tiết · ${esc(activeRevision?.code||"R0")}</h2>
-      <p>Giữ đúng thứ tự dòng và nội dung nguồn Excel. Dòng Hệ thống/Khu vực/Ghi chú không tham gia tính khối lượng đặt hàng.</p>
-    </div>
-    <div class="row-actions">
-      ${badge(`${structure.filter(x=>x.rowType==="ITEM").length} dòng KL`,"green")}
-      ${badge(`${structure.length} dòng cấu trúc`,"gray")}
-      ${can("quantityRevisionActivate")?`<button class="btn sm" id="refreshBoqStructureBtn">Nạp lại cấu trúc</button>`:""}
-    </div>
+    <div><h2 style="font-size:17px">BOQ gốc · ${esc(activeRevision?.code||"R0")}</h2><p>Revision cũ chưa có bản sao toàn Sheet. Đang hiển thị dữ liệu cấu trúc tạm thời.</p></div>
+    ${can("quantityRevisionActivate")?`<button class="btn primary" id="refreshBoqStructureBtn">Tải lại BOQ gốc</button>`:""}
   </div>
-  ${headers.length?sourceRawTableHtml(headers,cols,structure):sourceMappedTableHtml(structure)}`;
+  ${sourceMappedTableHtml(structure)}`;
 }
 
-function sourceRawTableHtml(headers,cols,structure){
-  return `<div class="table-wrap"><table class="table boq-source-table raw"><thead><tr>
-    ${cols.map(i=>`<th>${esc(headers[i]||`Cột ${i+1}`)}</th>`).join("")}
-  </tr></thead><tbody>
-    ${structure.map(sr=>sourceRawRow(sr,cols)).join("")}
-  </tbody></table></div>`;
+function revisionSourceGrid(){
+  const g=activeRevision?.sourceGrid;
+  if(!g)return null;
+  return {
+    ...g,
+    rows:normalizeIndexedArray(g.rows).map(r=>normalizeIndexedArray(r)),
+    colWidths:normalizeIndexedArray(g.colWidths),
+    rowHeights:normalizeIndexedArray(g.rowHeights),
+    merges:normalizeIndexedArray(g.merges),
+    styles:g.styles||{}
+  };
 }
 
-function sourceRawRow(sr,cols){
-  const values=Array.isArray(sr.sourceValues)?sr.sourceValues:Object.values(sr.sourceValues||{});
-  const cls=sr.rowType==="SECTION"?`boq-source-section level-${structureLevel(sr.itemNo)}`:
-    sr.rowType==="NOTE_HEADER"?"boq-source-note-header":
-    sr.rowType==="NOTE"?"boq-source-note":"boq-source-item";
-  return `<tr class="${cls}">
-    ${cols.map(i=>`<td>${formatSourceCell(values[i])}</td>`).join("")}
-  </tr>`;
+function sourceExcelGridHtml(grid){
+  const rows=grid.rows||[];
+  const colCount=Number(grid.colCount||Math.max(0,...rows.map(r=>r.length)));
+  const rowCount=Number(grid.rowCount||rows.length);
+  const startRow=Number(grid.startRow||1);
+  const startCol=Number(grid.startCol||0);
+  const mergeInfo=buildGridMergeLookup(grid.merges||[]);
+  const widths=grid.colWidths||[];
+  const heights=grid.rowHeights||[];
+
+  const colgroup=`<colgroup><col style="width:46px">`+
+    Array.from({length:colCount},(_,c)=>`<col style="width:${gridColWidth(widths[c])}px">`).join("")+
+    `</colgroup>`;
+
+  const letters=`<tr class="excel-col-head"><th class="excel-corner"></th>`+
+    Array.from({length:colCount},(_,c)=>`<th>${excelColumnName(startCol+c)}</th>`).join("")+
+    `</tr>`;
+
+  const body=Array.from({length:rowCount},(_,r)=>{
+    const row=rows[r]||[];
+    const rowHeight=gridRowHeight(heights[r]);
+    let cells=`<th class="excel-row-head">${startRow+r}</th>`;
+    for(let c=0;c<colCount;c++){
+      const key=`${r}_${c}`;
+      if(mergeInfo.covered.has(key))continue;
+
+      const merge=mergeInfo.starts.get(key);
+      const rowspan=merge?merge.r2-merge.r1+1:1;
+      const colspan=merge?merge.c2-merge.c1+1:1;
+      const value=row[c]??"";
+      const style=sourceGridCellStyle(grid.styles?.[key]);
+      cells+=`<td${rowspan>1?` rowspan="${rowspan}"`:""}${colspan>1?` colspan="${colspan}"`:""}${style?` style="${style}"`:""}>${formatGridCell(value)}</td>`;
+    }
+    return `<tr style="height:${rowHeight}px">${cells}</tr>`;
+  }).join("");
+
+  return `<div class="excel-boq-shell">
+    <div class="excel-boq-meta">
+      <span>Sheet: <b>${esc(grid.sheetName||"")}</b></span>
+      <span>Vùng dữ liệu: <b>${esc(grid.range||"")}</b></span>
+      <span>Ô gộp: <b>${(grid.merges||[]).length}</b></span>
+    </div>
+    <div class="excel-boq-scroll">
+      <table class="excel-boq-grid">${colgroup}<thead>${letters}</thead><tbody>${body}</tbody></table>
+    </div>
+  </div>`;
+}
+
+function buildGridMergeLookup(merges){
+  const starts=new Map(),covered=new Set();
+  (merges||[]).forEach(m=>{
+    const r1=Number(m?.r1),c1=Number(m?.c1),r2=Number(m?.r2),c2=Number(m?.c2);
+    if(![r1,c1,r2,c2].every(Number.isFinite))return;
+    starts.set(`${r1}_${c1}`,{r1,c1,r2,c2});
+    for(let r=r1;r<=r2;r++)for(let c=c1;c<=c2;c++){
+      if(r!==r1||c!==c1)covered.add(`${r}_${c}`);
+    }
+  });
+  return {starts,covered};
+}
+
+function normalizeIndexedArray(v){
+  if(Array.isArray(v))return v;
+  if(!v||typeof v!=="object")return [];
+  const keys=Object.keys(v).filter(k=>/^\d+$/.test(k)).map(Number);
+  const max=keys.length?Math.max(...keys):-1;
+  return Array.from({length:max+1},(_,i)=>v[i]??v[String(i)]??"");
+}
+
+function gridColWidth(v){
+  const n=typeof v==="object"?Number(v?.width||0):Number(v||0);
+  return Math.max(34,Math.min(520,n||96));
+}
+
+function gridRowHeight(v){
+  const n=typeof v==="object"?Number(v?.height||0):Number(v||0);
+  return Math.max(18,Math.min(240,n||22));
+}
+
+function excelColumnName(index){
+  let n=Number(index)+1,s="";
+  while(n>0){const r=(n-1)%26;s=String.fromCharCode(65+r)+s;n=Math.floor((n-1)/26)}
+  return s;
+}
+
+function formatGridCell(v){
+  if(v===null||v===undefined||v==="")return "";
+  return esc(String(v));
+}
+
+function sourceGridCellStyle(st){
+  if(!st||typeof st!=="object")return "";
+  const out=[];
+  if(st.h)out.push(`text-align:${safeCssAlign(st.h)}`);
+  if(st.v)out.push(`vertical-align:${safeCssVertical(st.v)}`);
+  if(st.w)out.push("white-space:pre-wrap");
+  if(st.b)out.push("font-weight:700");
+  if(st.i)out.push("font-style:italic");
+  if(st.fs)out.push(`font-size:${Math.max(7,Math.min(24,Number(st.fs)||10))}px`);
+  if(st.bg&&/^#[0-9A-F]{6}$/i.test(st.bg))out.push(`background:${st.bg}`);
+  if(st.fg&&/^#[0-9A-F]{6}$/i.test(st.fg))out.push(`color:${st.fg}`);
+  return out.join(";");
+}
+
+function safeCssAlign(v){
+  return ["left","center","right","justify"].includes(v)?v:"left";
+}
+
+function safeCssVertical(v){
+  return ["top","middle","bottom"].includes(v)?v:"middle";
 }
 
 function sourceMappedTableHtml(structure){
@@ -323,43 +437,12 @@ function sourceMappedRow(sr){
   if(sr.rowType==="NOTE"){
     return `<tr class="boq-source-note"><td>${esc(sr.itemNo||"")}</td><td>${esc(sr.description||"")}</td><td>${esc(sr.unit||"")}</td><td colspan="8"></td></tr>`;
   }
-
   const totalUnit=Number(sr.bidUnit||0),qty=Number(sr.qty||0);
   return `<tr class="boq-source-item">
     <td><b>${esc(sr.itemNo||"")}</b></td><td>${esc(sr.description||"")}</td><td>${esc(sr.unit||"")}</td>
     <td><b>${num(qty,3)}</b></td><td>${esc(sr.specification||"")}</td><td>${esc(sr.brand||"")}</td><td>${esc(sr.origin||"")}</td>
     <td>${money(sr.materialUnit)}</td><td>${money(sr.laborUnit)}</td><td><b>${money(totalUnit)}</b></td><td><b>${money(qty*totalUnit)}</b></td>
   </tr>`;
-}
-
-function revisionSourceHeaders(){
-  const raw=activeRevision?.sourceHeaders;
-  if(Array.isArray(raw))return raw.map(x=>String(x||""));
-  return Object.values(raw||{}).map(x=>String(x||""));
-}
-
-function sourceColumnIndexes(headers,structure){
-  const max=Math.max(
-    headers.length,
-    ...structure.map(r=>Array.isArray(r.sourceValues)?r.sourceValues.length:Object.keys(r.sourceValues||{}).length),
-    0
-  );
-  const out=[];
-  for(let i=0;i<max;i++){
-    const hasHeader=String(headers[i]||"").trim()!=="";
-    const hasData=structure.some(r=>{
-      const vals=Array.isArray(r.sourceValues)?r.sourceValues:Object.values(r.sourceValues||{});
-      return String(vals[i]??"").trim()!=="";
-    });
-    if(hasHeader||hasData)out.push(i);
-  }
-  return out;
-}
-
-function formatSourceCell(v){
-  if(v===null||v===undefined||v==="")return "";
-  if(typeof v==="number")return esc(v.toLocaleString("vi-VN",{maximumFractionDigits:4}));
-  return esc(String(v));
 }
 
 
@@ -421,6 +504,151 @@ function historyHtml(){
       </div>`).join("")}</div>`:empty("Chưa có lịch sử","Các thao tác tạo phiếu, duyệt, đặt hàng và thay đổi đầu mục sẽ được lưu ở đây.","◉")}
     </div>
   </div>`;
+}
+
+function refreshActiveRevisionStructure(){
+  if(!activeRevision||!can("quantityRevisionActivate"))return;
+
+  modal({
+    title:`Nạp lại BOQ gốc · ${activeRevision.code||"Revision"}`,
+    eyebrow:"CHỈ CẬP NHẬT BẢN SAO SHEET",
+    size:"lg",
+    submitText:"Lưu BOQ gốc",
+    body:`<div class="revision-upload-note">
+      <b>Không thay đổi Baseline.</b> Chức năng này chỉ tạo lại nguyên hàng/cột của file Excel để hiển thị BOQ gốc.
+      Khối lượng kiểm soát, đơn giá và phiếu đặt hàng hiện tại không bị sửa.
+    </div>
+    <div class="form-grid mt">
+      <label class="field span2"><span>File BOQ Excel / CSV *</span>
+        <input required type="file" name="revisionFile" id="revisionFile"
+          accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv">
+      </label>
+      <label class="field span2 hidden" id="sourceGridSheetWrap"><span>Sheet cần hiển thị</span>
+        <select name="revisionSheet" id="sourceGridSheet"></select>
+      </label>
+      <div class="span2 hidden revision-file-preview" id="sourceGridPreview"></div>
+    </div>`,
+    onSubmit:async fd=>{
+      try{
+        const file=fd.get("revisionFile");
+        if(!(file instanceof File)||!file.size){toast("Vui lòng chọn file Excel hoặc CSV.","error");return false}
+
+        const input=document.querySelector("#revisionFile");
+        const inspection=input?._revisionInspection||await inspectRevisionSpreadsheet(file);
+        const selected=String(fd.get("revisionSheet")||inspection.defaultSheet||"");
+        const meta=inspection.sheets?.[selected]||inspection.sheets?.[inspection.defaultSheet];
+        if(!meta?.sourceGrid){toast("Không đọc được Sheet đã chọn.","error");return false}
+
+        const parsedInfo=await parseRevisionSpreadsheet(file,{
+          sheetName:selected,
+          headerRow:meta.headerRow||1,
+          headerDepth:meta.headerDepth||1
+        });
+
+        const attached=attachStructureToExistingItems(parsedInfo.structureRows||[],activeRevision.items||{});
+        await refs.quantityBoqRevision(projectId,activeRevision.id).update({
+          sourceGrid:parsedInfo.sourceGrid||meta.sourceGrid,
+          sourceHeaders:parsedInfo.sourceHeaders||[],
+          displayRows:attached.rows,
+          structureLineCount:attached.rows.length,
+          structureMatchedItems:attached.matched,
+          sourceSheetName:parsedInfo.sheetName||selected,
+          sourceFileName:file.name,
+          sourceHeaderRow:parsedInfo.headerRow||meta.headerRow||1,
+          sourceHeaderDepth:parsedInfo.headerDepth||meta.headerDepth||1,
+          sourceGridUpdatedAt:Date.now()
+        });
+
+        await audit(
+          "REVISION_SOURCE_GRID_REFRESHED",
+          `Nạp lại BOQ gốc ${activeRevision.code||""} từ ${file.name} / ${selected}`,
+          {revisionId:activeRevision.id,revisionCode:activeRevision.code||"",matched:attached.matched}
+        );
+
+        toast("Đã tạo lại nguyên hàng/cột BOQ gốc. Baseline không thay đổi.");
+        await reload();view="SOURCE";paint();return true;
+      }catch(e){
+        console.error(e);toast(e.message||"Không thể nạp lại BOQ gốc.","error");return false;
+      }
+    }
+  });
+
+  const input=document.querySelector("#revisionFile");
+  const sheetWrap=document.querySelector("#sourceGridSheetWrap");
+  const sheet=document.querySelector("#sourceGridSheet");
+  const preview=document.querySelector("#sourceGridPreview");
+
+  input?.addEventListener("change",async()=>{
+    const file=input.files?.[0];
+    if(!file)return;
+    try{
+      const inspection=await inspectRevisionSpreadsheet(file);
+      input._revisionInspection=inspection;
+
+      if(inspection.kind==="EXCEL"){
+        sheetWrap?.classList.remove("hidden");
+        if(sheet)sheet.innerHTML=Object.keys(inspection.sheets).map(name=>
+          `<option value="${esc(name)}" ${name===inspection.defaultSheet?"selected":""}>${esc(name)}</option>`
+        ).join("");
+      }else{
+        sheetWrap?.classList.add("hidden");
+        if(sheet)sheet.innerHTML=`<option value="CSV">CSV</option>`;
+      }
+      showSourceGridPreview(inspection,sheet?.value||inspection.defaultSheet,preview);
+    }catch(e){
+      console.error(e);toast(e.message||"Không thể đọc file.","error");
+    }
+  });
+
+  sheet?.addEventListener("change",()=>{
+    const inspection=input?._revisionInspection;
+    if(inspection)showSourceGridPreview(inspection,sheet.value,preview);
+  });
+}
+
+function showSourceGridPreview(inspection,sheetName,box){
+  if(!box)return;
+  const meta=inspection.sheets?.[sheetName]||inspection.sheets?.[inspection.defaultSheet];
+  const g=meta?.sourceGrid;
+  if(!g)return;
+  box.classList.remove("hidden");
+  box.innerHTML=`<div class="revision-file-preview-head">
+    <div><b>${esc(inspection.fileName)}</b><span>Sheet: ${esc(sheetName)} · ${g.rowCount} hàng × ${g.colCount} cột · vùng ${esc(g.range||"")}</span></div>
+    ${badge("Sẵn sàng tạo BOQ gốc","green")}
+  </div>`;
+}
+
+function attachStructureToExistingItems(structureRows,items){
+  const entries=Object.entries(items||{});
+  const byNo=new Map(),bySig=new Map();
+  entries.forEach(([id,x])=>{
+    const no=norm(x.itemNo||"");
+    if(no){
+      if(!byNo.has(no))byNo.set(no,[]);
+      byNo.get(no).push(id);
+    }
+    const sig=itemSignature(x);
+    if(sig){
+      if(!bySig.has(sig))bySig.set(sig,[]);
+      bySig.get(sig).push(id);
+    }
+  });
+
+  const used=new Set();let matched=0;
+  const rows=(structureRows||[]).map(sr=>{
+    if(sr.rowType!=="ITEM")return {...sr,stableItemId:""};
+    let id="";
+    const no=norm(sr.itemNo||"");
+    if(no&&byNo.get(no)?.length===1&&!used.has(byNo.get(no)[0]))id=byNo.get(no)[0];
+    if(!id){
+      const sig=itemSignature(sr);
+      if(sig&&bySig.get(sig)?.length===1&&!used.has(bySig.get(sig)[0]))id=bySig.get(sig)[0];
+    }
+    if(id){used.add(id);matched++}
+    return {...sr,stableItemId:id};
+  });
+
+  return {rows,matched};
 }
 
 function bind(){
@@ -674,6 +902,7 @@ function uploadRevisionDialog(isTenderR0=false){
           source:sourceType,sourceFileName:file.name,sourceSheetName:parsedInfo.sheetName||"",
           sourceHeaderRow:parsedInfo.headerRow,sourceHeaderDepth:parsedInfo.headerDepth,
           sourceHeaders:parsedInfo.sourceHeaders||[],
+          sourceGrid:parsedInfo.sourceGrid||null,
           lineCount:Object.keys(items).length,structureLineCount:displayRows.length,totalBidValue:total,
           createdAt:Date.now(),createdByUid:u.uid||"",createdByName:u.displayName||u.email||"",
           displayRows,items
@@ -696,8 +925,8 @@ function uploadRevisionDialog(isTenderR0=false){
             refs.quantityBaselineMeta(projectId).set(meta)
           ]);
           await audit("R0_UPLOADED",`Tải Tender R0 từ ${file.name}${parsedInfo.sheetName?` / ${parsedInfo.sheetName}`:""} · ${Object.keys(items).length} đầu mục`,{revisionId,revisionCode:"R0"});
-          toast("Đã tạo Tender R0 và kích hoạt Baseline.");
-          await reload();return true;
+          toast("Đã tạo Tender R0. Đang mở nguyên bảng BOQ gốc.");
+          await reload();view="SOURCE";paint();return true;
         }
 
         await refs.quantityBoqRevision(projectId,revisionId).set(revision);
@@ -774,14 +1003,18 @@ async function inspectRevisionSpreadsheet(file){
     const detected=detectRevisionHeader(aoa);
     return {
       kind:"CSV",fileName:file.name,defaultSheet:"CSV",
-      sheets:{CSV:{aoa,rawAoa:aoa,merges:[],headerRow:detected.headerRow,headerDepth:detected.headerDepth,score:detected.score}}
+      sheets:{CSV:{
+        aoa,rawAoa:aoa,merges:[],
+        sourceGrid:buildSourceGridFromAoa(aoa),
+        headerRow:detected.headerRow,headerDepth:detected.headerDepth,score:detected.score
+      }}
     };
   }
 
   const XLSX=globalThis.XLSX;
   if(!XLSX)throw new Error("Thư viện đọc Excel chưa tải được. Kiểm tra kết nối Internet rồi tải lại trang.");
   const buffer=await file.arrayBuffer();
-  const workbook=XLSX.read(buffer,{type:"array",cellDates:false,cellText:false,raw:true});
+  const workbook=XLSX.read(buffer,{type:"array",cellDates:false,cellText:true,raw:true,cellStyles:true});
   if(!workbook.SheetNames?.length)throw new Error("File Excel không có Sheet.");
 
   const sheets={};
@@ -796,6 +1029,7 @@ async function inspectRevisionSpreadsheet(file){
     const detected=detectRevisionHeader(aoa);
     sheets[name]={
       aoa,rawAoa,merges,
+      sourceGrid:{...buildSourceGridFromWorksheet(ws,XLSX),sheetName:name},
       headerRow:detected.headerRow,
       headerDepth:detected.headerDepth,
       score:detected.score
@@ -804,6 +1038,137 @@ async function inspectRevisionSpreadsheet(file){
 
   const defaultSheet=[...workbook.SheetNames].sort((a,b)=>(sheets[b]?.score||0)-(sheets[a]?.score||0))[0];
   return {kind:"EXCEL",fileName:file.name,workbook,sheets,defaultSheet};
+}
+
+function buildSourceGridFromWorksheet(ws,XLSX){
+  if(!ws?.["!ref"])return buildSourceGridFromAoa([]);
+
+  const range=XLSX.utils.decode_range(ws["!ref"]);
+  const startRow=range.s.r,startCol=range.s.c,endRow=range.e.r,endCol=range.e.c;
+  const rowCount=endRow-startRow+1,colCount=endCol-startCol+1;
+  const rows=[],styles={};
+
+  for(let r=startRow;r<=endRow;r++){
+    const out=[];
+    for(let c=startCol;c<=endCol;c++){
+      const addr=XLSX.utils.encode_cell({r,c});
+      const cell=ws[addr];
+      out.push(sourceCellDisplayValue(cell,XLSX));
+      const st=extractSourceGridStyle(cell);
+      if(st)styles[`${r-startRow}_${c-startCol}`]=st;
+    }
+    rows.push(out);
+  }
+
+  const merges=(ws["!merges"]||[])
+    .filter(m=>m.e.r>=startRow&&m.s.r<=endRow&&m.e.c>=startCol&&m.s.c<=endCol)
+    .map(m=>({
+      r1:Math.max(m.s.r,startRow)-startRow,
+      c1:Math.max(m.s.c,startCol)-startCol,
+      r2:Math.min(m.e.r,endRow)-startRow,
+      c2:Math.min(m.e.c,endCol)-startCol
+    }));
+
+  const cols=ws["!cols"]||[];
+  const colWidths=Array.from({length:colCount},(_,i)=>sourceColWidth(cols[startCol+i]));
+  const rowMeta=ws["!rows"]||[];
+  const rowHeights=Array.from({length:rowCount},(_,i)=>sourceRowHeight(rowMeta[startRow+i]));
+
+  return {
+    sheetName:"",
+    range:ws["!ref"]||"",
+    startRow:startRow+1,
+    startCol,
+    rowCount,
+    colCount,
+    rows,
+    merges,
+    colWidths,
+    rowHeights,
+    styles
+  };
+}
+
+function buildSourceGridFromAoa(aoa){
+  const rows=(aoa||[]).map(r=>(Array.isArray(r)?r:[]).map(v=>sourceCellValue(v)));
+  const colCount=Math.max(0,...rows.map(r=>r.length));
+  rows.forEach(r=>{while(r.length<colCount)r.push("")});
+
+  const colWidths=Array.from({length:colCount},(_,c)=>{
+    let max=8;
+    for(let r=0;r<Math.min(rows.length,800);r++){
+      const t=String(rows[r]?.[c]??"");
+      max=Math.max(max,Math.min(48,t.length));
+    }
+    return Math.max(60,Math.min(360,max*7+18));
+  });
+
+  return {
+    sheetName:"CSV",
+    range:rows.length&&colCount?`A1:${excelColumnName(colCount-1)}${rows.length}`:"",
+    startRow:1,startCol:0,rowCount:rows.length,colCount,
+    rows,merges:[],colWidths,rowHeights:Array.from({length:rows.length},()=>22),styles:{}
+  };
+}
+
+function sourceCellDisplayValue(cell,XLSX){
+  if(!cell)return "";
+  if(cell.w!==undefined&&cell.w!==null)return String(cell.w);
+  try{
+    const formatted=XLSX?.utils?.format_cell?.(cell);
+    if(formatted!==undefined&&formatted!==null&&formatted!=="")return String(formatted);
+  }catch{}
+  const v=cell.v;
+  if(v===undefined||v===null)return "";
+  if(v instanceof Date)return v.toLocaleDateString("vi-VN");
+  return String(v);
+}
+
+function sourceColWidth(info){
+  if(info?.hidden)return 34;
+  if(Number(info?.wpx)>0)return Math.max(34,Math.min(520,Math.round(Number(info.wpx))));
+  if(Number(info?.wch)>0)return Math.max(34,Math.min(520,Math.round(Number(info.wch)*7+14)));
+  if(Number(info?.width)>0)return Math.max(34,Math.min(520,Math.round(Number(info.width)*7+14)));
+  return 96;
+}
+
+function sourceRowHeight(info){
+  if(info?.hidden)return 18;
+  if(Number(info?.hpx)>0)return Math.max(18,Math.min(240,Math.round(Number(info.hpx))));
+  if(Number(info?.hpt)>0)return Math.max(18,Math.min(240,Math.round(Number(info.hpt)*96/72)));
+  return 22;
+}
+
+function extractSourceGridStyle(cell){
+  const s=cell?.s;
+  if(!s||typeof s!=="object")return null;
+  const o={};
+
+  const a=s.alignment||{};
+  const h=String(a.horizontal||"").toLowerCase();
+  const v=String(a.vertical||"").toLowerCase();
+  if(["left","center","right","justify"].includes(h))o.h=h;
+  if(["top","center","bottom"].includes(v))o.v=v==="center"?"middle":v;
+  if(a.wrapText)o.w=1;
+
+  const f=s.font||{};
+  if(f.bold)o.b=1;
+  if(f.italic)o.i=1;
+  if(Number(f.sz)>0)o.fs=Number(f.sz);
+  const fg=sourceRgb(f.color);
+  if(fg)o.fg=fg;
+
+  const fill=s.fill||{};
+  const bg=sourceRgb(fill.fgColor)||sourceRgb(fill.bgColor);
+  if(bg)o.bg=bg;
+
+  return Object.keys(o).length?o:null;
+}
+
+function sourceRgb(c){
+  let rgb=String(c?.rgb||"").replace(/^FF/i,"").toUpperCase();
+  if(/^[0-9A-F]{6}$/.test(rgb))return `#${rgb}`;
+  return "";
 }
 
 function expandMergedHeaderCells(source,merges){
@@ -935,6 +1300,7 @@ async function parseRevisionSpreadsheet(file,{sheetName="",headerRow=1,headerDep
     rows,
     structureRows,
     sourceHeaders,
+    sourceGrid:inspection.sheets?.[selected]?.sourceGrid||null,
     sheetName:inspection.kind==="EXCEL"?selected:"",
     headerRow:usedRow+1,
     headerDepth:usedDepth,

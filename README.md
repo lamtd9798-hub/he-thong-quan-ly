@@ -1,4 +1,4 @@
-# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.12
+# HỆ THỐNG QUẢN LÝ CÔNG TY — V2.13
 
 Đây là bản xây lại từ đầu, dùng cho GitHub Pages + Firebase.
 
@@ -13,6 +13,63 @@
 
 
 
+
+## Nâng cấp V2.13 — BOQ gốc phải giống Sheet upload trước
+
+V2.13 đổi ưu tiên xử lý BOQ:
+
+`Upload Excel → lưu nguyên Sheet → hiển thị nguyên hàng/cột → sau đó mới mapping/kiểm soát`
+
+### BOQ gốc
+
+Tab:
+`Triển khai → Kiểm soát khối lượng → BOQ gốc`
+
+hiển thị snapshot trực tiếp của Sheet Excel đã chọn.
+
+Hệ thống giữ:
+
+- Toàn bộ vùng dữ liệu đang dùng của Sheet.
+- Tất cả hàng, kể cả hàng trống nằm bên trong vùng dữ liệu.
+- Tất cả cột.
+- Thứ tự hàng/cột.
+- Ô merge theo đúng rowspan/colspan.
+- Giá trị hiển thị của ô.
+- Độ rộng cột.
+- Chiều cao dòng.
+- Một số định dạng cơ bản nếu workbook cung cấp qua SheetJS.
+- Dòng tiêu đề dự án, ghi chú, hệ thống, khu vực và các đầu mục đều nằm đúng vị trí nguồn.
+
+Bảng có thanh cuộn ngang/dọc và hiển thị chữ cột A/B/C... cùng số hàng để dễ đối chiếu với Excel.
+
+### Không biến BOQ gốc thành bảng quản lý
+
+BOQ gốc và bảng kiểm soát là hai lớp riêng:
+
+1. `BOQ gốc`: bản sao Sheet dùng để đối chiếu.
+2. `Tổng hợp BOQ`: dữ liệu đã mapping dùng để so Baseline/đặt hàng/vượt khối lượng.
+
+Mapping không được làm thay đổi hình dạng của tab BOQ gốc.
+
+### Revision cũ
+
+Nếu R0/R1 được upload trước V2.13, tab BOQ gốc có nút:
+
+`Nạp lại BOQ gốc`
+
+Chọn đúng file Excel và Sheet.
+
+Chức năng này chỉ bổ sung `sourceGrid` vào Revision:
+- Không đổi Baseline.
+- Không đổi đơn giá.
+- Không đổi khối lượng kiểm soát.
+- Không đổi phiếu đặt hàng.
+
+### Firebase
+
+Không thêm node Firebase mới.
+Snapshot Sheet nằm trong:
+`/v2/quantityBoqRevisions/{projectId}/{revisionId}/sourceGrid`
 ## Nâng cấp V2.12 — Giữ nguyên cấu trúc BOQ khi upload
 
 V2.12 sửa việc import Excel chỉ lấy các dòng có khối lượng khiến BOQ sau upload không còn giống file gốc.
