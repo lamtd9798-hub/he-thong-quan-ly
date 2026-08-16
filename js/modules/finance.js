@@ -1,7 +1,7 @@
 import {
   refs,arr,ts,logActivity,getProfile,can,esc,norm,money,fmtDate,fmtDateTime,daysUntil,
   DISCIPLINES,setPage,loading,empty,badge,modal,toast,confirmBox
-} from "../core.js?v=2.19.4";
+} from "../core.js?v=2.20";
 
 let projects=[], selectedProjectId="", tab="OVERVIEW";
 let settings={}, budgets=[], costs=[], payments=[], variations=[], billings=[], receipts=[], procurement=[], boqItems=[], pricing={}, cashPlans=[], financeAudits=[];

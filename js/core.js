@@ -1,4 +1,4 @@
-import { firebaseConfig, APP_ROOT, ADMIN_EMAIL } from "./config.js?v=2.19.4";
+import { firebaseConfig, APP_ROOT, ADMIN_EMAIL } from "./config.js?v=2.20";
 
 if (!window.firebase) throw new Error("Không tải được Firebase SDK.");
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
@@ -32,6 +32,7 @@ export const refs = {
   boqVersionsRoot:()=>root.child("boqVersions"),
   boqVersionsProject:projectId=>root.child(`boqVersions/${projectId}`),
   boqVersion:(projectId,versionId)=>root.child(`boqVersions/${projectId}/${versionId}`),
+  boqOriginalWorkbook:projectId=>root.child(`boqVersions/${projectId}/__SOURCE_XLSX__`),
   approvals:()=>root.child("approvals"), approval:id=>root.child(`approvals/${id}`),
   execution:()=>root.child("execution"), executionProject:id=>root.child(`execution/${id}`),
   handover:projectId=>root.child(`handover/${projectId}`),
@@ -257,7 +258,7 @@ export const TASK_TYPES=[
 
 export const DISCIPLINES=["PCCC","HVAC","CẤP THOÁT NƯỚC","ĐIỆN","ĐIỆN NHẸ","KHÁC"];
 export const projectCode=n=>`DA-${new Date().getFullYear()}-${String(n).padStart(3,"0")}`;
-export const appVersion="2.19.4";
+export const appVersion="2.20";
 export const weekKey=()=>{
   const d=new Date(), t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())), day=t.getUTCDay()||7;
   t.setUTCDate(t.getUTCDate()+4-day);const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1));

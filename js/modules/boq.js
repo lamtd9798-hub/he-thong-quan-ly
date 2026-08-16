@@ -1,7 +1,7 @@
 import {
   refs, arr, ts, logActivity, can, getProfile, esc, norm, money, fmtDateTime,
   setPage, loading, empty, badge, modal, toast, confirmBox
-} from "../core.js?v=2.19.4";
+} from "../core.js?v=2.20";
 
 let projects=[];
 let selectedProjectId="";
@@ -15,9 +15,16 @@ let matchCache=new Map();
 let boqEditorSelection=null;
 let boqEditorAnchor=null;
 let boqEditorDirty=false;
+let univerInstance=null;
+let univerAPI=null;
+let univerDisposers=[];
+let univerDirty=false;
+let workspaceFilter="ALL";
+let materialIndex={byCode:new Map(),byUnit:new Map(),all:[]};
 
 const BOQ_ALIASES={
-  itemNo:["muc","mục","stt","item no","no","ma boq","mã boq","code"],
+  code:["code gia","code giá","ma gia","mã giá","ma vat tu","mã vật tư","code","item code"],
+  itemNo:["tt","stt","muc","mục","item no","no","so thu tu","số thứ tự"],
   description:["dien giai","diễn giải","mo ta","mô tả","noi dung","nội dung","ten vat tu","tên vật tư","ten hang","tên hàng","description","item description"],
   specification:["model thong so ky thuat","model/thông số kỹ thuật","model","thong so ky thuat","thông số kỹ thuật","thong so","thông số","quy cach","quy cách","spec","specification"],
   unit:["don vi","đơn vị","dvt","đvt","unit","uom"],
@@ -25,7 +32,9 @@ const BOQ_ALIASES={
   brand:["nhan hieu","nhãn hiệu","thuong hieu","thương hiệu","brand","manufacturer"],
   origin:["xuat xu","xuất xứ","origin","country of origin"],
   materialUnit:["vat tu chinh","vật tư chính","gia vat tu","giá vật tư","don gia vat tu","đơn giá vật tư","material price"],
-  laborUnit:["nhan cong va vat tu phu","nhân công và vật tư phụ","nhan cong","nhân công","gia nhan cong","giá nhân công","labor"]
+  laborUnit:["don gia nhan cong","đơn giá nhân công","nhan cong","nhân công","gia nhan cong","giá nhân công","labor"],
+  totalUnit:["tong don gia","tổng đơn giá","don gia tong","đơn giá tổng","total unit","unit total"],
+  amount:["thanh tien","thành tiền","tong thanh tien","tổng thành tiền","amount","total amount"]
 };
 
 const PRICE_ALIASES={
@@ -103,52 +112,290 @@ async function loadProjectData(){
 }
 
 function paint(container){
+  disposeUniver();
   const project=projects.find(p=>p.id===selectedProjectId);
   const itemRows=boqItems.filter(isPriceableItem);
-  const priced=itemRows.filter(x=>Number(x.materialUnit||0)>0).length;
-  const sourced=itemRows.filter(x=>x.materialPriceSource?.fileName).length;
-  const high=matchingRows().filter(x=>x.best?.score>=95).length;
-  const suggest=matchingRows().filter(x=>x.best?.score>=78&&x.best?.score<95).length;
+  const materialPriced=itemRows.filter(x=>Number(x.materialUnit||0)>0).length;
+  const laborPriced=itemRows.filter(x=>Number(x.laborUnit||0)>0).length;
+  const matches=matchingRows();
+  const review=matches.filter(x=>Number(x.item.materialUnit||0)<=0&&x.best?.score>=78&&x.best?.score<95).length;
+  const missing=itemRows.filter(x=>Number(x.materialUnit||0)<=0&&!((matchCache.get(x.id)||[])[0]?.score>=78)).length;
 
   container.innerHTML=`
-    <div class="page-head tender-pricing-head">
+    <div class="page-head tender-pricing-head v220-head">
       <div>
+        <div class="eyebrow">BOQ PRICING WORKSPACE</div>
         <h2>Lập giá đấu thầu</h2>
-        <p>BOQ → tải báo giá vật tư → tự nhận diện → ráp giá có nguồn truy vết.</p>
+        <p>Một màn hình duy nhất: sửa BOQ như spreadsheet, thêm báo giá khi có, tự ráp vật tư và tự lấy nhân công từ CTG/CTC.</p>
       </div>
-      <div class="actions">
-        ${selectedProjectId&&can("boqEdit")?`<button class="btn primary" id="uploadBoqBtn">＋ Tải BOQ Excel / CSV</button>`:""}
+      <div class="actions v220-actions">
+        ${selectedProjectId&&can("boqEdit")?`<button class="btn" id="uploadBoqBtn">${boqItems.length?"Thay BOQ":"＋ Tải BOQ"}</button>`:""}
+        ${selectedProjectId&&boqItems.length&&can("quoteEdit")?`<button class="btn primary" id="uploadMaterialQuickBtn">＋ Thêm báo giá</button>`:""}
+        ${selectedProjectId&&boqItems.length?`<button class="btn" id="priceLibraryBtn">Kho giá <span class="v220-btn-count">${materialImports.length}</span></button>`:""}
+        ${selectedProjectId&&boqItems.length?`<button class="btn green" id="exportOriginalXlsxBtn">⇩ Xuất Excel</button>`:""}
       </div>
     </div>
 
-    <div class="toolbar tender-project-toolbar">
+    <div class="toolbar tender-project-toolbar v220-projectbar">
       <select id="pricingProjectSelect" style="min-width:360px">
         <option value="">-- Chọn dự án --</option>
         ${projects.filter(p=>p.phase==="TENDER"||p.phase==="EXECUTION").map(p=>`<option value="${p.id}" ${p.id===selectedProjectId?"selected":""}>${esc(p.code||"")} - ${esc(p.name||"")}</option>`).join("")}
       </select>
       ${selectedProjectId?`<div class="pricing-project-chip">${esc(project?.client||"")}</div>`:""}
+      ${boqMeta?.fileName?`<div class="v220-file-chip" title="File BOQ gốc"><b>${esc(boqMeta.fileName)}</b><span>${esc(boqMeta.sheetName||"")}</span></div>`:""}
     </div>
 
     ${selectedProjectId?`
-      <div class="grid g4 tender-pricing-metrics">
-        ${metricCard("Dòng cần lập giá",itemRows.length,"▦","blue")}
-        ${metricCard("Đã có giá vật tư",priced,"₫",priced===itemRows.length&&itemRows.length?"green":"orange")}
-        ${metricCard("Có nguồn báo giá",sourced,"✓",sourced?"green":"gray")}
-        ${metricCard("Đề xuất cần kiểm tra",suggest,"!",suggest?"orange":"green")}
+      <div class="v220-status-row">
+        ${v220Stat("Đầu mục có KL",itemRows.length,"blue")}
+        ${v220Stat("Vật tư",`${materialPriced}/${itemRows.length}`,materialPriced===itemRows.length&&itemRows.length?"green":"orange")}
+        ${v220Stat("Nhân công CTG/CTC",`${laborPriced}/${itemRows.length}`,laborPriced===itemRows.length&&itemRows.length?"green":"blue")}
+        ${v220Stat("Cần kiểm tra",review,review?"orange":"green","review")}
+        ${v220Stat("Chưa có giá VT",missing,missing?"red":"green","missing")}
       </div>
-
-      <div class="tender-pricing-tabs mt">
-        ${pricingTab("BOQ","1. BOQ")}
-        ${pricingTab("MATERIAL","2. Báo giá vật tư",materialImports.length?String(materialImports.length):"")}
-        ${pricingTab("MATCH","3. Ráp giá",high+suggest?String(high+suggest):"")}
-        <button class="pricing-tab disabled" type="button" title="Sẽ triển khai sau khi phần giá vật tư ổn định">4. Giá nhân công <span>Sắp làm</span></button>
-      </div>
-
-      ${tab==="BOQ"?boqPanel(project):tab==="MATERIAL"?materialPanel(project):matchPanel(project)}
+      ${workspaceBoqPanel()}
     `:empty("Chưa có dự án","Tạo/chọn dự án đấu thầu trước khi lập giá.","▣")}
   `;
 
   bind(container);
+  if(selectedProjectId&&boqMeta?.sourceGrid?.rows?.length){
+    requestAnimationFrame(()=>mountUniverBoq(container));
+  }
+}
+
+function v220Stat(label,value,color,filter=""){
+  const tag=filter?`button type="button" data-workspace-filter="${filter}"`:`div`;
+  const close=filter?"button":"div";
+  return `<${tag} class="v220-stat ${color}"><span>${label}</span><b>${value}</b></${close}>`;
+}
+
+function workspaceBoqPanel(){
+  const grid=boqMeta?.sourceGrid||null;
+  if(!grid?.rows?.length){
+    return `<div class="card v220-empty-card">${empty("Chưa có BOQ","Bấm “Tải BOQ”. Nếu file có Sheet CTG/CTC, hệ thống tự lấy cột T làm nguồn nhân công ngay khi nhập.","▦")}</div>`;
+  }
+  const exact=matchingRows().filter(x=>x.best?.score>=95).length;
+  const review=matchingRows().filter(x=>x.best?.score>=78&&x.best?.score<95).length;
+  return `<div class="card v220-workbook-card">
+    <div class="v220-workbook-top">
+      <div>
+        <b>${esc(boqMeta.fileName||"BOQ.xlsx")}</b>
+        <span>Sheet ${esc(boqMeta.sheetName||grid.sheetName||"")} · ${Number(grid.rowCount||0)} hàng × ${Number(grid.colCount||0)} cột</span>
+      </div>
+      <div class="v220-workbook-tools">
+        ${can("boqEdit")?`<button class="btn sm primary" id="saveUniverBtn">Lưu BOQ</button>`:""}
+        ${review?`<button class="btn sm orange" id="reviewPriceBtn">Kiểm tra ${review} giá</button>`:""}
+        ${exact?`<span class="v220-auto-note">${exact} ứng viên ≥95% được tự dùng khi ô giá còn trống</span>`:""}
+        <span id="univerSaveState" class="v220-save-state">✓ Đã lưu</span>
+      </div>
+    </div>
+    <div class="v220-sheet-legend">
+      <span><i class="dot auto"></i> Giá đã ráp</span>
+      <span><i class="dot labor"></i> Nhân công từ CTG/CTC cột T</span>
+      <span><i class="dot review"></i> Cần kiểm tra</span>
+      <span><i class="dot missing"></i> Chưa có giá</span>
+      <span class="push">Ctrl+C/V · kéo cột/hàng · merge · font · căn lề dùng trực tiếp thanh công cụ spreadsheet</span>
+    </div>
+    <div id="univerBoqHost" class="v220-univer-host"></div>
+  </div>`;
+}
+
+
+function disposeUniver(){
+  for(const d of univerDisposers||[]){
+    try{if(typeof d==="function")d();else d?.dispose?.()}catch{}
+  }
+  univerDisposers=[];
+  try{univerInstance?.dispose?.()}catch{}
+  univerInstance=null;univerAPI=null;univerDirty=false;
+}
+
+function v220StyleToUniver(st){
+  if(!st||typeof st!=="object")return undefined;
+  const out={};
+  if(st.ff)out.ff=String(st.ff);
+  if(Number(st.fs)>0)out.fs=Number(st.fs);
+  if(st.b)out.bl=1;
+  if(st.i)out.it=1;
+  if(st.bg&&/^#[0-9A-F]{6}$/i.test(st.bg))out.bg={rgb:st.bg};
+  if(st.fg&&/^#[0-9A-F]{6}$/i.test(st.fg))out.cl={rgb:st.fg};
+  const hm={left:1,center:2,right:3},vm={top:1,middle:2,bottom:3};
+  if(hm[st.h])out.ht=hm[st.h];
+  if(vm[st.v])out.vt=vm[st.v];
+  if(st.w)out.tb=3;
+  return Object.keys(out).length?out:undefined;
+}
+
+function v220UniverStyleToGrid(st){
+  if(!st||typeof st!=="object")return null;
+  const out={};
+  if(st.ff)out.ff=String(st.ff);
+  if(Number(st.fs)>0)out.fs=Number(st.fs);
+  if(Number(st.bl||0))out.b=1;
+  if(Number(st.it||0))out.i=1;
+  if(st.bg?.rgb)out.bg=String(st.bg.rgb);
+  if(st.cl?.rgb)out.fg=String(st.cl.rgb);
+  const hm={1:"left",2:"center",3:"right"},vm={1:"top",2:"middle",3:"bottom"};
+  if(hm[st.ht])out.h=hm[st.ht];
+  if(vm[st.vt])out.v=vm[st.vt];
+  if(Number(st.tb||0)===3)out.w=1;
+  return Object.keys(out).length?out:null;
+}
+
+function v220OverlayStyle(base,extra){
+  return {...(base||{}),...(extra||{})};
+}
+
+function buildUniverWorkbookData(rawGrid){
+  const grid=normalizePricingSourceGrid(JSON.parse(JSON.stringify(rawGrid||{})));
+  ensurePricingGridShape(grid);
+  const map=boqMeta?.columnMap||{};
+  const qtyCol=Number(map.qty??-1),materialCol=Number(map.materialUnit??-1),laborCol=Number(map.laborUnit??-1);
+  const totalCol=Number(map.totalUnit??-1),amountCol=Number(map.amount??-1);
+  syncPricingDynamicValuesIntoGrid(grid,{qtyCol,materialCol,laborCol,totalCol,amountCol});
+
+  const itemByRow=new Map(boqItems.map(x=>[Number(x.sourceRow||0),x]));
+  const cellData={},styles=grid.styles||{};
+  for(let r=0;r<grid.rowCount;r++){
+    const row=grid.rows[r]||[];
+    const excelRow=Number(grid.startRow||1)+r;
+    const item=itemByRow.get(excelRow);
+    cellData[r]={};
+    for(let c=0;c<grid.colCount;c++){
+      let value=row[c]??"";
+      const numericCol=[qtyCol,materialCol,laborCol,totalCol,amountCol].includes(c);
+      if(numericCol&&String(value).trim()!==""&&isNumericLike(value))value=toNumber(value);
+      let st=v220StyleToUniver(styles[`${r}_${c}`]);
+
+      if(item&&isPriceableItem(item)){
+        if(c===materialCol){
+          const best=(matchCache.get(item.id)||[])[0];
+          if(Number(item.materialUnit||0)>0&&item.materialPriceSource?.fileName)st=v220OverlayStyle(st,{bg:{rgb:"#DCFCE7"}});
+          else if(Number(item.materialUnit||0)<=0&&best?.score>=78)st=v220OverlayStyle(st,{bg:{rgb:"#FEF3C7"}});
+          else if(Number(item.materialUnit||0)<=0)st=v220OverlayStyle(st,{bg:{rgb:"#FEE2E2"}});
+        }else if(c===laborCol&&item.laborPriceSource?.sheetName){
+          st=v220OverlayStyle(st,{bg:{rgb:"#DBEAFE"}});
+        }
+      }
+      const cell={v:value};
+      if(st)cell.s=st;
+      cellData[r][c]=cell;
+    }
+  }
+  const rowData={},columnData={};
+  for(let r=0;r<grid.rowCount;r++)rowData[r]={h:Math.max(18,Number(grid.rowHeights?.[r]||26))};
+  for(let c=0;c<grid.colCount;c++)columnData[c]={w:Math.max(36,Number(grid.colWidths?.[c]||100))};
+  const mergeData=(grid.merges||[]).map(m=>({
+    startRow:Number(m.r1),endRow:Number(m.r2),startColumn:Number(m.c1),endColumn:Number(m.c2)
+  }));
+  const sheetId="boq-sheet";
+  return {
+    id:`boq-${selectedProjectId||"project"}`,
+    name:boqMeta?.fileName||"BOQ",
+    appVersion:"0.25.1",
+    locale:"vi-VN",
+    styles:{},
+    sheetOrder:[sheetId],
+    sheets:{
+      [sheetId]:{
+        id:sheetId,
+        name:boqMeta?.sheetName||grid.sheetName||"BOQ",
+        rowCount:Math.max(1,Number(grid.rowCount||1)),
+        columnCount:Math.max(1,Number(grid.colCount||1)),
+        defaultColumnWidth:100,
+        defaultRowHeight:26,
+        mergeData,cellData,rowData,columnData,
+        rowHeader:{width:48,hidden:0},columnHeader:{height:24,hidden:0},showGridlines:1
+      }
+    }
+  };
+}
+
+function mountUniverBoq(container){
+  const host=container.querySelector("#univerBoqHost");
+  if(!host||!boqMeta?.sourceGrid?.rows?.length)return;
+  disposeUniver();
+
+  try{
+    const P=globalThis.UniverPresets,C=globalThis.UniverCore,S=globalThis.UniverPresetSheetsCore;
+    if(!P?.createUniver||!S?.UniverSheetsCorePreset)throw new Error("Univer CDN chưa sẵn sàng");
+    const vi=globalThis.UniverPresetSheetsCoreViVN||{};
+    const merged=C?.mergeLocales?C.mergeLocales(vi):vi;
+    const created=P.createUniver({
+      locale:"vi-VN",
+      locales:{"vi-VN":merged},
+      presets:[S.UniverSheetsCorePreset({container:host,header:true,toolbar:true})]
+    });
+    univerInstance=created.univer;univerAPI=created.univerAPI;
+    univerAPI.createWorkbook(buildUniverWorkbookData(boqMeta.sourceGrid));
+    univerDirty=false;v220SetSaveState(false);
+
+    const off=univerAPI.onCommandExecuted?.((command)=>{
+      const id=String(command?.id||"").toLowerCase();
+      if(/selection|scroll|focus|hover|activate|zoom/.test(id))return;
+      univerDirty=true;v220SetSaveState(true);
+    });
+    if(off)univerDisposers.push(off);
+  }catch(e){
+    console.error("[V2.20] Không khởi tạo được Univer, dùng bảng dự phòng:",e);
+    host.innerHTML=`<div class="v220-univer-fallback"><b>Spreadsheet engine chưa tải được.</b><span>Đang dùng BOQ Editor dự phòng; tải lại trang nếu muốn thanh công cụ Excel đầy đủ.</span>${pricingBoqOriginalGrid(boqMeta.sourceGrid)}</div>`;
+    bindPricingBoqEditor(container);
+  }
+}
+
+function v220SetSaveState(dirty){
+  const el=document.querySelector("#univerSaveState");
+  if(!el)return;
+  el.textContent=dirty?"● Chưa lưu":"✓ Đã lưu";
+  el.classList.toggle("dirty",dirty);
+}
+
+function univerSnapshotToGrid(snapshot,baseGrid){
+  const grid=normalizePricingSourceGrid(JSON.parse(JSON.stringify(baseGrid||{})));
+  const sid=snapshot?.sheetOrder?.[0]||Object.keys(snapshot?.sheets||{})[0];
+  const sh=snapshot?.sheets?.[sid];
+  if(!sh)return grid;
+  const rowCount=Math.max(1,Number(sh.rowCount||grid.rowCount||1));
+  const colCount=Math.max(1,Number(sh.columnCount||grid.colCount||1));
+  const rows=Array.from({length:rowCount},()=>Array.from({length:colCount},()=>""));
+  const styles={};
+  for(const [rk,cols] of Object.entries(sh.cellData||{})){
+    const r=Number(rk);if(!Number.isInteger(r)||r<0||r>=rowCount)continue;
+    for(const [ck,cell] of Object.entries(cols||{})){
+      const c=Number(ck);if(!Number.isInteger(c)||c<0||c>=colCount)continue;
+      rows[r][c]=cell?.v??"";
+      const st=typeof cell?.s==="object"?v220UniverStyleToGrid(cell.s):null;
+      if(st)styles[`${r}_${c}`]=st;
+    }
+  }
+  const rowHeights=Array.from({length:rowCount},(_,r)=>Number(sh.rowData?.[r]?.h||sh.rowData?.[String(r)]?.h||grid.rowHeights?.[r]||26));
+  const colWidths=Array.from({length:colCount},(_,c)=>Number(sh.columnData?.[c]?.w||sh.columnData?.[String(c)]?.w||grid.colWidths?.[c]||100));
+  const merges=(sh.mergeData||[]).map(m=>({r1:Number(m.startRow),c1:Number(m.startColumn),r2:Number(m.endRow),c2:Number(m.endColumn)}));
+  return {...grid,rowCount,colCount,rows,styles,rowHeights,colWidths,merges,
+    range:`${pricingExcelColName(Number(grid.startCol||0))}${Number(grid.startRow||1)}:${pricingExcelColName(Number(grid.startCol||0)+colCount-1)}${Number(grid.startRow||1)+rowCount-1}`};
+}
+
+async function saveUniverBoq(container){
+  if(!selectedProjectId||!can("boqEdit"))return;
+  const btn=container.querySelector("#saveUniverBtn");
+  try{
+    if(btn){btn.disabled=true;btn.textContent="Đang lưu..."}
+    if(!univerAPI){
+      if(boqMeta?.sourceGrid)await savePricingBoqEditor(boqMeta.sourceGrid,container,btn);
+      return;
+    }
+    const fw=univerAPI.getActiveWorkbook?.();
+    await fw?.endEditingAsync?.(true);
+    const snapshot=fw?.save?.()||fw?.getSnapshot?.();
+    if(!snapshot)throw new Error("Không lấy được dữ liệu spreadsheet.");
+    const grid=univerSnapshotToGrid(snapshot,boqMeta.sourceGrid);
+    boqEditorDirty=true;
+    await savePricingBoqEditor(grid,container,btn);
+    univerDirty=false;
+  }catch(e){
+    console.error(e);toast(e.message||"Không lưu được BOQ.","error");
+    if(btn){btn.disabled=false;btn.textContent="Lưu BOQ"}
+  }
 }
 
 function pricingTab(key,label,count=""){
@@ -206,11 +453,13 @@ function pricingBoqOriginalGrid(rawGrid){
   const qtyCol=Number(map.qty??-1);
   const materialCol=Number(map.materialUnit??-1);
   const laborCol=Number(map.laborUnit??-1);
+  const totalCol=Number(map.totalUnit??-1);
+  const amountCol=Number(map.amount??-1);
   const canEdit=can("boqEdit");
 
   // Khi chưa có thay đổi cục bộ, đồng bộ giá trị động từ dữ liệu BOQ vào snapshot Sheet.
   // Nếu đang chỉnh dở thì KHÔNG ghi đè ô vừa sửa bằng dữ liệu cũ từ Firebase.
-  if(!boqEditorDirty)syncPricingDynamicValuesIntoGrid(grid,{qtyCol,materialCol,laborCol});
+  if(!boqEditorDirty)syncPricingDynamicValuesIntoGrid(grid,{qtyCol,materialCol,laborCol,totalCol,amountCol});
 
   const colgroup=`<colgroup><col class="pricing-row-number-col" style="width:48px">`+
     Array.from({length:colCount},(_,c)=>`<col data-pricing-col="${c}" style="width:${pricingGridColWidth(grid.colWidths?.[c],c)}px">`).join("")+
@@ -321,16 +570,19 @@ function pricingCellInSelection(r,c){
   return r>=s.r1&&r<=s.r2&&c>=s.c1&&c<=s.c2;
 }
 
-function syncPricingDynamicValuesIntoGrid(grid,{qtyCol=-1,materialCol=-1,laborCol=-1}={}){
+function syncPricingDynamicValuesIntoGrid(grid,{qtyCol=-1,materialCol=-1,laborCol=-1,totalCol=-1,amountCol=-1}={}){
   const startRow=Number(grid?.startRow||1);
   for(const item of boqItems||[]){
     const sourceRow=Number(item?.sourceRow||0);
     const r=sourceRow-startRow;
     if(r<0||r>=Number(grid?.rowCount||0)||!Array.isArray(grid.rows?.[r]))continue;
     if(item.rowType==="SECTION"||item.rowType==="NOTE")continue;
-    if(qtyCol>=0&&qtyCol<grid.colCount)grid.rows[r][qtyCol]=Number(item.qty||0);
-    if(materialCol>=0&&materialCol<grid.colCount)grid.rows[r][materialCol]=Number(item.materialUnit||0);
-    if(laborCol>=0&&laborCol<grid.colCount)grid.rows[r][laborCol]=Number(item.laborUnit||0);
+    const qty=Number(item.qty||0),material=Number(item.materialUnit||0),labor=Number(item.laborUnit||0);
+    if(qtyCol>=0&&qtyCol<grid.colCount&&qty>0)grid.rows[r][qtyCol]=qty;
+    if(materialCol>=0&&materialCol<grid.colCount)grid.rows[r][materialCol]=material||"";
+    if(laborCol>=0&&laborCol<grid.colCount)grid.rows[r][laborCol]=labor||"";
+    if(totalCol>=0&&totalCol<grid.colCount&&(material||labor))grid.rows[r][totalCol]=material+labor;
+    if(amountCol>=0&&amountCol<grid.colCount&&qty&&(material||labor))grid.rows[r][amountCol]=(material+labor)*qty;
   }
 }
 
@@ -806,12 +1058,13 @@ async function savePricingBoqEditor(grid,container,button){
     let detected,parsed=[],newMap=boqMeta.columnMap||{};
     try{
       detected=detectHeader(expanded,"BOQ");
-      newMap=mapBoqHeadersDataAware(expanded,detected.headerRow-1,detected.headerDepth);
-      parsed=parseBoqSheet(expanded,detected.headerRow-1,detected.headerDepth);
+      const autoMap=mapBoqHeadersDataAware(expanded,detected.headerRow-1,detected.headerDepth);
+      newMap=forceTemplateBoqMap(expanded,detected.headerRow-1,detected.headerDepth,autoMap,boqMeta.templateConfig||{});
+      parsed=parseBoqSheet(expanded,detected.headerRow-1,detected.headerDepth,newMap);
       const offset=Number(grid.startRow||1)-1;
       parsed=parsed.map(x=>({...x,sourceRow:Number(x.sourceRow||0)+offset}));
     }catch(e){
-      console.warn("[V2.19.4] BOQ đã lưu hình thức nhưng chưa thể tái nhận diện dữ liệu:",e);
+      console.warn("[V2.20] BOQ đã lưu hình thức nhưng chưa thể tái nhận diện dữ liệu:",e);
     }
 
     if(parsed.length){
@@ -856,8 +1109,10 @@ function rebuildPricingBoqItemsPatch(parsed){
     const id=old?.id||refs.boqProject(selectedProjectId).push().key;
     if(old)used.add(old.id);
     const sameMaterial=old&&Number(old.materialUnit||0)===Number(row.materialUnit||0);
+    const sameLabor=old&&Number(old.laborUnit||0)===Number(row.laborUnit||0);
     patch[id]={
       ...(old||{}),...row,
+      laborPriceSource:sameLabor?(old.laborPriceSource||null):null,
       materialPriceSource:sameMaterial?(old.materialPriceSource||null):null,
       selectedSupplier:sameMaterial?(old.selectedSupplier||""):"",
       matchStatus:sameMaterial?(old.matchStatus||""):(Number(row.materialUnit||0)>0?"MANUAL":""),
@@ -986,73 +1241,73 @@ function matchRowHtml(m){
 
 function bind(container){
   container.querySelector("#pricingProjectSelect")?.addEventListener("change",async e=>{
-    selectedProjectId=e.target.value;tab="BOQ";q="";boqEditorDirty=false;boqEditorSelection=null;boqEditorAnchor=null;
+    selectedProjectId=e.target.value;q="";workspaceFilter="ALL";boqEditorDirty=false;univerDirty=false;
     container.innerHTML=loading();await loadProjectData();paint(container);
   });
 
-  container.querySelectorAll("[data-pricing-tab]").forEach(b=>b.addEventListener("click",()=>{tab=b.dataset.pricingTab;paint(container)}));
   container.querySelector("#uploadBoqBtn")?.addEventListener("click",()=>openBoqUpload(container));
-  container.querySelector("#uploadBoqInlineBtn")?.addEventListener("click",()=>openBoqUpload(container));
-  container.querySelector("#uploadMaterialPricesBtn")?.addEventListener("click",()=>openMaterialUpload(container));
-
-  container.querySelector("#pricingSearch")?.addEventListener("input",e=>{
-    q=e.target.value;paint(container);requestAnimationFrame(()=>{const i=container.querySelector("#pricingSearch");i?.focus();i?.setSelectionRange(i.value.length,i.value.length)});
-  });
-
-  container.querySelectorAll("[data-inline-item]").forEach(input=>input.addEventListener("change",async()=>{
-    const item=boqItems.find(x=>x.id===input.dataset.inlineItem);if(!item)return;
-    const field=input.dataset.inlineField,value=Math.max(0,Number(input.value||0));
-    const patch={[field]:value,updatedAt:Date.now()};
-    if(field==="materialUnit")Object.assign(patch,{materialPriceSource:null,selectedSupplier:"",matchStatus:"MANUAL"});
-    try{
-      await refs.boqItem(selectedProjectId,item.id).update(patch);
-      Object.assign(item,patch);rebuildMatchCache();toast("Đã cập nhật BOQ.");
-    }catch(e){toast(e.message||"Không lưu được BOQ.","error")}
-  }));
-
-  container.querySelectorAll("[data-source-item]").forEach(b=>b.addEventListener("click",()=>showPriceSource(b.dataset.sourceItem)));
-  container.querySelectorAll("[data-delete-price-import]").forEach(b=>b.addEventListener("click",()=>deleteMaterialImport(b.dataset.deletePriceImport,container)));
-  container.querySelectorAll("[data-apply-match]").forEach(b=>b.addEventListener("click",()=>applyBestMatch(b.dataset.applyMatch,container)));
-  container.querySelector("#recalcMatchesBtn")?.addEventListener("click",()=>{rebuildMatchCache();toast("Đã tính lại đối chiếu.");paint(container)});
-  container.querySelector("#applyHighMatchesBtn")?.addEventListener("click",()=>applyHighConfidenceMatches(container));
-
-  // BOQ gốc hoạt động như một bảng Excel mini khi người dùng có quyền chỉnh BOQ.
-  bindPricingBoqEditor(container);
+  container.querySelector("#uploadMaterialQuickBtn")?.addEventListener("click",()=>openMaterialUpload(container));
+  container.querySelector("#priceLibraryBtn")?.addEventListener("click",()=>openPriceLibrary(container));
+  container.querySelector("#exportOriginalXlsxBtn")?.addEventListener("click",()=>exportOriginalWorkbook(container));
+  container.querySelector("#reviewPriceBtn")?.addEventListener("click",()=>openReviewPrices(container,"REVIEW"));
+  container.querySelector("#saveUniverBtn")?.addEventListener("click",()=>saveUniverBoq(container));
+  container.querySelectorAll("[data-workspace-filter]").forEach(b=>b.addEventListener("click",()=>openReviewPrices(container,b.dataset.workspaceFilter==="missing"?"MISSING":"REVIEW")));
 }
 
 function openBoqUpload(container){
   if(!can("boqEdit"))return;
   modal({
-    title:boqItems.length?"Thay / nhập lại BOQ":"Tải BOQ đấu thầu",
-    eyebrow:"BƯỚC 1 · BOQ",
+    title:boqItems.length?"Thay BOQ gốc":"Tải BOQ đấu thầu",
+    eyebrow:"BOQ GỐC · TỰ ĐỌC CTG/CTC",
     size:"lg",submitText:"Nhập BOQ",
-    body:`<div class="pricing-upload-note"><b>Hệ thống tự nhận BOQ.</b> File có thể có tên dự án/ghi chú ở phía trên, tiêu đề 1–3 hàng và ô gộp.</div>
+    body:`<div class="pricing-upload-note v220-upload-note"><b>Chỉ cần chọn file BOQ.</b> Nếu trong workbook có Sheet CTG/CTC, hệ thống tự lấy <b>Code cột B → Nhân công cột T</b>. File Excel gốc được lưu nguyên để khi xuất vẫn giữ cấu trúc/format ban đầu.</div>
       <div class="form-grid mt">
-        <label class="field span2"><span>File BOQ Excel / CSV *</span><input required type="file" name="boqFile" id="tenderBoqFile" accept=".xlsx,.xls,.csv"></label>
+        <label class="field span2"><span>File BOQ Excel *</span><input required type="file" name="boqFile" id="tenderBoqFile" accept=".xlsx"><small>V2.20 dùng chính file .xlsx này làm mẫu xuất cho cấp trên.</small></label>
         <label class="field span2 hidden" id="tenderBoqSheetWrap"><span>Sheet BOQ</span><select name="boqSheet" id="tenderBoqSheet"></select></label>
-        <label class="field span2"><span>Cách nhập</span><select name="importMode"><option value="REPLACE">Thay toàn bộ BOQ hiện tại</option><option value="APPEND">Nối thêm vào BOQ hiện tại</option></select></label>
         <div class="span2 hidden pricing-file-preview" id="tenderBoqPreview"></div>
       </div>`,
     onSubmit:async fd=>{
-      const file=fd.get("boqFile");if(!(file instanceof File)||!file.size){toast("Chọn file BOQ.","error");return false}
+      const file=fd.get("boqFile");
+      if(!(file instanceof File)||!file.size){toast("Chọn file BOQ.","error");return false}
       const inspection=document.querySelector("#tenderBoqFile")?._inspection||await inspectSpreadsheet(file,"BOQ");
       const sheetName=String(fd.get("boqSheet")||inspection.defaultSheet||"");
       const meta=inspection.sheets[sheetName]||inspection.sheets[inspection.defaultSheet];
-      const parsed=parseBoqSheet(meta.aoa,meta.headerRow-1,meta.headerDepth);
+      const forcedMap=sheetName===inspection.defaultSheet?(inspection.targetColumnMap||meta.columnMap||{}):(meta.columnMap||{});
+      let parsed=parseBoqSheet(meta.aoa,meta.headerRow-1,meta.headerDepth,forcedMap);
+      parsed=applyLaborCatalog(parsed,inspection.laborCatalog||[],inspection.laborSheetName||"");
       if(!parsed.length){toast("Không đọc được dòng BOQ nào.","error");return false}
-      if(fd.get("importMode")==="REPLACE"&&boqItems.length){
-        if(!await confirmBox("Thay BOQ hiện tại",`BOQ mới có ${parsed.filter(isPriceableItem).length} dòng vật tư. Thay toàn bộ BOQ đang có?`,"Thay BOQ"))return false;
+      if(boqItems.length){
+        if(!await confirmBox("Thay BOQ hiện tại",`BOQ mới có ${parsed.filter(isPriceableItem).length} đầu mục có khối lượng. Thay toàn bộ BOQ đang có?`,"Thay BOQ"))return false;
       }
+
+      const originalGrid=JSON.parse(JSON.stringify(meta.sourceGrid||null));
       await saveBoqImport(parsed,{
-        fileName:file.name,sheetName:sheetName,
+        fileName:file.name,sheetName,
         headerRow:meta.headerRow,headerDepth:meta.headerDepth,
-        columnMap:meta.columnMap||{},
+        columnMap:forcedMap,
         sourceGrid:meta.sourceGrid||null,
-        mode:String(fd.get("importMode")||"REPLACE")
+        originalSourceGrid:originalGrid,
+        laborSheetName:inspection.laborSheetName||"",
+        laborCatalogMeta:buildLaborCatalogMeta(parsed,inspection),
+        templateConfig:inspection.templateConfig||{},
+        mode:"REPLACE",
+        originalWorkbookStored:false
       });
-      toast(`Đã nhập ${parsed.filter(isPriceableItem).length} dòng vật tư từ BOQ.`);
-      boqEditorDirty=false;boqEditorSelection=null;boqEditorAnchor=null;
-      await loadProjectData();tab="BOQ";paint(container);return true;
+
+      let sourceStored=false;
+      if(fileExtension(file.name)==="xlsx"){
+        try{await storeOriginalWorkbook(file,sheetName);sourceStored=true}
+        catch(e){console.warn("[V2.20] Không lưu được file BOQ gốc:",e);toast("BOQ đã nhập nhưng chưa lưu được bản Excel gốc để xuất nguyên mẫu.","warning")}
+      }
+      if(sourceStored){
+        try{await refs.boqImportMeta(selectedProjectId).update({originalWorkbookStored:true,updatedAt:Date.now()})}catch{}
+      }
+
+      const priceable=parsed.filter(isPriceableItem);
+      const laborCount=priceable.filter(x=>Number(x.laborUnit||0)>0).length;
+      toast(`Đã nhập ${priceable.length} đầu mục. Nhân công CTG/CTC tự điền ${laborCount}/${priceable.length} dòng.`);
+      boqEditorDirty=false;univerDirty=false;
+      await loadProjectData();paint(container);return true;
     }
   });
 
@@ -1060,14 +1315,72 @@ function openBoqUpload(container){
   input?.addEventListener("change",async()=>{
     const file=input.files?.[0];if(!file)return;
     try{
+      preview?.classList.remove("hidden");if(preview)preview.innerHTML=`<div class="pricing-reading">Đang đọc BOQ + CTG/CTC...</div>`;
       const inspection=await inspectSpreadsheet(file,"BOQ");input._inspection=inspection;
-      if(inspection.kind==="EXCEL"){
-        wrap?.classList.remove("hidden");sheet.innerHTML=Object.keys(inspection.sheets).map(name=>{const m=inspection.sheets[name];return `<option value="${esc(name)}" ${name===inspection.defaultSheet?"selected":""}>${esc(name)} · tiêu đề ${m.headerRow}${m.headerDepth>1?`–${m.headerRow+m.headerDepth-1}`:""}</option>`}).join("");
-      }else{wrap?.classList.add("hidden");sheet.innerHTML=`<option value="CSV">CSV</option>`}
+      wrap?.classList.remove("hidden");
+      sheet.innerHTML=Object.keys(inspection.sheets).map(name=>{const m=inspection.sheets[name];return `<option value="${esc(name)}" ${name===inspection.defaultSheet?"selected":""}>${esc(name)} · ${m.sourceGrid?.rowCount||0}×${m.sourceGrid?.colCount||0}</option>`}).join("");
       renderBoqPreview(inspection,sheet.value||inspection.defaultSheet,preview);
-    }catch(e){console.error(e);toast(e.message||"Không đọc được file.","error")}
+    }catch(e){console.error(e);toast(e.message||"Không đọc được file.","error");if(preview)preview.innerHTML=`<div class="pricing-file-mini bad"><b>Không đọc được BOQ</b><span>${esc(e.message||"")}</span></div>`}
   });
   sheet?.addEventListener("change",()=>{const ins=input?._inspection;if(ins)renderBoqPreview(ins,sheet.value,preview)});
+}
+
+async function storeOriginalWorkbook(file,sheetName){
+  const bytes=new Uint8Array(await file.arrayBuffer());
+  const b64=bytesToBase64(bytes),chunkSize=650000,chunks={};
+  for(let i=0,n=0;i<b64.length;i+=chunkSize,n++)chunks[`c${String(n).padStart(4,"0")}`]=b64.slice(i,i+chunkSize);
+  await refs.boqOriginalWorkbook(selectedProjectId).set({
+    fileName:file.name,mimeType:file.type||"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    sizeBytes:file.size,sheetName,encoding:"base64",chunks,updatedAt:Date.now(),updatedByName:getProfile()?.displayName||getProfile()?.email||""
+  });
+}
+
+function bytesToBase64(bytes){
+  let out="",step=0x8000;
+  for(let i=0;i<bytes.length;i+=step)out+=String.fromCharCode(...bytes.subarray(i,Math.min(bytes.length,i+step)));
+  return btoa(out);
+}
+function base64ToBytes(b64){
+  const bin=atob(b64),out=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);
+  return out;
+}
+
+function buildLaborCatalogMeta(parsed,inspection){
+  const priceable=parsed.filter(isPriceableItem);
+  const matched=priceable.filter(x=>x.laborPriceSource?.sheetName).length;
+  const priced=priceable.filter(x=>Number(x.laborUnit||0)>0).length;
+  return {sheetName:inspection.laborSheetName||"",sourceColumn:"T",codeColumn:"B",catalogRows:(inspection.laborCatalog||[]).length,matched,priced,missing:Math.max(0,priceable.length-priced)};
+}
+
+function applyLaborCatalog(parsed,catalog,sheetName){
+  if(!Array.isArray(catalog)||!catalog.length)return parsed;
+  const byCode=new Map();
+  for(const r of catalog){
+    const k=cleanKey(r.code||"");if(!k)continue;
+    const old=byCode.get(k);
+    if(!old||Number(r.laborRaw||0)>0)byCode.set(k,r);
+  }
+  return parsed.map(row=>{
+    if(!(Number(row.qty||0)>0))return row;
+    const src=byCode.get(cleanKey(row.code||""));
+    if(!src)return row;
+    const raw=Number(src.laborRaw||0);
+    if(!(raw>0))return {...row,laborUnit:0,laborPriceSource:{sheetName,column:"T",codeColumn:"B",sourceRow:src.sourceRow,code:src.code,rawUnit:0,factor:1,unitPrice:0,status:"MISSING"}};
+    const existing=Number(row.laborUnit||0);
+    let factor=1;
+    if(existing>0){
+      const ratio=existing/raw;
+      if(Math.abs(ratio-1)<=0.035)factor=1;
+      else if(Math.abs(ratio-1.3)<=0.04)factor=1.3;
+      else if(ratio>=0.5&&ratio<=3)factor=Math.round(ratio*10000)/10000;
+    }
+    const final=Math.round(raw*factor*100)/100;
+    return {...row,laborUnit:final,laborPriceSource:{
+      sheetName,column:"T",codeColumn:"B",sourceRow:src.sourceRow,code:src.code,rawUnit:raw,factor,unitPrice:final,
+      model:src.model||"",brand:src.brand||"",origin:src.origin||"",status:"AUTO_CODE"
+    }};
+  });
 }
 
 async function saveBoqImport(parsed,meta){
@@ -1102,102 +1415,77 @@ async function saveBoqImport(parsed,meta){
 
 function renderBoqPreview(inspection,sheetName,box){
   const m=inspection.sheets[sheetName]||inspection.sheets[inspection.defaultSheet];if(!m||!box)return;
-  const rows=parseBoqSheet(m.aoa,m.headerRow-1,m.headerDepth);
+  const forced=sheetName===inspection.defaultSheet?(inspection.targetColumnMap||m.columnMap):m.columnMap;
+  let rows=[];
+  try{rows=parseBoqSheet(m.aoa,m.headerRow-1,m.headerDepth,forced)}catch{}
+  rows=applyLaborCatalog(rows,inspection.laborCatalog||[],inspection.laborSheetName||"");
+  const priceable=rows.filter(isPriceableItem),labor=priceable.filter(x=>Number(x.laborUnit||0)>0).length;
   box.classList.remove("hidden");
   const g=m.sourceGrid;
-  box.innerHTML=`<div><b>${esc(inspection.fileName)}</b><span>Sheet ${esc(sheetName)} · ${g?.rowCount||0} hàng × ${g?.colCount||0} cột · tiêu đề dòng ${m.headerRow}${m.headerDepth>1?`–${m.headerRow+m.headerDepth-1}`:""} · nhận ${rows.filter(isPriceableItem).length} dòng vật tư</span></div>${badge("Giữ nguyên BOQ gốc","green")}`;
+  box.innerHTML=`<div class="v220-import-preview">
+    <div><b>${esc(inspection.fileName)}</b><span>Sheet BOQ: ${esc(sheetName)} · ${g?.rowCount||0} hàng × ${g?.colCount||0} cột · ${priceable.length} đầu mục có KL</span></div>
+    <div class="v220-preview-badges">${badge("Giữ file gốc để xuất Excel","green")}${inspection.laborSheetName?badge(`Nhân công ${inspection.laborSheetName}!T: ${labor}/${priceable.length}`,labor===priceable.length?"green":"blue"):badge("Không thấy CTG/CTC","orange")}</div>
+  </div>`;
 }
 
 function openMaterialUpload(container){
   if(!can("quoteEdit"))return;
   modal({
-    title:"Thêm báo giá mới",
-    eyebrow:"KHO GIÁ VẬT TƯ · TẢI BẤT CỨ KHI NÀO CÓ GIÁ",
-    size:"lg",submitText:"Thêm vào kho giá",
-    body:`<div class="pricing-upload-note"><b>Mỗi lần có báo giá mới thì tải thêm.</b> Không cần chờ đủ tất cả NCC và không cần tải cùng lúc với BOQ. File cũ vẫn được giữ nguyên. Nếu cùng lúc nhận nhiều file, anh vẫn có thể chọn nhiều file trong một lần.</div>
+    title:"Thêm báo giá vật tư",
+    eyebrow:"CHỌN FILE → TỰ ĐỌC → TỰ RÁP, KHÔNG CẦN XÁC NHẬN THÊM",
+    size:"lg",showSubmit:false,
+    body:`<div class="pricing-upload-note"><b>Nhận giá tới đâu tải tới đó.</b> Nhập tên NCC nếu muốn, sau đó chọn 1 hoặc nhiều file. Ngay khi chọn file hệ thống tự thêm vào kho và tự điền các dòng BOQ khớp ≥95%; không có bước “xác nhận ráp giá”.</div>
       <div class="form-grid mt">
-        <label class="field span2"><span>1 hoặc nhiều file báo giá Excel / CSV *</span><input required multiple type="file" name="priceFiles" id="materialPriceFiles" accept=".xlsx,.xls,.csv"><small>File mới sẽ được nối thêm vào kho giá hiện có.</small></label>
-        <label class="field span2"><span>Tên NCC mặc định (không bắt buộc)</span><input name="defaultSupplier" placeholder="Để trống: dùng tên file làm tên NCC"></label>
+        <label class="field span2"><span>Tên NCC mặc định (không bắt buộc)</span><input id="materialDefaultSupplier" placeholder="Để trống: dùng tên file làm NCC"></label>
+        <label class="field span2"><span>Chọn file báo giá Excel / CSV *</span><input multiple type="file" id="materialPriceFiles" accept=".xlsx,.xls,.csv"><small>Có thể tải từng file một ở bất kỳ thời điểm nào.</small></label>
         <div class="span2 hidden pricing-file-preview-list" id="materialFilesPreview"></div>
-      </div>`,
-    onSubmit:async fd=>{
-      const input=document.querySelector("#materialPriceFiles");const files=[...(input?.files||[])];
-      if(!files.length){toast("Chọn ít nhất một file giá.","error");return false}
-      const defaultSupplier=String(fd.get("defaultSupplier")||"").trim();
-      let total=0,successFiles=0;
-      const failed=[];
-
-      for(const file of files){
-        try{
-          const inspection=await inspectSpreadsheet(file,"PRICE");
-          const sheetName=inspection.defaultSheet,m=inspection.sheets[sheetName];
-          const rows=parsePriceSheet(m.aoa,m.headerRow-1,m.headerDepth,{fileName:file.name,sheetName,defaultSupplier});
-
-          const importId=refs.materialPriceImportsProject(selectedProjectId).push().key;
-          const rowObj={};
-          rows.forEach((r,i)=>rowObj[`r${String(i+1).padStart(5,"0")}`]=r);
-
-          await refs.materialPriceImport(selectedProjectId,importId).set({
-            fileName:file.name,
-            sheetName,
-            supplier:defaultSupplier||baseFileName(file.name),
-            rowCount:rows.length,
-            headerRow:m.headerRow,
-            headerDepth:m.headerDepth,
-            detectedDescriptionColumn:m.columnMap?.description??-1,
-            detectedPriceColumn:m.columnMap?.unitPrice??-1,
-            createdAt:Date.now(),
-            createdByName:getProfile()?.displayName||getProfile()?.email||"",
-            rows:rowObj
-          });
-
-          total+=rows.length;
-          successFiles++;
-        }catch(e){
-          console.warn("[V2.19.2] Bỏ qua file giá không đọc được:",file.name,e);
-          failed.push({file:file.name,error:e?.message||"Không nhận diện được"});
-        }
-      }
-
-      if(!successFiles){
-        const first=failed.slice(0,3).map(x=>`${x.file}: ${x.error}`).join(" | ");
-        toast(`Chưa nhập được file giá nào. ${first}`,"error");
-        return false;
-      }
-
-      await loadProjectData();
-      const applied=await autoApplyMatches(95,{onlyEmpty:true});
-      await loadProjectData();
-
-      const failText=failed.length
-        ?` Bỏ qua ${failed.length} file chưa nhận được; các file còn lại vẫn đã lưu.`
-        :"";
-
-      toast(`Đã nhập ${successFiles}/${files.length} file, đọc ${total} dòng giá. Tự điền ${applied} dòng BOQ chưa có giá.${failText}`);
-      tab="MATERIAL";
-      paint(container);
-      return true;
-    }
+      </div>`
   });
 
   const input=document.querySelector("#materialPriceFiles"),preview=document.querySelector("#materialFilesPreview");
   input?.addEventListener("change",async()=>{
     const files=[...(input.files||[])];if(!files.length)return;
-    preview.classList.remove("hidden");preview.innerHTML=`<div class="pricing-reading">Đang đọc ${files.length} file...</div>`;
-    const cards=[];
-    for(const file of files){
-      try{
-        const ins=await inspectSpreadsheet(file,"PRICE"),m=ins.sheets[ins.defaultSheet];
-        const rows=parsePriceSheet(m.aoa,m.headerRow-1,m.headerDepth,{fileName:file.name,sheetName:ins.defaultSheet,defaultSupplier:""});
-        const descCol=Number(m.columnMap?.description??-1);
-        const priceCol=Number(m.columnMap?.unitPrice??-1);
-        const descLabel=descCol>=0?pricingExcelColName(descCol):"?";
-        const priceLabel=priceCol>=0?pricingExcelColName(priceCol):"?";
-        cards.push(`<div class="pricing-file-mini ok"><b>${esc(file.name)}</b><span>Sheet ${esc(ins.defaultSheet)} · tiêu đề ${m.headerRow}${m.headerDepth>1?`–${m.headerRow+m.headerDepth-1}`:""} · ${rows.length} dòng giá · Mô tả: cột ${descLabel} · Giá: cột ${priceLabel}</span></div>`);
-      }catch(e){cards.push(`<div class="pricing-file-mini bad"><b>${esc(file.name)}</b><span>${esc(e.message||"Không nhận diện được")}</span></div>`)}
-    }
-    preview.innerHTML=cards.join("");
+    const supplier=String(document.querySelector("#materialDefaultSupplier")?.value||"").trim();
+    input.disabled=true;preview.classList.remove("hidden");preview.innerHTML=`<div class="pricing-reading">Đang đọc ${files.length} file và ráp giá...</div>`;
+    try{
+      const result=await processMaterialFiles(files,supplier,preview);
+      await loadProjectData();
+      const applied=await autoApplyMatches(95,{onlyEmpty:true});
+      await loadProjectData();
+      const msg=`Đã thêm ${result.success}/${files.length} file (${result.totalRows} dòng giá), tự điền ${applied} dòng BOQ.`+(result.failed.length?` Bỏ qua ${result.failed.length} file chưa đọc được.`:"");
+      toast(msg,result.success?"success":"warning");
+      setTimeout(()=>{document.querySelector("#modalRoot [data-modal-close]")?.click();paint(container)},350);
+    }catch(e){console.error(e);toast(e.message||"Không thêm được báo giá.","error");input.disabled=false}
   });
+}
+
+async function processMaterialFiles(files,defaultSupplier,preview){
+  let totalRows=0,success=0;const failed=[],cards=[];
+  for(let fi=0;fi<files.length;fi++){
+    const file=files[fi];
+    try{
+      if(preview)preview.innerHTML=`<div class="pricing-reading">Đang đọc ${fi+1}/${files.length}: ${esc(file.name)}</div>${cards.join("")}`;
+      const inspection=await inspectSpreadsheet(file,"PRICE");
+      const sheetName=inspection.defaultSheet,m=inspection.sheets[sheetName];
+      const rows=parsePriceSheet(m.aoa,m.headerRow-1,m.headerDepth,{fileName:file.name,sheetName,defaultSupplier});
+      const importId=refs.materialPriceImportsProject(selectedProjectId).push().key,rowObj={};
+      rows.forEach((r,i)=>rowObj[`r${String(i+1).padStart(5,"0")}`]=r);
+      await refs.materialPriceImport(selectedProjectId,importId).set({
+        fileName:file.name,sheetName,supplier:defaultSupplier||baseFileName(file.name),rowCount:rows.length,
+        headerRow:m.headerRow,headerDepth:m.headerDepth,detectedDescriptionColumn:m.columnMap?.description??-1,detectedPriceColumn:m.columnMap?.unitPrice??-1,
+        createdAt:Date.now(),createdByName:getProfile()?.displayName||getProfile()?.email||"",rows:rowObj
+      });
+      totalRows+=rows.length;success++;
+      const dc=Number(m.columnMap?.description??-1),pc=Number(m.columnMap?.unitPrice??-1);
+      cards.push(`<div class="pricing-file-mini ok"><b>✓ ${esc(file.name)}</b><span>${rows.length} dòng · Mô tả ${dc>=0?pricingExcelColName(dc):"?"} · Giá ${pc>=0?pricingExcelColName(pc):"?"}</span></div>`);
+    }catch(e){
+      console.warn("[V2.20] Bỏ qua file giá:",file.name,e);failed.push({file:file.name,error:e?.message||"Không nhận diện được"});
+      cards.push(`<div class="pricing-file-mini bad"><b>! ${esc(file.name)}</b><span>${esc(e?.message||"Không nhận diện được")}</span></div>`);
+    }
+  }
+  if(preview)preview.innerHTML=cards.join("");
+  if(!success)throw new Error(failed[0]?.error||"Không file nào có dữ liệu giá hợp lệ.");
+  return {success,totalRows,failed};
 }
 
 async function deleteMaterialImport(importId,container){
@@ -1214,18 +1502,45 @@ function firebaseErrorText(e){
   return e?.message||code||"Lỗi Firebase";
 }
 
+function rebuildMaterialIndex(){
+  const byCode=new Map(),byUnit=new Map();
+  for(const row of materialRows||[]){
+    const code=cleanKey(row.code||"");if(code){if(!byCode.has(code))byCode.set(code,[]);byCode.get(code).push(row)}
+    const unit=canonUnit(row.unit||"");if(unit){if(!byUnit.has(unit))byUnit.set(unit,[]);byUnit.get(unit).push(row)}
+  }
+  materialIndex={byCode,byUnit,all:materialRows||[]};
+}
+
 function rebuildMatchCache(){
+  rebuildMaterialIndex();
   matchCache=new Map();
-  for(const item of boqItems.filter(isPriceableItem))matchCache.set(item.id,rankMaterialCandidates(item,materialRows));
+  for(const item of boqItems.filter(isPriceableItem))matchCache.set(item.id,rankMaterialCandidates(item));
 }
 
 function matchingRows(){
   return boqItems.filter(isPriceableItem).map(item=>({item,best:(matchCache.get(item.id)||[])[0]||null}));
 }
 
-function rankMaterialCandidates(item,rows){
+function rankMaterialCandidates(item){
+  const code=cleanKey(item.code||"");
+  let pool=code?(materialIndex.byCode.get(code)||[]):[];
+  if(!pool.length){
+    const unit=canonUnit(item.unit||"");
+    pool=unit?(materialIndex.byUnit.get(unit)||[]):[];
+    if(!pool.length)pool=materialIndex.all||[];
+
+    // Lọc nhanh theo token kỹ thuật (DN50, 100x50, model...) khi kho giá lớn.
+    if(pool.length>600){
+      const text=cleanText(`${item.description||""} ${item.specification||""}`);
+      const tokens=(text.match(/\b(?:dn\s*\d+|d\s*\d+|\d{2,4}\s*[x×]\s*\d{2,4}|[a-z]{1,5}[-_]?\d{2,}[a-z0-9_-]*)\b/gi)||[]).map(cleanKey).filter(x=>x.length>=3);
+      if(tokens.length){
+        const narrowed=pool.filter(r=>{const t=cleanKey(`${r.description||""} ${r.specification||""} ${r.code||""}`);return tokens.some(k=>t.includes(k))});
+        if(narrowed.length)pool=narrowed;
+      }
+    }
+  }
   const ranked=[];
-  for(const row of rows){
+  for(const row of pool){
     const m=scoreMaterialMatch(item,row);
     if(m.score>=55)ranked.push({row,score:m.score,reason:m.reason});
   }
@@ -1233,7 +1548,7 @@ function rankMaterialCandidates(item,rows){
 }
 
 function scoreMaterialMatch(item,row){
-  const codeA=cleanKey(item.itemNo||item.code||""),codeB=cleanKey(row.code||"");
+  const codeA=cleanKey(item.code||item.itemNo||""),codeB=cleanKey(row.code||"");
   const descA=cleanText(item.description),descB=cleanText(row.description);
   const specA=cleanText(item.specification),specB=cleanText(row.specification);
   const unitA=canonUnit(item.unit),unitB=canonUnit(row.unit);
@@ -1313,12 +1628,149 @@ function showPriceSource(itemId){
     </div>`});
 }
 
+
+function openPriceLibrary(container){
+  const rows=materialImports||[];
+  modal({title:"Kho giá vật tư",eyebrow:"BÁO GIÁ ĐÃ LƯU",size:"lg",showSubmit:false,body:`
+    <div class="v220-library-head"><div><b>${rows.length} file báo giá</b><span>${materialRows.length} dòng giá đã chuẩn hóa. File mới thêm sau vẫn cộng dồn vào kho.</span></div>${can("quoteEdit")?`<button type="button" class="btn primary sm" id="modalAddPriceBtn">＋ Thêm báo giá</button>`:""}</div>
+    <div class="v220-library-list">${rows.length?rows.map(x=>`<div class="v220-library-item"><div><b>${esc(x.fileName||"Báo giá")}</b><span>${esc(x.supplier||"")} · Sheet ${esc(x.sheetName||"")} · ${Number(x.rowCount||0)} dòng · ${fmtDateTime(x.createdAt)}</span></div>${can("quoteEdit")?`<button type="button" class="btn sm danger-soft" data-modal-delete-import="${x.id}">Xóa</button>`:""}</div>`).join(""):empty("Kho giá đang trống","Khi nhận báo giá NCC, bấm “Thêm báo giá” để hệ thống ghi nhớ và dùng cho BOQ hiện tại.","▤")}</div>`});
+  document.querySelector("#modalAddPriceBtn")?.addEventListener("click",()=>openMaterialUpload(container));
+  document.querySelectorAll("[data-modal-delete-import]").forEach(b=>b.addEventListener("click",async()=>{
+    const id=b.dataset.modalDeleteImport,imp=materialImports.find(x=>x.id===id);if(!imp)return;
+    if(!await confirmBox("Xóa file giá",`Xóa dữ liệu ${imp.fileName||"file này"} khỏi kho?`,"Xóa"))return;
+    await refs.materialPriceImport(selectedProjectId,id).remove();await loadProjectData();toast("Đã xóa file giá.","warning");document.querySelector("[data-modal-close]")?.click();paint(container);
+  }));
+}
+
+function openReviewPrices(container,mode="REVIEW"){
+  rebuildMatchCache();
+  const all=boqItems.filter(isPriceableItem).map(item=>({item,best:(matchCache.get(item.id)||[])[0]||null}));
+  const rows=mode==="MISSING"
+    ?all.filter(x=>Number(x.item.materialUnit||0)<=0&&!(x.best?.score>=78))
+    :all.filter(x=>Number(x.item.materialUnit||0)<=0&&x.best?.score>=78&&x.best?.score<95);
+  const title=mode==="MISSING"?"Các dòng chưa có giá vật tư":"Giá cần kiểm tra";
+  modal({title,eyebrow:mode==="MISSING"?"CHƯA CÓ ỨNG VIÊN ≥78%":"CHỈ XÁC NHẬN CÁC DÒNG CHƯA CHẮC",size:"xl",showSubmit:false,body:`
+    <div class="v220-review-note">${mode==="MISSING"?"Các dòng này chưa tìm thấy ứng viên đủ tin cậy. Hãy thêm báo giá mới; hệ thống sẽ tự đối chiếu lại.":"Các giá ≥95% đã tự điền khi ô vật tư còn trống. Danh sách này chỉ còn ứng viên 78–94%."}</div>
+    <div class="table-wrap"><table class="data-table v220-review-table"><thead><tr><th>BOQ</th><th>Ứng viên</th><th>Giá</th><th>Khớp</th><th>NCC / nguồn</th><th></th></tr></thead><tbody>
+      ${rows.length?rows.map(x=>`<tr><td><b>${esc(x.item.itemNo||x.item.code||"")}</b><div>${esc(x.item.description||"")}</div><small>${esc(x.item.specification||"")} · ${esc(x.item.unit||"")}</small></td><td>${x.best?`<b>${esc(x.best.row.description||"")}</b><small>${esc(x.best.row.specification||"")}</small>`:"—"}</td><td>${x.best?`<b>${money(x.best.row.unitPrice)}</b>`:"—"}</td><td>${x.best?badge(`${Math.round(x.best.score)}%`,x.best.score>=90?"orange":"blue"):badge("Chưa có","red")}</td><td>${x.best?`${esc(x.best.row.supplier||"")}<small>${esc(x.best.row.sourceFileName||"")} · dòng ${x.best.row.sourceRow||"—"}</small>`:"—"}</td><td>${x.best&&can("boqEdit")?`<button type="button" class="btn sm orange" data-review-use="${x.item.id}">Dùng giá</button>`:""}</td></tr>`).join(""):`<tr><td colspan="6">${empty("Không có dòng nào","Danh sách này hiện đã sạch.","✓")}</td></tr>`}
+    </tbody></table></div>`});
+  document.querySelectorAll("[data-review-use]").forEach(b=>b.addEventListener("click",async()=>{
+    const item=boqItems.find(x=>x.id===b.dataset.reviewUse),best=(matchCache.get(b.dataset.reviewUse)||[])[0];if(!item||!best)return;
+    const updates={};fillMatchUpdates(updates,item,best,"REVIEWED");await refs.boqProject(selectedProjectId).update(updates);toast(`Đã dùng giá ${money(best.row.unitPrice)}.`);await loadProjectData();document.querySelector("[data-modal-close]")?.click();paint(container);
+  }));
+}
+
+async function exportOriginalWorkbook(container){
+  if(!selectedProjectId)return;
+  const btn=container.querySelector("#exportOriginalXlsxBtn");
+  try{
+    if(btn){btn.disabled=true;btn.textContent="Đang xuất..."}
+    if(univerDirty)await saveUniverBoq(container);
+    const snap=await refs.boqOriginalWorkbook(selectedProjectId).once("value");
+    const src=snap.val();
+    if(!src?.chunks)throw new Error("Chưa có bản Excel gốc. Hãy bấm “Thay BOQ” và tải lại file .xlsx gốc một lần.");
+    if(!globalThis.JSZip)throw new Error("JSZip chưa tải được. Tải lại trang rồi thử lại.");
+
+    const b64=Object.keys(src.chunks).sort().map(k=>src.chunks[k]).join("");
+    const zip=await JSZip.loadAsync(base64ToBytes(b64));
+    const wbXml=await zip.file("xl/workbook.xml")?.async("string");
+    const relXml=await zip.file("xl/_rels/workbook.xml.rels")?.async("string");
+    if(!wbXml||!relXml)throw new Error("File Excel gốc không đúng cấu trúc .xlsx.");
+    const parser=new DOMParser(),serializer=new XMLSerializer();
+    const wbDoc=parser.parseFromString(wbXml,"application/xml"),relDoc=parser.parseFromString(relXml,"application/xml");
+    const wanted=boqMeta.sheetName||src.sheetName||"";
+    const sheets=[...wbDoc.getElementsByTagNameNS("*","sheet")];
+    const sheetNode=sheets.find(x=>x.getAttribute("name")===wanted)||sheets[0];
+    if(!sheetNode)throw new Error("Không tìm được Sheet BOQ trong file gốc.");
+    const rid=sheetNode.getAttribute("r:id")||sheetNode.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships","id");
+    const rel=[...relDoc.getElementsByTagNameNS("*","Relationship")].find(x=>x.getAttribute("Id")===rid);
+    let target=String(rel?.getAttribute("Target")||"").replace(/^\//,"");
+    if(!target)throw new Error("Không tìm được đường dẫn XML của Sheet BOQ.");
+    if(!target.startsWith("xl/"))target="xl/"+target.replace(/^\.\//,"");
+    const sheetXml=await zip.file(target)?.async("string");
+    if(!sheetXml)throw new Error("Không đọc được Sheet BOQ gốc.");
+    const sheetDoc=parser.parseFromString(sheetXml,"application/xml");
+
+    const current=normalizePricingSourceGrid(JSON.parse(JSON.stringify(boqMeta.sourceGrid||{})));
+    const original=normalizePricingSourceGrid(JSON.parse(JSON.stringify(boqMeta.originalSourceGrid||boqMeta.sourceGrid||{})));
+    if(Number(current.rowCount||0)!==Number(original.rowCount||0)||Number(current.colCount||0)!==Number(original.colCount||0)){
+      throw new Error("BOQ đã thêm/xóa hàng hoặc cột. Chế độ xuất ‘giữ y chang file gốc’ chỉ áp các thay đổi ô trên cấu trúc gốc; hãy nhập lại BOQ gốc nếu cần xuất đúng mẫu.");
+    }
+    const map=boqMeta.columnMap||{};
+    syncPricingDynamicValuesIntoGrid(current,{qtyCol:Number(map.qty??-1),materialCol:Number(map.materialUnit??-1),laborCol:Number(map.laborUnit??-1),totalCol:Number(map.totalUnit??-1),amountCol:Number(map.amount??-1)});
+    const changes=collectGridChangesForExport(original,current,map);
+    for(const ch of changes)patchXlsxSheetCell(sheetDoc,ch.row,ch.col,ch.value,ch.numeric);
+    zip.file(target,serializer.serializeToString(sheetDoc));
+
+    let calc=[...wbDoc.getElementsByTagNameNS("*","calcPr")][0];
+    if(!calc){calc=wbDoc.createElementNS(wbDoc.documentElement.namespaceURI,"calcPr");wbDoc.documentElement.appendChild(calc)}
+    calc.setAttribute("calcMode","auto");calc.setAttribute("fullCalcOnLoad","1");calc.setAttribute("forceFullCalc","1");
+    zip.file("xl/workbook.xml",serializer.serializeToString(wbDoc));
+
+    const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE",compressionOptions:{level:6}});
+    const base=String(src.fileName||boqMeta.fileName||"BOQ.xlsx").replace(/\.xlsx$/i,"");
+    downloadBlob(blob,`${base}_LAP_GIA.xlsx`);
+    toast(`Đã xuất BOQ theo file gốc, cập nhật ${changes.length} ô.`);
+    try{await logActivity("TENDER_BOQ_EXPORTED","Xuất BOQ lập giá theo file Excel gốc",{projectId:selectedProjectId,changedCells:changes.length})}catch{}
+  }catch(e){console.error(e);toast(e.message||"Không xuất được Excel.","error")}
+  finally{const b=container.querySelector("#exportOriginalXlsxBtn");if(b){b.disabled=false;b.textContent="⇩ Xuất Excel"}}
+}
+
+function collectGridChangesForExport(original,current,map){
+  const out=[];
+  const startRow=Number(current.startRow||original.startRow||1),startCol=Number(current.startCol||original.startCol||0);
+  const rr=Math.min(Number(current.rowCount||0),Number(original.rowCount||current.rowCount||0));
+  const cc=Math.min(Number(current.colCount||0),Number(original.colCount||current.colCount||0));
+  const numericCols=new Set([map.qty,map.materialUnit,map.laborUnit,map.totalUnit,map.amount].map(Number).filter(Number.isFinite));
+  for(let r=0;r<rr;r++)for(let c=0;c<cc;c++){
+    const a=original.rows?.[r]?.[c]??"",b=current.rows?.[r]?.[c]??"";
+    if(v220Comparable(a)===v220Comparable(b))continue;
+    const numeric=numericCols.has(startCol+c)&&String(b).trim()!==""&&isNumericLike(b);
+    out.push({row:startRow+r,col:startCol+c,value:b,numeric});
+  }
+  return out;
+}
+function v220Comparable(v){
+  if(v===null||v===undefined)return "";
+  if(typeof v==="number")return String(Math.round(v*1e8)/1e8);
+  return String(v).trim();
+}
+
+function patchXlsxSheetCell(doc,row1,col0,value,numeric){
+  const ns=doc.documentElement.namespaceURI;
+  const sheetData=doc.getElementsByTagNameNS("*","sheetData")[0];if(!sheetData)return;
+  let row=[...sheetData.getElementsByTagNameNS("*","row")].find(x=>Number(x.getAttribute("r"))===row1);
+  if(!row){
+    row=doc.createElementNS(ns,"row");row.setAttribute("r",String(row1));
+    const next=[...sheetData.children].find(x=>Number(x.getAttribute?.("r"))>row1);next?sheetData.insertBefore(row,next):sheetData.appendChild(row);
+  }
+  const ref=`${pricingExcelColName(col0)}${row1}`;
+  let cell=[...row.getElementsByTagNameNS("*","c")].find(x=>x.getAttribute("r")===ref);
+  if(!cell){
+    cell=doc.createElementNS(ns,"c");cell.setAttribute("r",ref);
+    const next=[...row.children].find(x=>xlsxCellColumnIndex(x.getAttribute?.("r")||"")>col0);next?row.insertBefore(cell,next):row.appendChild(cell);
+  }
+  [...cell.children].forEach(ch=>{const n=ch.localName;if(["f","v","is"].includes(n))cell.removeChild(ch)});
+  if(value===null||value===undefined||String(value)===""){cell.removeAttribute("t");return}
+  if(numeric){
+    cell.removeAttribute("t");const v=doc.createElementNS(ns,"v");v.textContent=String(toNumber(value));cell.appendChild(v);return;
+  }
+  cell.setAttribute("t","inlineStr");const is=doc.createElementNS(ns,"is"),t=doc.createElementNS(ns,"t");
+  t.setAttribute("xml:space","preserve");t.textContent=String(value);is.appendChild(t);cell.appendChild(is);
+}
+function xlsxCellColumnIndex(ref){
+  const m=String(ref||"").match(/^([A-Z]+)/i);return m?excelColToIndex(m[1]):999999;
+}
+function downloadBlob(blob,name){
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+
 function sortBoqRows(a,b){
   const oa=Number(a.sourceOrder??999999),ob=Number(b.sourceOrder??999999);if(oa!==ob)return oa-ob;
   return String(a.itemNo||"").localeCompare(String(b.itemNo||""),"vi",{numeric:true});
 }
 
-function isPriceableItem(x){return x?.rowType!=="SECTION"&&x?.rowType!=="NOTE"&&String(x?.description||"").trim()!==""}
+function isPriceableItem(x){return x?.rowType!=="SECTION"&&x?.rowType!=="NOTE"&&String(x?.description||"").trim()!==""&&Number(x?.qty||0)>0}
 
 
 async function inspectSpreadsheet(file,mode){
@@ -1328,17 +1780,9 @@ async function inspectSpreadsheet(file,mode){
   if(ext==="csv"){
     const aoa=parseCsv(await file.text());
     const d=detectHeader(aoa,mode);
-    const headers=combineHeaders(aoa,d.headerRow-1,d.headerDepth);
-    const map=mode==="BOQ"
-      ?mapBoqHeadersDataAware(aoa,d.headerRow-1,d.headerDepth)
-      :mapPriceHeadersDataAware(aoa,d.headerRow-1,d.headerDepth);
-    return {
-      kind:"CSV",fileName:file.name,defaultSheet:"CSV",
-      sheets:{CSV:{
-        aoa,headerRow:d.headerRow,headerDepth:d.headerDepth,score:d.score,
-        columnMap:map,sourceGrid:buildPricingGridFromAoa(aoa,"CSV")
-      }}
-    };
+    const map=mode==="BOQ"?mapBoqHeadersDataAware(aoa,d.headerRow-1,d.headerDepth):mapPriceHeadersDataAware(aoa,d.headerRow-1,d.headerDepth);
+    return {kind:"CSV",fileName:file.name,defaultSheet:"CSV",laborSheetName:"",laborCatalog:[],templateConfig:{},targetColumnMap:map,
+      sheets:{CSV:{aoa,headerRow:d.headerRow,headerDepth:d.headerDepth,score:d.score,columnMap:map,sourceGrid:buildPricingGridFromAoa(aoa,"CSV")}}};
   }
 
   const XLSX=globalThis.XLSX;
@@ -1351,18 +1795,92 @@ async function inspectSpreadsheet(file,mode){
     const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:"",raw:false,blankrows:true});
     const aoa=expandMergedCells(raw,ws["!merges"]||[]);
     const d=detectHeader(aoa,mode);
-    const headers=combineHeaders(aoa,d.headerRow-1,d.headerDepth);
-    const map=mode==="BOQ"
-      ?mapBoqHeadersDataAware(aoa,d.headerRow-1,d.headerDepth)
-      :mapPriceHeadersDataAware(aoa,d.headerRow-1,d.headerDepth);
-    sheets[name]={
-      aoa,headerRow:d.headerRow,headerDepth:d.headerDepth,score:d.score,
-      columnMap:map,sourceGrid:buildPricingGridFromWorksheet(ws,XLSX,name)
-    };
+    const map=mode==="BOQ"?mapBoqHeadersDataAware(aoa,d.headerRow-1,d.headerDepth):mapPriceHeadersDataAware(aoa,d.headerRow-1,d.headerDepth);
+    sheets[name]={aoa,headerRow:d.headerRow,headerDepth:d.headerDepth,score:d.score,columnMap:map,sourceGrid:buildPricingGridFromWorksheet(ws,XLSX,name)};
   }
 
-  const defaultSheet=[...wb.SheetNames].sort((a,b)=>(sheets[b]?.score||0)-(sheets[a]?.score||0))[0];
-  return {kind:"EXCEL",fileName:file.name,defaultSheet,sheets};
+  let laborSheetName="",laborCatalog=[],templateConfig={};
+  if(mode==="BOQ"){
+    laborSheetName=findLaborSheetName(wb.SheetNames);
+    if(laborSheetName){
+      const laborAoa=sheets[laborSheetName]?.aoa||[];
+      templateConfig=parseTenderTemplateConfig(laborAoa);
+      laborCatalog=parseLaborCatalog(laborAoa,laborSheetName);
+    }
+  }
+
+  let defaultSheet="";
+  if(mode==="BOQ"&&templateConfig.targetSheetName){
+    defaultSheet=wb.SheetNames.find(n=>cleanKey(n)===cleanKey(templateConfig.targetSheetName))||"";
+  }
+  if(!defaultSheet){
+    const candidates=wb.SheetNames.filter(n=>n!==laborSheetName&&!["INDEX","TONG HOP","TONGHOP"].includes(cleanHeader(n).toUpperCase()));
+    defaultSheet=[...(candidates.length?candidates:wb.SheetNames)].sort((a,b)=>(sheets[b]?.score||0)-(sheets[a]?.score||0))[0]||wb.SheetNames[0];
+  }
+
+  let targetColumnMap=sheets[defaultSheet]?.columnMap||{};
+  if(mode==="BOQ"&&sheets[defaultSheet]){
+    targetColumnMap=forceTemplateBoqMap(sheets[defaultSheet].aoa,sheets[defaultSheet].headerRow-1,sheets[defaultSheet].headerDepth,targetColumnMap,templateConfig);
+    sheets[defaultSheet].columnMap=targetColumnMap;
+  }
+  return {kind:"EXCEL",fileName:file.name,defaultSheet,sheets,laborSheetName,laborCatalog,templateConfig,targetColumnMap};
+}
+
+function findLaborSheetName(names){
+  const exact=(names||[]).find(n=>["CTG","CTC"].includes(cleanHeader(n).toUpperCase()));
+  if(exact)return exact;
+  return (names||[]).find(n=>/^(ctg|ctc)(\b|[ _.-])/i.test(cleanHeader(n)))||"";
+}
+
+function parseTenderTemplateConfig(aoa){
+  const targetSheetName=String(aoa?.[0]?.[1]??"").trim();
+  const descriptionColumn=String(aoa?.[0]?.[3]??"").trim().toUpperCase();
+  const unitColumn=String(aoa?.[1]?.[3]??"").trim().toUpperCase();
+  const qtyColumn=String(aoa?.[2]?.[3]??"").trim().toUpperCase();
+  return {targetSheetName,descriptionColumn,unitColumn,qtyColumn};
+}
+
+function excelColToIndex(letter){
+  const s=String(letter||"").toUpperCase().replace(/[^A-Z]/g,"");if(!s)return -1;
+  let n=0;for(const ch of s)n=n*26+(ch.charCodeAt(0)-64);return n-1;
+}
+
+function parseLaborCatalog(aoa,sheetName){
+  const out=[];
+  for(let r=0;r<(aoa||[]).length;r++){
+    const row=aoa[r]||[];
+    const code=String(row[1]??"").trim();
+    if(!code||["code vat tu","code vật tư","ma vat tu","mã vật tư"].includes(cleanHeader(code)))continue;
+    const laborRaw=toNumber(row[19]);
+    const materialSelected=toNumber(row[18]);
+    if(!laborRaw&&!materialSelected&&!String(row[20]??"").trim()&&!String(row[21]??"").trim())continue;
+    out.push({code,laborRaw,materialSelected,model:String(row[20]??"").trim(),brand:String(row[21]??"").trim(),origin:String(row[22]??"").trim(),sheetName,sourceRow:r+1});
+  }
+  return out;
+}
+
+function forceTemplateBoqMap(aoa,start,depth,autoMap,config){
+  const map={...(autoMap||{})};
+  const d=excelColToIndex(config?.descriptionColumn),u=excelColToIndex(config?.unitColumn),qv=excelColToIndex(config?.qtyColumn);
+  if(d>=0)map.description=d;if(u>=0)map.unit=u;if(qv>=0)map.qty=qv;
+
+  const headers=combineHeaders(aoa,start,depth).map(cleanHeader);
+  const exact=(patterns)=>{
+    let best=-1,bestScore=-1;
+    headers.forEach((h,c)=>{for(const p of patterns){const sc=p.test(h)?(h.length<40?200-h.length:120):-1;if(sc>bestScore){bestScore=sc;best=c}}});return best;
+  };
+  const code=exact([/^code gia$/,/^ma gia$/,/^code$/]);if(code>=0)map.code=code;
+  const tt=exact([/^tt$/,/^stt$/,/^so thu tu$/]);if(tt>=0)map.itemNo=tt;
+  const model=exact([/^ma hieu$/,/^model/,/^model .*thong so/]);if(model>=0)map.specification=model;
+  const brand=exact([/^nhan hieu$/,/^thuong hieu$/]);if(brand>=0)map.brand=brand;
+  const origin=exact([/^xuat xu$/]);if(origin>=0)map.origin=origin;
+
+  const material=headers.findIndex(h=>h.includes("don gia")&&h.includes("vat tu")&&!h.includes("vat tu phu"));
+  const labor=headers.findIndex(h=>h.includes("don gia")&&h.includes("nhan cong"));
+  const total=headers.findIndex(h=>h.includes("tong don gia")||h.includes("tong cong don gia"));
+  const amount=headers.findIndex(h=>h.includes("thanh tien")&&!h.includes("vat tu phu"));
+  if(material>=0)map.materialUnit=material;if(labor>=0)map.laborUnit=labor;if(total>=0)map.totalUnit=total;if(amount>=0)map.amount=amount;
+  return map;
 }
 
 
@@ -1593,7 +2111,7 @@ function mapBoqHeadersDataAware(aoa,start,depth){
       }
       let data=nonEmpty*.2;
       if(key==="description")data+=text*3;
-      else if(["qty","materialUnit","laborUnit"].includes(key))data+=numeric*4;
+      else if(["qty","materialUnit","laborUnit","totalUnit","amount"].includes(key))data+=numeric*4;
       else if(key==="unit")data+=short*2;
       else data+=text*.6+numeric*.3;
       const score=semantic+data;
@@ -1617,6 +2135,10 @@ function pricingHeaderSemanticScore(h,aliases,key){
   if(key==="qty"&&h==="khoi luong")best=Math.max(best,175);
   if(key==="materialUnit"&&h.includes("vat tu chinh"))best=Math.max(best,180);
   if(key==="laborUnit"&&h.includes("nhan cong"))best=Math.max(best,175);
+  if(key==="code"&&(h==="code gia"||h==="ma gia"||h==="code"))best=Math.max(best,185);
+  if(key==="itemNo"&&(h==="tt"||h==="stt"))best=Math.max(best,185);
+  if(key==="totalUnit"&&h.includes("tong don gia"))best=Math.max(best,180);
+  if(key==="amount"&&h.includes("thanh tien"))best=Math.max(best,180);
   return best;
 }
 
@@ -1877,27 +2399,32 @@ function dataLikelihood(aoa,start,map,mode){
   }return Math.min(30,n);
 }
 
-function parseBoqSheet(aoa,headerIndex,headerDepth){
-  const headers=combineHeaders(aoa,headerIndex,headerDepth),map=mapBoqHeadersDataAware(aoa,headerIndex,headerDepth);
+function parseBoqSheet(aoa,headerIndex,headerDepth,forcedMap=null){
+  const autoMap=mapBoqHeadersDataAware(aoa,headerIndex,headerDepth);
+  const map={...autoMap,...Object.fromEntries(Object.entries(forcedMap||{}).filter(([,v])=>Number.isInteger(Number(v))&&Number(v)>=0).map(([k,v])=>[k,Number(v)]))};
   if(map.description<0)throw new Error("Không nhận được cột Diễn giải/Mô tả trong BOQ.");
   const out=[];
   for(let r=headerIndex+headerDepth;r<aoa.length;r++){
     const row=aoa[r]||[];if(!row.some(x=>String(x??"").trim()))continue;
     const get=k=>map[k]>=0?(row[map[k]]??""):"";
+    const code=String(get("code")??"").trim();
     const itemNo=String(get("itemNo")??"").trim(),description=String(get("description")??"").trim();
-    if(!itemNo&&!description)continue;
+    if(!code&&!itemNo&&!description)continue;
     const unit=String(get("unit")??"").trim(),qtyRaw=get("qty");
-    const hasQty=isNumericLike(qtyRaw),materialRaw=get("materialUnit"),laborRaw=get("laborUnit");
+    const hasQty=isNumericLike(qtyRaw),materialRaw=get("materialUnit"),laborRaw=get("laborUnit"),totalRaw=get("totalUnit"),amountRaw=get("amount");
     let rowType="ITEM";
     const descNorm=cleanText(description),unitNorm=cleanText(unit);
     if(descNorm==="ghi chu chung"||unitNorm==="note")rowType="NOTE";
     else if(!unit&&!hasQty&&!isNumericLike(materialRaw)&&!isNumericLike(laborRaw)&&looksLikeSection(itemNo,description))rowType="SECTION";
-    else if(!unit&&!hasQty&&!itemNo&&description.length>45)rowType="NOTE";
+    else if(!unit&&!hasQty&&!itemNo&&!code&&description.length>45)rowType="NOTE";
     out.push({
-      sourceRow:r+1,sourceOrder:r-(headerIndex+headerDepth),rowType,itemNo,description,
+      sourceRow:r+1,sourceOrder:r-(headerIndex+headerDepth),rowType,code,itemNo,description,
       specification:String(get("specification")??"").trim(),unit,qty:hasQty?toNumber(qtyRaw):0,
       brand:String(get("brand")??"").trim(),origin:String(get("origin")??"").trim(),
-      materialUnit:isNumericLike(materialRaw)?toNumber(materialRaw):0,laborUnit:isNumericLike(laborRaw)?toNumber(laborRaw):0,
+      materialUnit:isNumericLike(materialRaw)?toNumber(materialRaw):0,
+      laborUnit:isNumericLike(laborRaw)?toNumber(laborRaw):0,
+      totalUnit:isNumericLike(totalRaw)?toNumber(totalRaw):0,
+      amount:isNumericLike(amountRaw)?toNumber(amountRaw):0,
       subcontractUnit:0,otherUnit:0,wastePct:0,markupPct:0
     });
   }
