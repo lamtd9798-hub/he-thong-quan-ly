@@ -1078,3 +1078,64 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
 .v220-head{align-items:flex-start;gap:18px;margin-bottom:14px}.v220-head h2{margin:3px 0 4px;font-size:26px}.v220-head p{max-width:800px;color:#64748b;margin:0}.v220-actions{gap:8px;flex-wrap:wrap;justify-content:flex-end}.v220-btn-count{display:inline-flex;min-width:20px;height:20px;align-items:center;justify-content:center;border-radius:999px;background:#e2e8f0;margin-left:5px;font-size:11px}.v220-projectbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}.v220-file-chip{display:flex;flex-direction:column;min-width:220px;padding:7px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff}.v220-file-chip b{font-size:12px;max-width:330px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v220-file-chip span{font-size:11px;color:#64748b;margin-top:2px}.v220-status-row{display:grid;grid-template-columns:repeat(5,minmax(125px,1fr));gap:10px;margin-bottom:12px}.v220-stat{border:1px solid #e2e8f0;background:#fff;border-radius:12px;padding:10px 13px;text-align:left;display:flex;align-items:center;justify-content:space-between;min-height:52px;box-shadow:0 1px 2px rgba(15,23,42,.03)}button.v220-stat{cursor:pointer;font:inherit;width:100%}button.v220-stat:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(15,23,42,.08)}.v220-stat span{font-size:12px;color:#64748b;font-weight:600}.v220-stat b{font-size:21px;color:#0f172a}.v220-stat.blue{border-left:4px solid #3b82f6}.v220-stat.green{border-left:4px solid #22c55e}.v220-stat.orange{border-left:4px solid #f59e0b}.v220-stat.red{border-left:4px solid #ef4444}.v220-workbook-card{padding:0!important;overflow:hidden;border:1px solid #dbe3ee;box-shadow:0 8px 30px rgba(15,23,42,.06)}.v220-workbook-top{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:11px 14px;border-bottom:1px solid #e2e8f0;background:#fff}.v220-workbook-top>div:first-child{display:flex;flex-direction:column;min-width:0}.v220-workbook-top b{font-size:13px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.v220-workbook-top span{font-size:11px;color:#64748b}.v220-workbook-tools{display:flex!important;flex-direction:row!important;align-items:center;gap:7px;flex-shrink:0}.v220-auto-note{max-width:280px;white-space:normal!important;text-align:right}.v220-save-state{font-weight:700;color:#16a34a!important;min-width:66px}.v220-save-state.dirty{color:#ea580c!important}.v220-sheet-legend{display:flex;align-items:center;gap:14px;padding:7px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:11px;color:#475569;flex-wrap:wrap}.v220-sheet-legend .push{margin-left:auto}.v220-sheet-legend .dot{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:4px;vertical-align:-1px}.v220-sheet-legend .dot.auto{background:#86efac}.v220-sheet-legend .dot.labor{background:#93c5fd}.v220-sheet-legend .dot.review{background:#fcd34d}.v220-sheet-legend .dot.missing{background:#fca5a5}.v220-univer-host{height:clamp(620px,72vh,860px);min-height:620px;width:100%;background:#fff;position:relative;overflow:hidden}.v220-univer-host>div{height:100%!important}.v220-univer-fallback{height:100%;overflow:auto;padding:10px}.v220-univer-fallback>b,.v220-univer-fallback>span{display:block;margin:3px 0}.v220-univer-fallback>span{font-size:12px;color:#64748b;margin-bottom:10px}.v220-empty-card{padding:20px}.v220-upload-note{line-height:1.55}.v220-import-preview{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%}.v220-import-preview>div:first-child{display:flex;flex-direction:column}.v220-import-preview span{font-size:12px;color:#64748b;margin-top:3px}.v220-preview-badges{display:flex!important;flex-direction:row!important;gap:6px;flex-wrap:wrap;justify-content:flex-end}.v220-library-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}.v220-library-head>div{display:flex;flex-direction:column}.v220-library-head span{font-size:12px;color:#64748b}.v220-library-list{display:flex;flex-direction:column;gap:8px}.v220-library-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff}.v220-library-item>div{display:flex;flex-direction:column;min-width:0}.v220-library-item b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.v220-library-item span{font-size:11px;color:#64748b;margin-top:3px}.v220-review-note{padding:9px 11px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;margin-bottom:10px;font-size:12px;color:#475569}.v220-review-table td{vertical-align:top}.v220-review-table td div{margin-top:2px}.v220-review-table small{display:block;color:#64748b;margin-top:3px}.v220-review-table td:first-child{min-width:300px}.v220-review-table td:nth-child(2){min-width:260px}.v220-review-table td:nth-child(5){min-width:180px}
 @media(max-width:1100px){.v220-status-row{grid-template-columns:repeat(3,1fr)}.v220-workbook-top{align-items:flex-start;flex-direction:column}.v220-workbook-tools{width:100%;flex-wrap:wrap}.v220-sheet-legend .push{margin-left:0;width:100%}.v220-univer-host{height:680px}.v220-actions{justify-content:flex-start}}
 @media(max-width:720px){.v220-status-row{grid-template-columns:repeat(2,1fr)}.v220-projectbar select{min-width:100%!important;width:100%}.v220-import-preview{align-items:flex-start;flex-direction:column}.v220-preview-badges{justify-content:flex-start}.v220-univer-host{min-height:560px;height:650px}}
+
+/* =========================================================
+   V2.20.1 - BOQ FULLSCREEN / EXCEL FOCUS MODE
+   ========================================================= */
+body.boq-fullscreen-active{overflow:hidden!important}
+.v220-full-only{display:none!important}
+.v220-fullscreen-btn{font-weight:750;border-color:#bfdbfe!important;background:#eff6ff!important;color:#1d4ed8!important}
+.v220-fullscreen-btn:hover{background:#dbeafe!important}
+.v220-workbook-card.is-fullscreen{
+  position:fixed!important;
+  inset:0!important;
+  z-index:90!important;
+  width:100vw!important;
+  height:100vh!important;
+  max-width:none!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  background:#fff!important;
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+}
+.v220-workbook-card.is-fullscreen .v220-workbook-top{
+  min-height:54px;
+  padding:8px 14px;
+  flex:0 0 auto;
+  border-bottom:1px solid #cbd5e1;
+  box-shadow:0 1px 6px rgba(15,23,42,.06);
+  z-index:2;
+}
+.v220-workbook-card.is-fullscreen .v220-workbook-top>div:first-child b{font-size:14px}
+.v220-workbook-card.is-fullscreen .v220-workbook-top>div:first-child span{font-size:11px}
+.v220-workbook-card.is-fullscreen .v220-workbook-tools{gap:6px}
+.v220-workbook-card.is-fullscreen .v220-full-only{display:inline-flex!important}
+.v220-workbook-card.is-fullscreen .v220-auto-note{display:none!important}
+.v220-workbook-card.is-fullscreen .v220-sheet-legend{
+  flex:0 0 auto;
+  min-height:32px;
+  padding:5px 14px;
+  background:#f8fafc;
+}
+.v220-workbook-card.is-fullscreen .v220-univer-host{
+  flex:1 1 auto!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  width:100%!important;
+  border:0!important;
+}
+.v220-workbook-card.is-fullscreen .v220-univer-host>div{height:100%!important;min-height:0!important}
+.v220-workbook-card.is-fullscreen .v220-univer-fallback{height:100%!important}
+
+@media(max-width:900px){
+  .v220-workbook-card.is-fullscreen .v220-workbook-top{align-items:flex-start;flex-direction:column;gap:6px}
+  .v220-workbook-card.is-fullscreen .v220-workbook-tools{width:100%;overflow-x:auto;flex-wrap:nowrap!important;padding-bottom:2px}
+  .v220-workbook-card.is-fullscreen .v220-sheet-legend{display:none}
+}

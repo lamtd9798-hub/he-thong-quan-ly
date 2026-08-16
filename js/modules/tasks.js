@@ -2,7 +2,7 @@ import {
   refs, arr, ts, logActivity, getProfile, can, esc, norm, fmtDate, fmtDateTime,
   daysUntil, TASK_STATUSES, TASK_PRIORITIES, TASK_TYPES,
   setPage, loading, empty, badge, modal, closeModal, toast, confirmBox
-} from "../core.js?v=2.20";
+} from "../core.js?v=2.20.1";
 
 let tasks = [];
 let projects = [];

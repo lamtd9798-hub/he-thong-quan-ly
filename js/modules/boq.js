@@ -1,7 +1,7 @@
 import {
   refs, arr, ts, logActivity, can, getProfile, esc, norm, money, fmtDateTime,
   setPage, loading, empty, badge, modal, toast, confirmBox
-} from "../core.js?v=2.20";
+} from "../core.js?v=2.20.1";
 
 let projects=[];
 let selectedProjectId="";
@@ -20,6 +20,8 @@ let univerAPI=null;
 let univerDisposers=[];
 let univerDirty=false;
 let workspaceFilter="ALL";
+let workspaceFullscreen=false;
+let workspaceFullscreenKeyBound=false;
 let materialIndex={byCode:new Map(),byUnit:new Map(),all:[]};
 
 const BOQ_ALIASES={
@@ -176,7 +178,7 @@ function workspaceBoqPanel(){
   }
   const exact=matchingRows().filter(x=>x.best?.score>=95).length;
   const review=matchingRows().filter(x=>x.best?.score>=78&&x.best?.score<95).length;
-  return `<div class="card v220-workbook-card">
+  return `<div class="card v220-workbook-card ${workspaceFullscreen?"is-fullscreen":""}">
     <div class="v220-workbook-top">
       <div>
         <b>${esc(boqMeta.fileName||"BOQ.xlsx")}</b>
@@ -185,6 +187,9 @@ function workspaceBoqPanel(){
       <div class="v220-workbook-tools">
         ${can("boqEdit")?`<button class="btn sm primary" id="saveUniverBtn">Lưu BOQ</button>`:""}
         ${review?`<button class="btn sm orange" id="reviewPriceBtn">Kiểm tra ${review} giá</button>`:""}
+        ${can("quoteEdit")?`<button class="btn sm v220-full-only" id="fullscreenAddQuoteBtn">＋ Báo giá</button>`:""}
+        <button class="btn sm green v220-full-only" id="fullscreenExportBtn">⇩ Excel</button>
+        <button class="btn sm v220-fullscreen-btn" id="toggleBoqFullscreenBtn" title="Mở BOQ toàn màn hình như ứng dụng Excel">⛶ Toàn màn hình</button>
         ${exact?`<span class="v220-auto-note">${exact} ứng viên ≥95% được tự dùng khi ô giá còn trống</span>`:""}
         <span id="univerSaveState" class="v220-save-state">✓ Đã lưu</span>
       </div>
@@ -194,7 +199,7 @@ function workspaceBoqPanel(){
       <span><i class="dot labor"></i> Nhân công từ CTG/CTC cột T</span>
       <span><i class="dot review"></i> Cần kiểm tra</span>
       <span><i class="dot missing"></i> Chưa có giá</span>
-      <span class="push">Ctrl+C/V · kéo cột/hàng · merge · font · căn lề dùng trực tiếp thanh công cụ spreadsheet</span>
+      <span class="push">Ctrl+C/V · kéo cột/hàng · merge · font · căn lề · <b>Esc để thoát toàn màn hình</b></span>
     </div>
     <div id="univerBoqHost" class="v220-univer-host"></div>
   </div>`;
@@ -1241,7 +1246,7 @@ function matchRowHtml(m){
 
 function bind(container){
   container.querySelector("#pricingProjectSelect")?.addEventListener("change",async e=>{
-    selectedProjectId=e.target.value;q="";workspaceFilter="ALL";boqEditorDirty=false;univerDirty=false;
+    selectedProjectId=e.target.value;q="";workspaceFilter="ALL";boqEditorDirty=false;univerDirty=false;workspaceFullscreen=false;document.body.classList.remove("boq-fullscreen-active");
     container.innerHTML=loading();await loadProjectData();paint(container);
   });
 
@@ -1251,7 +1256,43 @@ function bind(container){
   container.querySelector("#exportOriginalXlsxBtn")?.addEventListener("click",()=>exportOriginalWorkbook(container));
   container.querySelector("#reviewPriceBtn")?.addEventListener("click",()=>openReviewPrices(container,"REVIEW"));
   container.querySelector("#saveUniverBtn")?.addEventListener("click",()=>saveUniverBoq(container));
+  container.querySelector("#toggleBoqFullscreenBtn")?.addEventListener("click",()=>toggleBoqFullscreen(container));
+  container.querySelector("#fullscreenAddQuoteBtn")?.addEventListener("click",()=>openMaterialUpload(container));
+  container.querySelector("#fullscreenExportBtn")?.addEventListener("click",()=>exportOriginalWorkbook(container));
   container.querySelectorAll("[data-workspace-filter]").forEach(b=>b.addEventListener("click",()=>openReviewPrices(container,b.dataset.workspaceFilter==="missing"?"MISSING":"REVIEW")));
+  ensureBoqFullscreenKeyHandler(container);
+  if(workspaceFullscreen)applyBoqFullscreenDom(container,true);
+}
+
+function ensureBoqFullscreenKeyHandler(container){
+  if(workspaceFullscreenKeyBound)return;
+  workspaceFullscreenKeyBound=true;
+  document.addEventListener("keydown",e=>{
+    if(e.key!=="Escape"||!workspaceFullscreen)return;
+    e.preventDefault();
+    const active=document.querySelector("#pageContent")||container;
+    toggleBoqFullscreen(active,false);
+  });
+}
+
+function toggleBoqFullscreen(container,force){
+  const next=typeof force==="boolean"?force:!workspaceFullscreen;
+  workspaceFullscreen=next;
+  applyBoqFullscreenDom(container,next);
+}
+
+function applyBoqFullscreenDom(container,on){
+  const root=container?.querySelector?.(".v220-workbook-card")||document.querySelector(".v220-workbook-card");
+  if(!root)return;
+  root.classList.toggle("is-fullscreen",Boolean(on));
+  document.body.classList.toggle("boq-fullscreen-active",Boolean(on));
+  const btn=root.querySelector("#toggleBoqFullscreenBtn");
+  if(btn){
+    btn.innerHTML=on?"↙ Thu nhỏ":"⛶ Toàn màn hình";
+    btn.title=on?"Thoát chế độ toàn màn hình (Esc)":"Mở BOQ toàn màn hình như ứng dụng Excel";
+  }
+  // Univer tự phản ứng theo kích thước container; phát resize để cập nhật viewport ngay.
+  requestAnimationFrame(()=>requestAnimationFrame(()=>window.dispatchEvent(new Event("resize"))));
 }
 
 function openBoqUpload(container){
