@@ -1,13 +1,13 @@
-import {auth,db,listenAuth,getProfile,ROLES,can,initials,initModal,loading} from "./core.js?v=2.19.3";
-import {renderDashboard} from "./modules/dashboard.js?v=2.19.3";
-import {renderProjects} from "./modules/projects.js?v=2.19.3";
-import {renderTasks} from "./modules/tasks.js?v=2.19.3";
-import {renderTender} from "./modules/tender.js?v=2.19.3";
-import {renderBOQ} from "./modules/boq.js?v=2.19.3";
-import {renderExecution} from "./modules/execution.js?v=2.19.3";
-import {renderFinance} from "./modules/finance.js?v=2.19.3";
-import {renderReports} from "./modules/reports.js?v=2.19.3";
-import {renderUsers} from "./modules/users.js?v=2.19.3";
+import {auth,db,listenAuth,getProfile,ROLES,can,initials,initModal,loading} from "./core.js?v=2.19.4";
+import {renderDashboard} from "./modules/dashboard.js?v=2.19.4";
+import {renderProjects} from "./modules/projects.js?v=2.19.4";
+import {renderTasks} from "./modules/tasks.js?v=2.19.4";
+import {renderTender} from "./modules/tender.js?v=2.19.4";
+import {renderBOQ} from "./modules/boq.js?v=2.19.4";
+import {renderExecution} from "./modules/execution.js?v=2.19.4";
+import {renderFinance} from "./modules/finance.js?v=2.19.4";
+import {renderReports} from "./modules/reports.js?v=2.19.4";
+import {renderUsers} from "./modules/users.js?v=2.19.4";
 
 const $=s=>document.querySelector(s);
 const routes={dashboard:renderDashboard,projects:renderProjects,tasks:renderTasks,tender:renderTender,boq:renderBOQ,execution:renderExecution,finance:renderFinance,reports:renderReports,users:renderUsers};

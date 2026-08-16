@@ -993,3 +993,81 @@ input,select,textarea{border:1px solid #ccd6e4;background:#fff;border-radius:8px
 .pricing-incremental-note>div span{display:block;font-size:8px;margin-top:3px;color:#64748b}
 .pricing-incremental-note p{margin:0;font-size:9px;line-height:1.5}
 @media(max-width:760px){.pricing-incremental-note{align-items:flex-start;flex-direction:column}.pricing-incremental-note>div{border-right:0;border-bottom:1px solid #dbe6f4;padding:0 0 8px;width:100%}}
+
+/* =========================
+   V2.19.4 - BOQ EDITOR GIỐNG EXCEL
+   ========================= */
+.pricing-editor-shell{position:relative;background:#fff}
+.pricing-editor-toolbar{
+  display:flex;align-items:center;gap:7px;min-height:44px;padding:7px 10px;
+  border-bottom:1px solid #dbe3ec;background:#fff;overflow-x:auto;white-space:nowrap
+}
+.pricing-editor-group{display:flex;align-items:center;gap:5px;flex:0 0 auto}
+.pricing-editor-group select{
+  height:29px;border:1px solid #d5dee9;border-radius:6px;background:#fff;color:#334155;
+  padding:0 7px;font-size:9px
+}
+.pricing-editor-group [data-pricing-font]{min-width:126px}
+.pricing-editor-group [data-pricing-font-size]{width:58px}
+.pricing-editor-sep{width:1px;height:26px;background:#e2e8f0;flex:0 0 1px}
+.pricing-editor-spacer{flex:1;min-width:12px}
+.pricing-format-btn,.pricing-editor-btn{
+  height:29px;border:1px solid #d5dee9;border-radius:6px;background:#fff;color:#334155;
+  padding:0 9px;font-size:9px;font-weight:650;cursor:pointer;transition:.15s ease
+}
+.pricing-format-btn{width:30px;padding:0;font-size:12px}
+.pricing-format-btn.bold{font-weight:850}
+.pricing-format-btn.italic{font-family:Georgia,serif;font-style:italic}
+.pricing-format-btn.center{text-align:center}.pricing-format-btn.right{text-align:right}
+.pricing-format-btn:hover,.pricing-editor-btn:hover{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
+.pricing-editor-btn.danger-soft{color:#b91c1c;background:#fff7f7;border-color:#fecaca}
+.pricing-editor-btn.danger-soft:hover{background:#fee2e2;border-color:#fca5a5;color:#991b1b}
+.pricing-editor-help{margin-left:auto;color:#7b8795}
+.pricing-editor-save-state{margin-left:auto;padding:3px 7px;border-radius:999px;font-size:8px;font-weight:700}
+.pricing-editor-save-state.saved{background:#ecfdf3;color:#15803d}.pricing-editor-save-state.dirty{background:#fff7ed;color:#c2410c}
+
+.pricing-editable-grid td{position:relative;padding:0!important}
+.pricing-cell-edit-wrap{position:relative;width:100%;min-height:22px;height:100%}
+.pricing-cell-editor{
+  min-height:22px;width:100%;height:100%;box-sizing:border-box;padding:4px 6px;
+  outline:0;white-space:pre-wrap;word-break:break-word;cursor:text
+}
+.pricing-cell-editor[contenteditable="true"]:focus{
+  background:rgba(255,255,255,.96);box-shadow:inset 0 0 0 2px #2563eb;z-index:3
+}
+.pricing-cell-selected{box-shadow:inset 0 0 0 2px #2563eb!important;z-index:2}
+.pricing-range-selected{box-shadow:inset 0 0 0 1px #60a5fa!important;background-color:#eff6ff!important}
+.pricing-head-selected{background:#dbeafe!important;color:#1d4ed8!important;font-weight:800!important}
+
+.pricing-excel-col-head th[data-pricing-col-head],.pricing-excel-row-head[data-pricing-row-head]{position:sticky;user-select:none}
+.pricing-excel-col-head th[data-pricing-col-head]{position:sticky;top:0}
+.pricing-col-resizer{
+  position:absolute;right:-4px;top:0;width:9px;height:100%;cursor:col-resize;z-index:20
+}
+.pricing-col-resizer::after{content:"";position:absolute;left:4px;top:4px;bottom:4px;width:1px;background:transparent}
+.pricing-col-resizer:hover::after{background:#2563eb;width:2px}
+.pricing-row-resizer{
+  position:absolute;left:0;right:0;bottom:-4px;height:9px;cursor:row-resize;z-index:20
+}
+.pricing-row-resizer::after{content:"";position:absolute;left:5px;right:5px;top:4px;height:1px;background:transparent}
+.pricing-row-resizer:hover::after{background:#2563eb;height:2px}
+.pricing-resizing-col,.pricing-resizing-col *{cursor:col-resize!important;user-select:none!important}
+.pricing-resizing-row,.pricing-resizing-row *{cursor:row-resize!important;user-select:none!important}
+
+.pricing-grid-source-dot{
+  position:absolute;right:3px;top:3px;z-index:6;box-shadow:0 1px 3px rgba(15,23,42,.15)
+}
+
+/* Bỏ cưỡng chế !important ở hàng màu bằng cách cho style trực tiếp của người dùng có quyền ghi đè. */
+.pricing-editable-grid td.pricing-boq-title,
+.pricing-editable-grid td.pricing-boq-header,
+.pricing-editable-grid td.pricing-boq-subheader,
+.pricing-editable-grid td.pricing-boq-section-1,
+.pricing-editable-grid td.pricing-boq-section-2,
+.pricing-editable-grid td.pricing-boq-note-header{
+  /* các style nền mặc định vẫn giữ ở rule cũ; font/alignment do inline style người dùng điều khiển */
+}
+
+@media(max-width:1000px){
+  .pricing-editor-toolbar{align-items:flex-start}.pricing-editor-help{display:none}
+}

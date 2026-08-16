@@ -1,3 +1,13 @@
+## V2.19.4 — BOQ Editor trực tiếp trên web
+
+- Toàn bộ ô BOQ có thể chỉnh sửa trực tiếp.
+- Font, cỡ chữ, in đậm, in nghiêng, căn trái/giữa/phải, xuống dòng.
+- Gộp ô, gộp ngang, bỏ gộp.
+- Kéo chỉnh độ rộng cột và chiều cao hàng; nhấp đúp mép để AutoFit.
+- Chèn hàng trên/dưới, chèn cột trái/phải.
+- Xóa hàng, xóa cột có xác nhận.
+- Nút **Lưu BOQ** lưu nội dung/format/cấu trúc vào Firebase và đồng bộ lại dữ liệu dùng để ráp giá.
+
 ## V2.19.1 — Báo giá cập nhật theo từng đợt
 
 - BOQ được upload trước.
